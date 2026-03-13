@@ -55,10 +55,14 @@ export const DashboardPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabType>('alunos');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedDay, setSelectedDay] = useState('ALL');
+  const breadcrumbItems = [
+    { label: 'Dashboard', path: '/dashboard' },
+    { label: 'Alunos' },
+  ];
 
   const handleNewStudent = () => {
-    console.log('Botão Novo Aluno clicado! Navegando para /students/new...');
-    navigate('/students/new');
+    console.log('Botão Novo Aluno clicado! Navegando para /dashboard/student/new...');
+    navigate('/dashboard/student/new');
   };
 
   // Carrega dados ao montar o componente
@@ -94,8 +98,7 @@ export const DashboardPage: React.FC = () => {
     return (
       <div className={styles.page}>
         <Header
-          title="Alunos"
-          breadcrumb="Dashboard › Alunos"
+          breadcrumbItems={breadcrumbItems}
           onNewStudent={handleNewStudent}
         />
         <nav className={styles.tabs}>
@@ -127,8 +130,7 @@ export const DashboardPage: React.FC = () => {
     return (
       <div className={styles.page}>
         <Header
-          title="Alunos"
-          breadcrumb="Dashboard › Alunos"
+          breadcrumbItems={breadcrumbItems}
           onNewStudent={handleNewStudent}
         />
         <nav className={styles.tabs}>
@@ -159,8 +161,7 @@ export const DashboardPage: React.FC = () => {
   return (
     <div className={styles.page}>
       <Header
-        title="Alunos"
-        breadcrumb="Dashboard › Alunos"
+        breadcrumbItems={breadcrumbItems}
         onNewStudent={handleNewStudent}
       />
 
@@ -258,13 +259,13 @@ export const DashboardPage: React.FC = () => {
                   <div
                     key={student.id}
                     className={`${styles.studentCard} ${styles[levelClass]}`}
-                    onClick={() => navigate(`/students/${student.id}`)}
+                    onClick={() => navigate(`/dashboard/student/${student.id}`)}
                     role="button"
                     tabIndex={0}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' || e.key === ' ') {
                         e.preventDefault();
-                        navigate(`/students/${student.id}`);
+                        navigate(`/dashboard/student/${student.id}`);
                       }
                     }}
                     aria-label={`Ver perfil de ${student.name}`}

@@ -6,6 +6,10 @@ import styles from './BillingPage.module.css';
 
 export const BillingPage: React.FC = () => {
   const { billingData, loading, error, fetchMonthBilling } = useBilling();
+  const breadcrumbItems = [
+    { label: 'Dashboard', path: '/dashboard' },
+    { label: 'Cobrança' },
+  ];
   const [selectedMonth, setSelectedMonth] = useState(
     new Date().toISOString().substring(0, 7),
   );
@@ -27,7 +31,7 @@ export const BillingPage: React.FC = () => {
 
   return (
     <div className={styles.container}>
-      <Header title="Cobrança" breadcrumb="Dashboard › Cobrança" />
+      <Header breadcrumbItems={breadcrumbItems} />
 
       <main className={styles.content}>
         <div className={styles.monthSelector}>

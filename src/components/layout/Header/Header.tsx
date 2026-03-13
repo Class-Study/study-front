@@ -1,12 +1,18 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { ThemeToggle } from '@/components/ui/ThemeToggle/ThemeToggle';
-import { Button } from '@/components/ui/Button/Button';
 import styles from './Header.module.css';
 
+export interface BreadcrumbItem {
+  label: string;
+  path?: string;
+}
+
 interface HeaderProps {
-  title: string;
+  title?: string;
   breadcrumb?: string;
+  breadcrumbItems?: BreadcrumbItem[];
   onNewStudent?: () => void;
 }
 
@@ -27,8 +33,10 @@ const getAvatarTone = (name?: string | null): number => {
   return name.charCodeAt(0) % 6;
 };
 
-export const Header: React.FC<HeaderProps> = ({ title, breadcrumb, onNewStudent }) => {
+export const Header: React.FC<HeaderProps> = ({ breadcrumb, breadcrumbItems, onNewStudent }) => {
+  const navigate = useNavigate();
   const { user, logout } = useAuth();
+  const hasBreadcrumbItems = (breadcrumbItems?.length ?? 0) > 0;
 
   const initials = getInitials(user?.name);
   const userName = user?.name ?? 'Usuário';
@@ -41,23 +49,44 @@ export const Header: React.FC<HeaderProps> = ({ title, breadcrumb, onNewStudent 
         <div className={styles.logo}>
           <span className={styles.platformName}>EduSpace</span>
           <span className={styles.badge}>{userRole}</span>
-          <span className={styles.separator}>›</span>
+          {(hasBreadcrumbItems || breadcrumb) && <span className={styles.separator}>›</span>}
         </div>
-        <div className={styles.breadcrumb}>
-          {breadcrumb || title}
-        </div>
+        {hasBreadcrumbItems && (
+          <div className={styles.breadcrumbWrapper}>
+            {breadcrumbItems?.map((item, idx) => {
+              const path = item.path;
+
+              return (
+                <React.Fragment key={`${item.label}-${idx}`}>
+                  {idx > 0 && <span className={styles.separator}>›</span>}
+                  {path ? (
+                    <button
+                      className={styles.breadcrumbLink}
+                      onClick={() => navigate(path)}
+                      type="button"
+                    >
+                      {item.label}
+                    </button>
+                  ) : (
+                    <span className={styles.breadcrumbCurrent}>{item.label}</span>
+                  )}
+                </React.Fragment>
+              );
+            })}
+          </div>
+        )}
+        {!hasBreadcrumbItems && breadcrumb && <div className={styles.breadcrumb}>{breadcrumb}</div>}
       </div>
 
       <div className={styles.right}>
         {onNewStudent && (
-          <Button
-            variant="primary"
-            size="md"
+          <button
             onClick={onNewStudent}
             className={styles.newStudentBtn}
+            type="button"
           >
             + Novo aluno
-          </Button>
+          </button>
         )}
 
         <ThemeToggle />

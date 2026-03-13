@@ -2,12 +2,10 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { PrivateRoute } from '@/PrivateRoute';
 import { LoginPage } from '@/pages/login/LoginPage';
 import { DashboardPage } from '@/pages/dashboard/DashboardPage';
-import { StudentsPage } from '@/pages/students/StudentsPage';
 import { CreateStudentPage } from '@/pages/students/CreateStudentPage';
 import { StudentProfilePage } from '@/pages/students/StudentProfilePage';
 import { BillingPage } from '@/pages/billing/BillingPage';
 import { WorkspacePage } from '@/pages/workspace/WorkspacePage';
-import { Sidebar } from '@/components/layout/Sidebar/Sidebar';
 
 export const AppRoutes: React.FC = () => {
   return (
@@ -18,58 +16,34 @@ export const AppRoutes: React.FC = () => {
         path="/dashboard"
         element={
           <PrivateRoute>
-            <div style={{ display: 'flex' }}>
-              <Sidebar />
-              <DashboardPage />
-            </div>
+            <DashboardPage />
           </PrivateRoute>
         }
       />
 
       <Route
-        path="/students"
+        path="/dashboard/student/new"
         element={
-          <PrivateRoute requiredRoles={['TEACHER']}>
-            <div style={{ display: 'flex' }}>
-              <Sidebar />
-              <StudentsPage />
-            </div>
+          <PrivateRoute requiredRoles={['TEACHER', 'ADMIN']}>
+            <CreateStudentPage />
           </PrivateRoute>
         }
       />
 
       <Route
-        path="/students/new"
+        path="/dashboard/student/:id"
         element={
-          <PrivateRoute requiredRoles={['TEACHER']}>
-            <div style={{ display: 'flex' }}>
-              <Sidebar />
-              <CreateStudentPage />
-            </div>
+          <PrivateRoute requiredRoles={['TEACHER', 'ADMIN']}>
+            <StudentProfilePage />
           </PrivateRoute>
         }
       />
 
       <Route
-        path="/students/:id"
-        element={
-          <PrivateRoute requiredRoles={['TEACHER']}>
-            <div style={{ display: 'flex' }}>
-              <Sidebar />
-              <StudentProfilePage />
-            </div>
-          </PrivateRoute>
-        }
-      />
-
-      <Route
-        path="/students/:studentId/workspace"
+        path="/dashboard/student/:studentId/workspace"
         element={
           <PrivateRoute>
-            <div style={{ display: 'flex' }}>
-              <Sidebar />
-              <WorkspacePage />
-            </div>
+            <WorkspacePage />
           </PrivateRoute>
         }
       />
@@ -77,11 +51,8 @@ export const AppRoutes: React.FC = () => {
       <Route
         path="/billing"
         element={
-          <PrivateRoute requiredRoles={['TEACHER']}>
-            <div style={{ display: 'flex' }}>
-              <Sidebar />
-              <BillingPage />
-            </div>
+          <PrivateRoute requiredRoles={['TEACHER', 'ADMIN']}>
+            <BillingPage />
           </PrivateRoute>
         }
       />

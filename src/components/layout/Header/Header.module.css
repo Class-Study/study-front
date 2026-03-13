@@ -55,6 +55,35 @@
   color: var(--color-text-primary);
 }
 
+.breadcrumbWrapper {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.breadcrumbLink {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: var(--font-sans);
+  font-size: 14px;
+  color: var(--color-text-secondary);
+  padding: 0;
+  transition: color 0.2s;
+}
+
+.breadcrumbLink:hover {
+  color: var(--color-accent);
+  text-decoration: underline;
+}
+
+.breadcrumbCurrent {
+  font-family: var(--font-sans);
+  font-size: 14px;
+  color: var(--color-text-primary);
+  font-weight: 500;
+}
+
 /* Right side — Actions + User */
 .right {
   display: flex;
@@ -165,6 +194,11 @@
     font-size: 12px;
   }
 
+  .breadcrumbLink,
+  .breadcrumbCurrent {
+    font-size: 12px;
+  }
+
   .right {
     gap: 12px;
   }
@@ -186,6 +220,10 @@
 
 @media (max-width: 480px) {
   .breadcrumb {
+    display: none;
+  }
+
+  .breadcrumbWrapper {
     display: none;
   }
 

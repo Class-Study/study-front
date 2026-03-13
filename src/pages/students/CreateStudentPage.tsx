@@ -54,6 +54,11 @@ const timeZoneOptions = [
 export const CreateStudentPage: React.FC = () => {
   const navigate = useNavigate();
   const { levelProfiles = [], fetchLevelProfiles = () => {} } = useLevelProfiles() || {};
+  const breadcrumbItems = [
+    { label: 'Dashboard', path: '/dashboard' },
+    { label: 'Alunos', path: '/dashboard' },
+    { label: 'Novo aluno' },
+  ];
 
   const [form, setForm] = useState<FormData>({
     name: '',
@@ -224,8 +229,7 @@ export const CreateStudentPage: React.FC = () => {
   return (
     <div className={styles.page}>
       <Header
-        title="Cadastrar novo aluno"
-        breadcrumb="Dashboard › Novo aluno"
+        breadcrumbItems={breadcrumbItems}
       />
       <div className={styles.scrollContainer}>
         <div className={styles.narrowContainer}>
@@ -238,7 +242,7 @@ export const CreateStudentPage: React.FC = () => {
 
           {/* SEÇÃO 1: DADOS PESSOAIS */}
           <section className={styles.section}>
-            <div className={styles.sectionLabel}>Dados pessoais</div>
+            <div className={styles.sectionLabel}>DADOS PESSOAIS</div>
 
             <div className={`${styles.fieldGroup} ${styles.fieldGroupFull}`}>
               <div className={styles.field}>
@@ -337,7 +341,7 @@ export const CreateStudentPage: React.FC = () => {
                         }`}
                         onClick={() => handleDayToggle(dayValue)}
                       >
-                        {isSelected && <span className={styles.dayPillDot}>●</span>}
+                        {isSelected && <span className={styles.dayPillDot} />}
                         {label}
                       </button>
                     );
@@ -440,7 +444,7 @@ export const CreateStudentPage: React.FC = () => {
 
           {/* SEÇÃO 4: NÍVEL DO ALUNO */}
           <section className={styles.section}>
-            <div className={styles.sectionLabel}>Nível do aluno</div>
+            <div className={styles.sectionLabel}>NÍVEL DO ALUNO</div>
 
             <div className={styles.levelCards}>
               {systemLevels.map((level) => (
@@ -486,7 +490,7 @@ export const CreateStudentPage: React.FC = () => {
 
           {/* SEÇÃO 5: OBSERVAÇÕES INICIAIS */}
           <section className={styles.section}>
-            <div className={styles.sectionLabel}>Observações iniciais</div>
+            <div className={styles.sectionLabel}>OBSERVAÇÕES INICIAIS</div>
 
             <div className={styles.fieldGroup}>
               <div className={styles.field}>

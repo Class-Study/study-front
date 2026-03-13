@@ -23,7 +23,7 @@ export const WorkspacePage: React.FC = () => {
 
   return (
     <div className={styles.container}>
-      <Header title="Workspace" breadcrumb="Workspace › Área de trabalho" />
+      <Header breadcrumb="Dashboard › Workspace" />
 
       <main className={styles.content}>
         <div className={styles.layout}>

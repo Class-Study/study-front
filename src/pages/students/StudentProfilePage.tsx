@@ -11,6 +11,11 @@ export const StudentProfilePage: React.FC = () => {
   const { getStudentById, loading, error } = useStudents();
   const [student, setStudent] = useState<Student | null>(null);
   const [activeTab, setActiveTab] = useState<'info' | 'folders' | 'billing'>('info');
+  const breadcrumbItems = [
+    { label: 'Dashboard', path: '/dashboard' },
+    { label: 'Alunos', path: '/dashboard' },
+    { label: student?.name ?? 'Carregando...' },
+  ];
 
   useEffect(() => {
     if (id) {
@@ -21,8 +26,7 @@ export const StudentProfilePage: React.FC = () => {
   return (
     <div className={styles.container}>
       <Header
-        title="Perfil do Aluno"
-        breadcrumb={`Dashboard › Alunos › ${student?.name || 'Carregando...'}`}
+        breadcrumbItems={breadcrumbItems}
       />
 
       <main className={styles.content}>

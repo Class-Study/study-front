@@ -3,7 +3,7 @@ import {
   Activity,
   CreateActivityRequest,
   UpdateActivityRequest,
-} from '../../types/activity.types';
+} from '@/types/activity.types';
 
 const activityService = {
   listAll: async (): Promise<Activity[]> => {
