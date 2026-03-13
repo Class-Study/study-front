@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
+import { ThemeToggle } from '@/components/ui/ThemeToggle/ThemeToggle';
 import { Input } from '@/components/ui/Input/Input';
 import { Button } from '@/components/ui/Button/Button';
 import appConfig from '@/config/app.config';
@@ -69,6 +70,10 @@ export const LoginPage: React.FC = () => {
 
   return (
     <div className={styles.container}>
+      <div className={styles.loginThemeToggle}>
+        <ThemeToggle />
+      </div>
+
       <div className={styles.card}>
         <div className={styles.header}>
           <h1 className={styles.platformName}>{appConfig.platformName}</h1>
