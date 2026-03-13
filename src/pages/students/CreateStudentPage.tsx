@@ -4,8 +4,7 @@ import { Header } from '@/components/layout/Header/Header';
 import { useLevelProfiles } from '@/hooks/useLevelProfiles';
 import studentService from '@/services/api/student.service';
 import { ClassDay, CreateStudentRequest } from '@/types/student.types';
-import { LevelProfile } from '@/types/levelProfile.types';
-import { DAY_FILTER_OPTIONS, formatClassTime } from '@/utils/classDay.utils';
+import { DAY_FILTER_OPTIONS } from '@/utils/classDay.utils';
 import styles from './CreateStudentPage.module.css';
 
 interface FormData {
@@ -17,7 +16,6 @@ interface FormData {
   classDays: ClassDay[];
   classTime: string;
   classDuration: string;
-  timeZone: string;
   meetPlatform: string;
   meetLink: string;
   levelProfileId: string;
@@ -27,6 +25,17 @@ interface FormData {
 
 interface FormErrors {
   [key: string]: string;
+}
+
+interface ApiErrorResponse {
+  status?: number;
+  data?: {
+    message?: string;
+  };
+}
+
+interface ApiError {
+  response?: ApiErrorResponse;
 }
 
 const meetPlatformOptions = [
@@ -42,13 +51,6 @@ const durationOptions = [
   { label: '60 min', value: '60' },
   { label: '90 min', value: '90' },
   { label: '120 min', value: '120' },
-];
-
-const timeZoneOptions = [
-  { label: 'América/São Paulo (BRT)', value: 'America/Sao_Paulo' },
-  { label: 'América/Manaus', value: 'America/Manaus' },
-  { label: 'América/Belém', value: 'America/Belem' },
-  { label: 'América/Fortaleza', value: 'America/Fortaleza' },
 ];
 
 export const CreateStudentPage: React.FC = () => {
@@ -69,7 +71,6 @@ export const CreateStudentPage: React.FC = () => {
     classDays: [],
     classTime: '19:00',
     classDuration: '60',
-    timeZone: 'America/Sao_Paulo',
     meetPlatform: 'GOOGLE_MEET',
     meetLink: '',
     levelProfileId: '',
@@ -194,23 +195,33 @@ export const CreateStudentPage: React.FC = () => {
         name: form.name.trim(),
         email: form.email.trim(),
         phone: form.phone.trim() || undefined,
-        startDate: form.startDate,
-        classRate: parseInt(form.classRate),
-        classDays: form.classDays,
+        levelProfileId: form.levelProfileId,
         classTime: toApiTime(form.classTime),
+        classDays: form.classDays,
         classDuration: parseInt(form.classDuration),
+        classRate: parseFloat(form.classRate),
         meetPlatform: form.meetPlatform || undefined,
         meetLink: form.meetLink.trim() || undefined,
-        levelProfileId: form.levelProfileId,
-        notesPrivate: form.notesPrivate.trim() || undefined,
+        startDate: form.startDate,
       };
 
       await studentService.create(payload);
       navigate('/dashboard');
-    } catch (err) {
-      setSubmitError(
-        'Erro ao cadastrar aluno. Verifique os dados e tente novamente.'
-      );
+    } catch (err: unknown) {
+      const apiErr = err as ApiError;
+      const status = apiErr.response?.status;
+      const apiErrorMessage = apiErr.response?.data?.message ?? '';
+
+      if (status === 400 && apiErrorMessage.toLowerCase().includes('email')) {
+        setErrors((prev) => ({
+          ...prev,
+          email: 'Este e-mail já está cadastrado',
+        }));
+      } else {
+        setSubmitError(
+          apiErrorMessage || 'Erro ao cadastrar aluno. Tente novamente.'
+        );
+      }
     } finally {
       setSubmitting(false);
     }
@@ -377,22 +388,6 @@ export const CreateStudentPage: React.FC = () => {
                   className={styles.input}
                 >
                   {durationOptions.map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className={styles.field}>
-                <label className={styles.label}>Fuso horário</label>
-                <select
-                  name="timeZone"
-                  value={form.timeZone}
-                  onChange={handleInputChange}
-                  className={styles.input}
-                >
-                  {timeZoneOptions.map((opt) => (
                     <option key={opt.value} value={opt.value}>
                       {opt.label}
                     </option>

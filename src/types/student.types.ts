@@ -27,6 +27,7 @@ export interface CreateStudentRequest {
   name: string;
   email: string;
   phone?: string;
+  avatarUrl?: string;
   levelProfileId: string;
   classTime: string;
   classDays: string[];
@@ -35,7 +36,6 @@ export interface CreateStudentRequest {
   meetPlatform?: string;
   meetLink?: string;
   startDate: string;
-  notesPrivate?: string;
 }
 
 export interface UpdateStudentRequest {

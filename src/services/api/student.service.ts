@@ -28,9 +28,8 @@ const studentService = {
     return data;
   },
 
-  create: async (payload: CreateStudentRequest): Promise<Student> => {
-    const { data } = await api.post<Student>('/students', payload);
-    return data;
+  create: async (payload: CreateStudentRequest): Promise<void> => {
+    await api.post('/students', payload);
   },
 
   update: async (
