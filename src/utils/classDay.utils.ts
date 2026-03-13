@@ -14,6 +14,12 @@ export const formatClassDays = (days: string[]): string =>
 export const formatClassTime = (time: string): string =>
   time.substring(0, 5); // "19:00:00" → "19:00"
 
+export const formatDate = (date: string): string => {
+  if (!date) return '';
+  const [year, month, day] = date.split('-');
+  return `${day}/${month}/${year}`;
+};
+
 // Para o filtro de dias — retorna o valor em inglês dado o label PT
 export const DAY_FILTER_OPTIONS = [
   { label: 'Todos',  value: 'ALL' },
