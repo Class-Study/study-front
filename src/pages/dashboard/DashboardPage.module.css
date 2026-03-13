@@ -1,7 +1,8 @@
-.dashboard {
+.page {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
+  width: 100%;
   background: var(--color-bg-page);
 }
 
@@ -44,14 +45,14 @@
 .content {
   flex: 1;
   width: 100%;
-  padding: 28px 0 36px;
+  padding: 24px 32px 32px 32px;
+  box-sizing: border-box;
 }
 
-.contentInner {
+.inner {
   width: 100%;
   max-width: 1400px;
   margin: 0 auto;
-  padding: 0 32px;
 }
 
 /* Stats Container */
@@ -228,8 +229,9 @@
   border-right: 1px solid var(--color-border);
   border-bottom: 1px solid var(--color-border);
   padding: 16px;
+  cursor: pointer;
   box-shadow: var(--shadow-sm);
-  transition: box-shadow 0.2s ease, transform 0.2s ease;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 
 .studentCard.levelBasic {
@@ -247,6 +249,10 @@
 .studentCard:hover {
   box-shadow: var(--shadow-md);
   transform: translateY(-2px);
+}
+
+.studentCard:active {
+  transform: translateY(0);
 }
 
 /* Card Header */
@@ -528,14 +534,14 @@
     justify-content: flex-start;
   }
 
-  .contentInner {
-    padding: 0 16px;
+  .inner {
+    padding: 0;
   }
 }
 
 @media (max-width: 480px) {
   .content {
-    padding: 16px 0 20px;
+    padding: 16px 12px 20px 12px;
   }
 
   .statsContainer {

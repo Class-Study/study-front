@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { Bell, CreditCard, PlusSquare, Search, Target } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { Header } from '@/components/layout/Header/Header';
 import styles from './DashboardPage.module.css';
 
@@ -72,6 +73,7 @@ const getLevelClass = (level: Student['level']): LevelClass => {
 };
 
 export const DashboardPage: React.FC = () => {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<TabType>('alunos');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedDay, setSelectedDay] = useState('Todos');
@@ -94,7 +96,7 @@ export const DashboardPage: React.FC = () => {
   };
 
   return (
-    <div className={styles.dashboard}>
+    <div className={styles.page}>
       <Header
         title="Alunos"
         breadcrumb="Dashboard › Alunos"
@@ -123,7 +125,7 @@ export const DashboardPage: React.FC = () => {
       </nav>
 
       <main className={styles.content}>
-        <div className={styles.contentInner}>
+        <div className={styles.inner}>
           {activeTab === 'alunos' && (
             <>
             {/* Stats Cards */}
@@ -187,7 +189,19 @@ export const DashboardPage: React.FC = () => {
 
             <div className={styles.grid}>
               {filteredStudents.map((student) => (
-                <div key={student.id} className={`${styles.studentCard} ${styles[getLevelClass(student.level)]}`}>
+                <div
+                  key={student.id}
+                  className={`${styles.studentCard} ${styles[getLevelClass(student.level)]}`}
+                  onClick={() => navigate(`/students/${student.id}`)}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      navigate(`/students/${student.id}`);
+                    }
+                  }}
+                  aria-label={`Ver perfil de ${student.name}`}
+                >
                   <div className={styles.cardHeader}>
                     <div className={`${styles.cardAvatar} ${styles[getAvatarToneClass(student.name)]}`}>
                       {getInitials(student.name)}
