@@ -42,6 +42,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         refreshToken,
       } = response;
 
+      // Validar que o token foi recebido corretamente
+      if (!accessToken || !accessToken.trim()) {
+        throw new Error('Token não recebido do servidor');
+      }
+
       const authUser: AuthUser = {
         id: userData.userId,
         name: userData.userName,
