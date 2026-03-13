@@ -1,33 +1,12 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Bell, CreditCard, PlusSquare, Search, Target } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Header } from '@/components/layout/Header/Header';
+import { useStudents } from '@/hooks/useStudents';
+import { useLevelProfiles } from '@/hooks/useLevelProfiles';
+import { Student, ClassDay } from '@/types/student.types';
+import { formatClassDays, formatClassTime, DAY_FILTER_OPTIONS } from '@/utils/classDay.utils';
 import styles from './DashboardPage.module.css';
-
-interface Student {
-  id: string;
-  name: string;
-  level: 'Básico' | 'Intermediário' | 'Avançado';
-  status: 'ACTIVE' | 'BLOCKED';
-  classDays: string[];
-  classTime: string;
-  progress: number;
-  activities: number;
-  total: number;
-}
-
-const MOCK_STUDENTS: Student[] = [
-  { id: '1', name: 'Maria Silva',    level: 'Intermediário', status: 'ACTIVE',  classDays: ['Ter', 'Sex'],     classTime: '19:00', progress: 68, activities: 14, total: 20 },
-  { id: '2', name: 'João Pereira',   level: 'Básico',        status: 'ACTIVE',  classDays: ['Seg', 'Qua'],     classTime: '18:00', progress: 42, activities: 8,  total: 20 },
-  { id: '3', name: 'Carla Mendes',   level: 'Avançado',      status: 'ACTIVE',  classDays: ['Ter', 'Qui'],     classTime: '20:00', progress: 85, activities: 22, total: 25 },
-  { id: '4', name: 'Lucas Ferreira', level: 'Intermediário', status: 'BLOCKED', classDays: ['Sex'],            classTime: '17:00', progress: 30, activities: 6,  total: 20 },
-  { id: '5', name: 'Ana Rodrigues',  level: 'Básico',        status: 'ACTIVE',  classDays: ['Ter', 'Qui'],     classTime: '09:00', progress: 55, activities: 11, total: 20 },
-  { id: '6', name: 'Pedro Costa',    level: 'Avançado',      status: 'ACTIVE',  classDays: ['Sáb'],            classTime: '10:00', progress: 90, activities: 24, total: 25 },
-  { id: '7', name: 'Sofia Lima',     level: 'Intermediário', status: 'ACTIVE',  classDays: ['Dom', 'Seg'],     classTime: '18:30', progress: 72, activities: 16, total: 20 },
-  { id: '8', name: 'Rafael Souza',   level: 'Básico',        status: 'ACTIVE',  classDays: ['Qui'],            classTime: '19:30', progress: 25, activities: 5,  total: 20 },
-];
-
-const DAYS = ['Todos', 'Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 
 type TabType = 'alunos' | 'cobranca' | 'niveis';
 
@@ -59,41 +38,78 @@ const getInitials = (name: string): string => {
     .toUpperCase();
 };
 
-const getLevelClass = (level: Student['level']): LevelClass => {
-  switch (level) {
-    case 'Básico':
-      return 'levelBasic';
-    case 'Intermediário':
-      return 'levelIntermediate';
-    case 'Avançado':
-      return 'levelAdvanced';
-    default:
-      return 'levelBasic';
+const getLevelClassByCode = (code?: string): LevelClass => {
+  switch (code) {
+    case 'basic':        return 'levelBasic';
+    case 'intermediate': return 'levelIntermediate';
+    case 'advanced':     return 'levelAdvanced';
+    default:             return 'levelBasic';
   }
 };
 
 export const DashboardPage: React.FC = () => {
   const navigate = useNavigate();
+  const { students, loading, error, fetchStudents } = useStudents();
+  const { levelProfiles, fetchLevelProfiles, getProfileById } = useLevelProfiles();
+
   const [activeTab, setActiveTab] = useState<TabType>('alunos');
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedDay, setSelectedDay] = useState('Todos');
+  const [selectedDay, setSelectedDay] = useState('ALL');
+
+  // Carrega dados ao montar o componente
+  useEffect(() => {
+    fetchStudents();
+    fetchLevelProfiles();
+  }, []);
 
   const filteredStudents = useMemo(() => {
-    return MOCK_STUDENTS.filter((student) => {
+    return students.filter((student) => {
       const matchesSearch = student.name.toLowerCase().includes(searchQuery.toLowerCase());
       const matchesDay =
-        selectedDay === 'Todos' || student.classDays.includes(selectedDay);
+        selectedDay === 'ALL' ||
+        student.classDays.includes(selectedDay as ClassDay);
       return matchesSearch && matchesDay;
     });
-  }, [searchQuery, selectedDay]);
+  }, [searchQuery, selectedDay, students]);
 
-  const stats = {
-    total: MOCK_STUDENTS.length,
-    newThisMonth: Math.floor(MOCK_STUDENTS.length * 0.25),
-    thisWeek: 12,
-    delivered: Math.floor(MOCK_STUDENTS.reduce((acc, s) => acc + s.activities, 0) / 8),
-    blocked: MOCK_STUDENTS.filter((s) => s.status === 'BLOCKED').length,
-  };
+  const stats = useMemo(() => ({
+    total: students.length,
+    newThisMonth: students.filter(s => {
+      const created = new Date(s.createdAt);
+      const now = new Date();
+      return created.getMonth() === now.getMonth() &&
+             created.getFullYear() === now.getFullYear();
+    }).length,
+    thisWeek: students.filter(s => s.status === 'ACTIVE').length,
+    delivered: students.reduce((acc) => acc + 0, 0), // placeholder
+    blocked: students.filter(s => s.status === 'BLOCKED').length,
+  }), [students]);
+
+  if (loading) {
+    return (
+      <div className={styles.page}>
+        <Header
+          title="Alunos"
+          breadcrumb="Dashboard › Alunos"
+          onNewStudent={() => alert('Funcionalidade em desenvolvimento')}
+        />
+        <div className={styles.loading}>Carregando...</div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className={styles.page}>
+        <Header
+          title="Alunos"
+          breadcrumb="Dashboard › Alunos"
+          onNewStudent={() => alert('Funcionalidade em desenvolvimento')}
+        />
+        <div className={styles.error}>{error}</div>
+      </div>
+    );
+  }
 
   return (
     <div className={styles.page}>
@@ -169,13 +185,13 @@ export const DashboardPage: React.FC = () => {
               </div>
 
               <div className={styles.dayPills}>
-                {DAYS.map((day) => (
+                {DAY_FILTER_OPTIONS.map(({ label, value }) => (
                   <button
-                    key={day}
-                    className={`${styles.pill} ${selectedDay === day ? styles.pillActive : ''}`}
-                    onClick={() => setSelectedDay(day)}
+                    key={value}
+                    className={`${styles.pill} ${selectedDay === value ? styles.pillActive : ''}`}
+                    onClick={() => setSelectedDay(value)}
                   >
-                    {day}
+                    {label}
                   </button>
                 ))}
               </div>
@@ -188,69 +204,76 @@ export const DashboardPage: React.FC = () => {
             </div>
 
             <div className={styles.grid}>
-              {filteredStudents.map((student) => (
-                <div
-                  key={student.id}
-                  className={`${styles.studentCard} ${styles[getLevelClass(student.level)]}`}
-                  onClick={() => navigate(`/students/${student.id}`)}
-                  role="button"
-                  tabIndex={0}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      navigate(`/students/${student.id}`);
-                    }
-                  }}
-                  aria-label={`Ver perfil de ${student.name}`}
-                >
-                  <div className={styles.cardHeader}>
-                    <div className={`${styles.cardAvatar} ${styles[getAvatarToneClass(student.name)]}`}>
-                      {getInitials(student.name)}
+              {filteredStudents.map((student) => {
+                const profile = getProfileById(student.levelProfileId);
+                const levelName = profile?.name ?? 'Sem nível';
+                const levelClass = getLevelClassByCode(profile?.code);
+                
+                return (
+                  <div
+                    key={student.id}
+                    className={`${styles.studentCard} ${styles[levelClass]}`}
+                    onClick={() => navigate(`/students/${student.id}`)}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        navigate(`/students/${student.id}`);
+                      }
+                    }}
+                    aria-label={`Ver perfil de ${student.name}`}
+                  >
+                    <div className={styles.cardHeader}>
+                      <div className={`${styles.cardAvatar} ${styles[getAvatarToneClass(student.name)]}`}>
+                        {getInitials(student.name)}
+                      </div>
+                      <div className={styles.cardTitle}>{student.name}</div>
                     </div>
-                    <div className={styles.cardTitle}>{student.name}</div>
-                  </div>
 
-                  <div className={styles.cardMeta}>
-                    <span className={`${styles.levelTag} ${styles[getLevelClass(student.level)]}`}>
-                      {student.level}
-                    </span>
-                    <span className={`${styles.statusBadge} ${student.status === 'ACTIVE' ? styles.statusActive : styles.statusBlocked}`}>
-                      {student.status === 'ACTIVE' ? '● Ativo' : '⊘ Bloqueado'}
-                    </span>
-                  </div>
-
-                  <div className={styles.classInfo}>
-                    📅 {student.classDays.join(', ')} às {student.classTime}
-                  </div>
-
-                  <div className={styles.progressSection}>
-                    <div className={styles.progressLabel}>
-                      Progresso
-                      <span className={styles.progressPercent}>{student.progress}%</span>
+                    <div className={styles.cardMeta}>
+                      <span className={`${styles.levelTag} ${styles[levelClass]}`}>
+                        {levelName}
+                      </span>
+                      <span className={`${styles.statusBadge} ${student.status === 'ACTIVE' ? styles.statusActive : styles.statusBlocked}`}>
+                        {student.status === 'ACTIVE' ? '● Ativo' : '⊘ Bloqueado'}
+                      </span>
                     </div>
-                    <div className={styles.progressBar}>
-                      <progress
-                        className={`${styles.progressFill} ${styles[getLevelClass(student.level)]}`}
-                        value={student.progress}
-                        max={100}
-                      />
-                    </div>
-                  </div>
 
-                  <div className={styles.cardFooter}>
-                    <span className={styles.activities}>
-                      📄 {student.activities}/{student.total}
-                    </span>
-                    <div className={styles.actionButtons}>
-                      <button className={styles.iconBtn} title="Workspace" type="button">
-                        <PlusSquare size={14} />
-                      </button>
-                      <button className={styles.iconBtn} title="Notificação" type="button">
-                        <Bell size={14} />
-                      </button>
+                    <div className={styles.classInfo}>
+                      📅 {formatClassDays(student.classDays)} às {formatClassTime(student.classTime)}
+                    </div>
+
+                    <div className={styles.progressSection}>
+                      <div className={styles.progressLabel}>
+                        Duração
+                        <span className={styles.progressPercent}>{student.classDuration}h</span>
+                      </div>
+                      <div className={styles.progressBar}>
+                        <progress
+                          className={`${styles.progressFill} ${styles[levelClass]}`}
+                          value={Math.min(student.classDuration, 100)}
+                          max={100}
+                        />
+                      </div>
+                    </div>
+
+                    <div className={styles.cardFooter}>
+                      <span className={styles.activities}>
+                        💰 R$ {student.classRate?.toFixed(2)}
+                      </span>
+                      <div className={styles.actionButtons}>
+                        <button className={styles.iconBtn} title="Workspace" type="button">
+                          <PlusSquare size={14} />
+                        </button>
+                        <button className={styles.iconBtn} title="Notificação" type="button">
+                          <Bell size={14} />
+                        </button>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
             </>
           )}

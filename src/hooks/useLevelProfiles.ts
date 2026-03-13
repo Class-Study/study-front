@@ -7,6 +7,7 @@ interface UseLevelProfilesReturn {
   loading: boolean;
   error: string | null;
   fetchLevelProfiles: () => Promise<void>;
+  getProfileById: (id?: string) => LevelProfile | undefined;
 }
 
 export const useLevelProfiles = (): UseLevelProfilesReturn => {
@@ -27,10 +28,18 @@ export const useLevelProfiles = (): UseLevelProfilesReturn => {
     }
   }, []);
 
+  // Lookup rápido por id
+  const getProfileById = useCallback(
+    (id?: string): LevelProfile | undefined =>
+      levelProfiles.find(p => p.id === id),
+    [levelProfiles]
+  );
+
   return {
     levelProfiles,
     loading,
     error,
     fetchLevelProfiles,
+    getProfileById,
   };
 };

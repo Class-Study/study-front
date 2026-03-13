@@ -128,3 +128,5 @@ export const StudentProfilePage: React.FC = () => {
     </div>
   );
 };
+
+export default StudentProfilePage;

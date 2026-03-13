@@ -10,7 +10,7 @@ interface AuthServiceLogin {
 const authService = {
   login: async (data: LoginRequest): Promise<AuthServiceLogin> => {
     const response = await api.post<LoginResponse>('/auth/login', data);
-    const accessToken = response.headers['x-access-token']?.replace('Bearer ', '') || '';
+    const accessToken = response.headers['Authorization']?.replace('Bearer ', '') || '';
     const refreshToken = response.headers['x-refresh-token'] || '';
     return { user: response.data, accessToken, refreshToken };
   },

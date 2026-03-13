@@ -3,12 +3,13 @@ import {
   LevelProfile,
   CreateLevelProfileRequest,
   UpdateLevelProfileRequest,
+  ListLevelProfilesResponse,
 } from '@/types/levelProfile.types';
 
 const levelProfileService = {
   listAll: async (): Promise<LevelProfile[]> => {
-    const { data } = await api.get<LevelProfile[]>('/level-profiles');
-    return data;
+    const { data } = await api.get<ListLevelProfilesResponse>('/level-profiles');
+    return data.levelProfiles;
   },
 
   getById: async (id: string): Promise<LevelProfile> => {

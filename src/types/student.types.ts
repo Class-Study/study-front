@@ -1,5 +1,9 @@
 export type StudentStatus = 'ACTIVE' | 'BLOCKED' | 'INACTIVE';
 
+export type ClassDay =
+  | 'MONDAY' | 'TUESDAY' | 'WEDNESDAY'
+  | 'THURSDAY' | 'FRIDAY' | 'SATURDAY' | 'SUNDAY';
+
 export interface Student {
   id: string;
   name: string;
@@ -9,7 +13,7 @@ export interface Student {
   status: StudentStatus;
   teacherId: string;
   levelProfileId?: string;
-  classDays: string[];
+  classDays: ClassDay[];
   classTime: string;
   classDuration: number;
   classRate: number;
@@ -46,4 +50,8 @@ export interface UpdateStudentRequest {
   meetLink?: string;
   startDate?: string;
   status?: StudentStatus;
+}
+
+export interface ListStudentsResponse {
+  students: Student[];
 }

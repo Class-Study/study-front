@@ -3,13 +3,14 @@ import {
   Student,
   CreateStudentRequest,
   UpdateStudentRequest,
+  ListStudentsResponse,
 } from '@/types/student.types';
 import { PageResponse } from '@/types/api.types';
 
 const studentService = {
   listAll: async (): Promise<Student[]> => {
-    const { data } = await api.get<Student[]>('/students');
-    return data;
+    const { data } = await api.get<ListStudentsResponse>('/students');
+    return data.students;
   },
 
   listPaginated: async (
