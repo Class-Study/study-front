@@ -3,6 +3,7 @@ import { PrivateRoute } from '@/PrivateRoute';
 import { LoginPage } from '@/pages/login/LoginPage';
 import { DashboardPage } from '@/pages/dashboard/DashboardPage';
 import { StudentsPage } from '@/pages/students/StudentsPage';
+import { CreateStudentPage } from '@/pages/students/CreateStudentPage';
 import { StudentProfilePage } from '@/pages/students/StudentProfilePage';
 import { BillingPage } from '@/pages/billing/BillingPage';
 import { WorkspacePage } from '@/pages/workspace/WorkspacePage';
@@ -32,6 +33,18 @@ export const AppRoutes: React.FC = () => {
             <div style={{ display: 'flex' }}>
               <Sidebar />
               <StudentsPage />
+            </div>
+          </PrivateRoute>
+        }
+      />
+
+      <Route
+        path="/students/new"
+        element={
+          <PrivateRoute requiredRoles={['TEACHER']}>
+            <div style={{ display: 'flex' }}>
+              <Sidebar />
+              <CreateStudentPage />
             </div>
           </PrivateRoute>
         }

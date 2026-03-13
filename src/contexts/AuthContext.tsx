@@ -19,7 +19,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const stored = localStorage.getItem('user');
     if (!stored) return null;
     try {
-      return JSON.parse(stored) as AuthUser;
+      const parsed = JSON.parse(stored);
+      // Valida que tem os campos necessários
+      if (parsed?.id && parsed?.role) return parsed as AuthUser;
+      return null;
     } catch {
       return null;
     }
@@ -35,34 +38,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const login = async (email: string, password: string) => {
     setIsLoading(true);
     try {
-      const response = await authService.login({ email, password });
-      const {
-        user: userData,
-        accessToken,
-        refreshToken,
-      } = response;
+      const { user, accessToken, refreshToken } = await authService.login({
+        email,
+        password,
+      });
 
       // Validar que o token foi recebido corretamente
       if (!accessToken || !accessToken.trim()) {
         throw new Error('Token não recebido do servidor');
       }
 
-      const authUser: AuthUser = {
-        id: userData.userId,
-        name: userData.userName,
-        email: userData.userEmail,
-        role: userData.userRole,
-      };
-
+      // Salva no localStorage
       localStorage.setItem('accessToken', accessToken);
       localStorage.setItem('refreshToken', refreshToken);
-      localStorage.setItem('user', JSON.stringify(authUser));
+      localStorage.setItem('user', JSON.stringify(user));
 
-      setUser(authUser);
+      // Atualiza estado
+      setUser(user);
       setIsAuthenticated(true);
 
       // Redireciona conforme role
-      if (authUser.role === 'STUDENT') {
+      if (user.role === 'STUDENT') {
         navigate('/workspace');
       } else {
         navigate('/dashboard'); // TEACHER e ADMIN

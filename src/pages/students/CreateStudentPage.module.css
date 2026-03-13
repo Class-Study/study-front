@@ -1,0 +1,353 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background: var(--color-bg-page);
+}
+
+.scrollContainer {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px 28px;
+}
+
+.narrowContainer {
+  max-width: 800px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.title {
+  font-family: 'Playfair Display', serif;
+  font-size: 32px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin-bottom: 8px;
+}
+
+.subtitle {
+  font-size: 13px;
+  color: var(--color-text-tertiary);
+  margin-bottom: 22px;
+}
+
+.submitError {
+  background: var(--color-danger);
+  background: rgba(196, 58, 58, 0.1);
+  border: 1px solid var(--color-danger);
+  border-radius: var(--radius-md);
+  color: var(--color-danger);
+  padding: 12px 14px;
+  font-size: 13px;
+  margin-bottom: 16px;
+}
+
+/* ══ SECTION ══ */
+.section {
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  margin-bottom: 16px;
+}
+
+.sectionLabel {
+  font-family: 'Outfit', sans-serif;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-text-tertiary);
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+/* ══ FORM FIELDS ══ */
+.fieldGroup {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.fieldGroup.fieldGroupFull {
+  grid-template-columns: 1fr;
+}
+
+.fieldGroup:last-child {
+  margin-bottom: 0;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.label {
+  font-family: 'Outfit', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+}
+
+.input,
+.textarea {
+  background: var(--color-bg-input);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 10px 14px;
+  color: var(--color-text-primary);
+  font-family: 'Outfit', sans-serif;
+  font-size: 13px;
+  outline: none;
+  transition: border-color 0.2s, background-color 0.2s;
+}
+
+.input:focus,
+.textarea:focus {
+  border-color: var(--color-accent);
+  outline: none;
+}
+
+.textarea {
+  font-size: 13px;
+  line-height: 1.6;
+  resize: vertical;
+  min-height: auto;
+}
+
+.error {
+  font-size: 12px;
+  color: var(--color-danger);
+  margin-top: 4px;
+}
+
+/* ══ DAY PILLS ══ */
+.dayPills {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 6px;
+}
+
+.dayPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 14px;
+  border-radius: 20px;
+  border: 1.5px solid var(--color-border);
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-family: 'Outfit', sans-serif;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+  outline: none;
+}
+
+.dayPill:hover {
+  background: var(--color-bg-input);
+  border-color: var(--color-border);
+}
+
+.dayPillActive {
+  background: var(--color-accent);
+  color: white;
+  border-color: var(--color-accent);
+}
+
+.dayPillDot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: white;
+  margin-right: 2px;
+}
+
+/* ══ LEVEL CARDS ══ */
+.levelCards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.levelCard {
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 13px;
+  background: var(--color-bg-card);
+  cursor: pointer;
+  transition: all 0.18s;
+  text-align: left;
+  outline: none;
+}
+
+.levelCard:hover {
+  border-color: var(--color-border);
+  background: var(--color-bg-input);
+}
+
+.levelCardActive {
+  border-color: var(--color-accent);
+  background: rgba(45, 90, 61, 0.08);
+}
+
+.levelCardIcon {
+  font-size: 18px;
+  margin-bottom: 5px;
+}
+
+.levelCardName {
+  font-family: 'Outfit', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text-primary);
+  margin-bottom: 2px;
+}
+
+.levelCardDesc {
+  font-family: 'Outfit', sans-serif;
+  font-size: 11px;
+  color: var(--color-text-tertiary);
+  line-height: 1.4;
+}
+
+/* ══ FOLDER PREVIEW ══ */
+.folderPreview {
+  background: var(--color-bg-page);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  margin-top: 12px;
+}
+
+.folderPreviewTitle {
+  font-family: 'Outfit', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  margin-bottom: 12px;
+}
+
+.folderItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--color-border);
+  font-family: 'Outfit', sans-serif;
+  font-size: 13px;
+  color: var(--color-text-primary);
+}
+
+.folderItem:last-child {
+  border-bottom: none;
+}
+
+.folderName {
+  flex: 1;
+  font-weight: 500;
+}
+
+.folderCount {
+  font-size: 11px;
+  color: var(--color-text-tertiary);
+  flex-shrink: 0;
+}
+
+/* ══ INFO NOTE ══ */
+.infoNote {
+  font-family: 'Outfit', sans-serif;
+  font-size: 12px;
+  color: var(--color-text-tertiary);
+  margin-top: 10px;
+  padding: 10px 12px;
+  background: var(--color-bg-input);
+  border-radius: var(--radius-md);
+  border-left: 3px solid var(--color-accent);
+}
+
+/* ══ ACTION BUTTONS ══ */
+.actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  padding: 24px 0;
+  margin-top: 8px;
+}
+
+.buttonSecondary,
+.buttonPrimary {
+  padding: 10px 20px;
+  border-radius: var(--radius-md);
+  font-family: 'Outfit', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  border: none;
+  transition: all 0.18s;
+  outline: none;
+}
+
+.buttonSecondary {
+  background: var(--color-bg-input);
+  color: var(--color-text-secondary);
+  border: 1.5px solid var(--color-border);
+}
+
+.buttonSecondary:hover:not(:disabled) {
+  background: var(--color-bg-card);
+  color: var(--color-text-primary);
+}
+
+.buttonPrimary {
+  background: var(--color-accent);
+  color: white;
+}
+
+.buttonPrimary:hover:not(:disabled) {
+  opacity: 0.87;
+  transform: translateY(-1px);
+}
+
+.buttonSecondary:disabled,
+.buttonPrimary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* ══ RESPONSIVE ══ */
+@media (max-width: 640px) {
+  .narrowContainer {
+    padding: 0;
+  }
+
+  .title {
+    font-size: 24px;
+  }
+
+  .fieldGroup {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .levelCards {
+    grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  }
+
+  .actions {
+    flex-direction: column-reverse;
+    gap: 8px;
+  }
+
+  .buttonSecondary,
+  .buttonPrimary {
+    width: 100%;
+  }
+}

@@ -12,9 +12,11 @@ export interface LoginRequest {
   password: string;
 }
 
-export interface LoginResponse {
-  userId: string;
-  userName: string;
-  userEmail: string;
-  userRole: UserRole;
+// Estrutura real que a API retorna
+export interface LoginApiResponse {
+  message: string;
+  user: AuthUser;
 }
+
+// Alias para compatibilidade
+export type LoginResponse = LoginApiResponse;

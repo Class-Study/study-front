@@ -35,6 +35,7 @@ export interface CreateStudentRequest {
   meetPlatform?: string;
   meetLink?: string;
   startDate: string;
+  notesPrivate?: string;
 }
 
 export interface UpdateStudentRequest {

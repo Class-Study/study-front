@@ -56,6 +56,11 @@ export const DashboardPage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedDay, setSelectedDay] = useState('ALL');
 
+  const handleNewStudent = () => {
+    console.log('Botão Novo Aluno clicado! Navegando para /students/new...');
+    navigate('/students/new');
+  };
+
   // Carrega dados ao montar o componente
   useEffect(() => {
     fetchStudents();
@@ -91,8 +96,28 @@ export const DashboardPage: React.FC = () => {
         <Header
           title="Alunos"
           breadcrumb="Dashboard › Alunos"
-          onNewStudent={() => alert('Funcionalidade em desenvolvimento')}
+          onNewStudent={handleNewStudent}
         />
+        <nav className={styles.tabs}>
+          <button
+            className={`${styles.tab} ${activeTab === 'alunos' ? styles.active : ''}`}
+            onClick={() => setActiveTab('alunos')}
+          >
+            👥 Alunos
+          </button>
+          <button
+            className={`${styles.tab} ${activeTab === 'cobranca' ? styles.active : ''}`}
+            onClick={() => setActiveTab('cobranca')}
+          >
+            💳 Cobrança
+          </button>
+          <button
+            className={`${styles.tab} ${activeTab === 'niveis' ? styles.active : ''}`}
+            onClick={() => setActiveTab('niveis')}
+          >
+            🎯 Níveis
+          </button>
+        </nav>
         <div className={styles.loading}>Carregando...</div>
       </div>
     );
@@ -104,8 +129,28 @@ export const DashboardPage: React.FC = () => {
         <Header
           title="Alunos"
           breadcrumb="Dashboard › Alunos"
-          onNewStudent={() => alert('Funcionalidade em desenvolvimento')}
+          onNewStudent={handleNewStudent}
         />
+        <nav className={styles.tabs}>
+          <button
+            className={`${styles.tab} ${activeTab === 'alunos' ? styles.active : ''}`}
+            onClick={() => setActiveTab('alunos')}
+          >
+            👥 Alunos
+          </button>
+          <button
+            className={`${styles.tab} ${activeTab === 'cobranca' ? styles.active : ''}`}
+            onClick={() => setActiveTab('cobranca')}
+          >
+            💳 Cobrança
+          </button>
+          <button
+            className={`${styles.tab} ${activeTab === 'niveis' ? styles.active : ''}`}
+            onClick={() => setActiveTab('niveis')}
+          >
+            🎯 Níveis
+          </button>
+        </nav>
         <div className={styles.error}>{error}</div>
       </div>
     );
@@ -116,7 +161,7 @@ export const DashboardPage: React.FC = () => {
       <Header
         title="Alunos"
         breadcrumb="Dashboard › Alunos"
-        onNewStudent={() => alert('Funcionalidade em desenvolvimento')}
+        onNewStudent={handleNewStudent}
       />
 
       <nav className={styles.tabs}>
