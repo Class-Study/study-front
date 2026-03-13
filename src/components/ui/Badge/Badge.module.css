@@ -1,0 +1,43 @@
+.badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: var(--border-radius-sm);
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.primary {
+  background: var(--color-primary-light);
+  color: white;
+}
+
+.success {
+  background: var(--color-success);
+  color: white;
+}
+
+.warning {
+  background: var(--color-warning);
+  color: white;
+}
+
+.error {
+  background: var(--color-error);
+  color: white;
+}
+
+.pending {
+  background: var(--color-pending);
+  color: white;
+}
+
+.paid {
+  background: var(--color-paid);
+  color: white;
+}
+
+.late {
+  background: var(--color-late);
+  color: white;
+}

@@ -1,0 +1,193 @@
+.header {
+  background: var(--color-bg-header);
+  border-bottom: 1px solid var(--color-border);
+  padding: 12px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 56px;
+  box-shadow: var(--shadow-sm);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+/* Left side — Logo + Breadcrumb */
+.left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex: 1;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.platformName {
+  font-family: var(--font-serif);
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--color-accent);
+}
+
+.badge {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 300;
+  color: var(--color-text-tertiary);
+  text-transform: lowercase;
+}
+
+.separator {
+  color: var(--color-text-secondary);
+  font-size: 16px;
+}
+
+.breadcrumb {
+  font-family: var(--font-sans);
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--color-text-primary);
+}
+
+/* Right side — Actions + User */
+.right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.newStudentBtn {
+  background: var(--color-accent) !important;
+  color: var(--color-text-inverse) !important;
+  border-radius: 8px;
+  white-space: nowrap;
+}
+
+/* Avatar */
+.avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 600;
+  color: white;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.avatarTone0 {
+  background: var(--color-accent-2);
+}
+
+.avatarTone1 {
+  background: var(--color-blue);
+}
+
+.avatarTone2 {
+  background: var(--color-accent);
+}
+
+.avatarTone3 {
+  background: var(--color-danger);
+}
+
+.avatarTone4 {
+  background: var(--color-gold);
+}
+
+.avatarTone5 {
+  background: var(--color-success);
+}
+
+.avatar:hover {
+  transform: scale(1.05);
+}
+
+/* User Info */
+.userInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.userName {
+  font-family: var(--font-sans);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-text-primary);
+}
+
+.logoutBtn {
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--color-text-secondary);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  transition: color 0.2s ease;
+}
+
+.logoutBtn:hover {
+  color: var(--color-accent);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .header {
+    padding: 12px 16px;
+  }
+
+  .left {
+    gap: 12px;
+  }
+
+  .logo {
+    gap: 6px;
+  }
+
+  .platformName {
+    font-size: 16px;
+  }
+
+  .breadcrumb {
+    font-size: 12px;
+  }
+
+  .right {
+    gap: 12px;
+  }
+
+  .avatar {
+    width: 32px;
+    height: 32px;
+    font-size: 11px;
+  }
+
+  .userName {
+    font-size: 12px;
+  }
+
+  .logoutBtn {
+    font-size: 11px;
+  }
+}
+
+@media (max-width: 480px) {
+  .breadcrumb {
+    display: none;
+  }
+
+  .userInfo {
+    display: none;
+  }
+}

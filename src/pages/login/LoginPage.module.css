@@ -1,0 +1,193 @@
+.container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  background: linear-gradient(135deg, var(--color-bg-login) 0%, #1a3a2a 100%);
+  padding: 20px;
+  font-family: var(--font-sans);
+}
+
+.card {
+  background-color: var(--color-bg-card);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  padding: 40px;
+  max-width: 400px;
+  width: 100%;
+  animation: slideUp 0.6s ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Header */
+.header {
+  text-align: center;
+  margin-bottom: 32px;
+}
+
+.platformName {
+  font-family: var(--font-serif);
+  font-size: 28px;
+  font-weight: 600;
+  color: var(--color-accent);
+  margin: 0 0 8px 0;
+  letter-spacing: -0.5px;
+}
+
+.platformTagline {
+  font-family: var(--font-sans);
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 500;
+}
+
+/* Mode Selector */
+.modeSelector {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 24px;
+  background-color: var(--color-bg-tag);
+  padding: 4px;
+  border-radius: var(--radius-md);
+}
+
+.modeButton {
+  flex: 1;
+  padding: 10px 16px;
+  border: none;
+  background-color: transparent;
+  color: var(--color-text-secondary);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: calc(var(--radius-md) - 2px);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-transform: capitalize;
+}
+
+.modeButton:hover {
+  color: var(--color-text-primary);
+}
+
+.modeButton.active {
+  background-color: var(--color-bg-card);
+  color: var(--color-text-primary);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Mode Content */
+.modeContent {
+  text-align: center;
+  margin-bottom: 32px;
+  animation: fadeIn 0.4s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.modeIcon {
+  font-size: 48px;
+  margin-bottom: 16px;
+}
+
+.modeTitle {
+  font-family: var(--font-serif);
+  font-size: 24px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin: 0 0 8px 0;
+}
+
+.modeSubtitle {
+  font-family: var(--font-sans);
+  font-size: 14px;
+  color: var(--color-text-secondary);
+  margin: 0;
+  line-height: 1.4;
+}
+
+/* Form */
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.errorMessage {
+  padding: 12px 14px;
+  background-color: var(--color-bg-tag);
+  color: var(--color-danger);
+  border-radius: var(--radius-md);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 500;
+  border-left: 3px solid var(--color-danger);
+  animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Submit Button */
+.submitButton {
+  margin-top: 8px;
+  position: relative;
+  overflow: hidden;
+}
+
+.submitButton.teacher {
+  --btn-color: var(--color-btn-teacher);
+  --btn-text: var(--color-btn-teacher-text);
+}
+
+.submitButton.student {
+  --btn-color: var(--color-btn-student);
+  --btn-text: var(--color-btn-student-text);
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+  .card {
+    padding: 24px;
+  }
+
+  .platformName {
+    font-size: 24px;
+  }
+
+  .modeIcon {
+    font-size: 40px;
+  }
+
+  .modeTitle {
+    font-size: 20px;
+  }
+}
