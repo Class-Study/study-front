@@ -1,11 +1,12 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Bell, CreditCard, PlusSquare, Search, Target } from 'lucide-react';
+import { Bell, CreditCard, PlusSquare, Search } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Header } from '@/components/layout/Header/Header';
 import { useStudents } from '@/hooks/useStudents';
 import { useLevelProfiles } from '@/hooks/useLevelProfiles';
 import { Student, ClassDay } from '@/types/student.types';
 import { formatClassDays, formatClassTime, DAY_FILTER_OPTIONS } from '@/utils/classDay.utils';
+import { NiveisTab } from '@/pages/dashboard/tabs/NiveisTab';
 import styles from './DashboardPage.module.css';
 
 type TabType = 'alunos' | 'cobranca' | 'niveis';
@@ -50,7 +51,7 @@ const getLevelClassByCode = (code?: string): LevelClass => {
 export const DashboardPage: React.FC = () => {
   const navigate = useNavigate();
   const { students, loading, error, fetchStudents } = useStudents();
-  const { levelProfiles, fetchLevelProfiles, getProfileById } = useLevelProfiles();
+  const { fetchLevelProfiles, getProfileById } = useLevelProfiles();
 
   const [activeTab, setActiveTab] = useState<TabType>('alunos');
   const [searchQuery, setSearchQuery] = useState('');
@@ -118,7 +119,7 @@ export const DashboardPage: React.FC = () => {
             className={`${styles.tab} ${activeTab === 'niveis' ? styles.active : ''}`}
             onClick={() => setActiveTab('niveis')}
           >
-            🎯 Níveis
+            🎯 Níveis & Atividades
           </button>
         </nav>
         <div className={styles.loading}>Carregando...</div>
@@ -150,7 +151,7 @@ export const DashboardPage: React.FC = () => {
             className={`${styles.tab} ${activeTab === 'niveis' ? styles.active : ''}`}
             onClick={() => setActiveTab('niveis')}
           >
-            🎯 Níveis
+            🎯 Níveis & Atividades
           </button>
         </nav>
         <div className={styles.error}>{error}</div>
@@ -182,7 +183,7 @@ export const DashboardPage: React.FC = () => {
           className={`${styles.tab} ${activeTab === 'niveis' ? styles.active : ''}`}
           onClick={() => setActiveTab('niveis')}
         >
-          🎯 Níveis
+          🎯 Níveis & Atividades
         </button>
       </nav>
 
@@ -333,11 +334,7 @@ export const DashboardPage: React.FC = () => {
           )}
 
           {activeTab === 'niveis' && (
-            <div className={styles.placeholder}>
-              <Target size={28} className={styles.placeholderIcon} />
-              <h2>Níveis</h2>
-              <p>Funcionalidade em desenvolvimento</p>
-            </div>
+            <NiveisTab />
           )}
         </div>
       </main>

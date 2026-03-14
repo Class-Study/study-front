@@ -1,4 +1,4 @@
-export type LevelName = 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED' | 'PROFICIENCY';
+export type LevelName = string;
 
 export interface LevelFolder {
   id: string;
@@ -10,27 +10,35 @@ export interface LevelFolder {
 export interface LevelProfile {
   id: string;
   name: LevelName;
-  code?: string;
-  icon?: string;
-  description: string;
-  isSystem?: boolean;
-  createdBy?: string | null;
+  code: string;
+  icon: string;
+  description?: string;
+  isSystem: boolean;
+  createdBy: string | null;
   minScore?: number;
   maxScore?: number;
-  folders?: LevelFolder[];
+  folders: LevelFolder[];
   createdAt: string;
-  updatedAt: string;
 }
 
 export interface CreateLevelProfileRequest {
   name: LevelName;
-  description: string;
+  code: string;
+  icon: string;
+  description?: string;
+  folders: {
+    name: string;
+    position: number;
+    initialFiles: number;
+  }[];
   minScore?: number;
   maxScore?: number;
 }
 
 export interface UpdateLevelProfileRequest {
   name?: LevelName;
+  code?: string;
+  icon?: string;
   description?: string;
   minScore?: number;
   maxScore?: number;
