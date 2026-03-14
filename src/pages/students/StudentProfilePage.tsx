@@ -3,56 +3,27 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { Header } from '@/components/layout/Header/Header';
 import { useStudents } from '@/hooks/useStudents';
 import { useLevelProfiles } from '@/hooks/useLevelProfiles';
+import { useStudentProfile } from '@/hooks/useStudentProfile';
 import { Student } from '@/types/student.types';
-import { formatClassDays, formatClassTime } from '@/utils/classDay.utils';
+import { ActivityType } from '@/types/studentProfile.types';
+import { formatClassDays, formatClassTime, formatShortDate } from '@/utils/classDay.utils';
 import styles from './StudentProfilePage.module.css';
 
 type NoteTab = 'private' | 'public';
 type LevelTone = 'basic' | 'intermediate' | 'advanced';
 
-interface MockActivity {
-  id: string;
-  title: string;
-  folder: string;
-  date: string;
-  color: string;
-}
-
-interface MockNote {
-  date: string;
-  text: string;
-}
-
-const mockActivities: MockActivity[] = [
-  {
-    id: '1',
-    title: 'Vocabulary Basics',
-    folder: '1 - TO DO',
-    date: '03 Mar',
-    color: 'var(--color-accent)',
-  },
-  {
-    id: '2',
-    title: 'Pronunciation Drill',
-    folder: '2 - IN PROGRESS',
-    date: '08 Mar',
-    color: 'var(--color-accent-2)',
-  },
-  {
-    id: '3',
-    title: 'Grammar Review',
-    folder: '3 - DONE',
-    date: '10 Mar',
-    color: 'var(--color-blue)',
-  },
-];
-
-const mockNotes: MockNote[] = [
-  { date: '05 Mar', text: 'Reforco em pronuncia.' },
-  { date: '10 Mar', text: 'Boa evolucao na confianca oral.' },
-];
-
 const clampPercent = (value: number): number => Math.max(0, Math.min(100, value));
+
+const getActivityColor = (type: ActivityType): string => {
+  switch (type) {
+    case 'EXERCISE':
+      return 'var(--color-accent)';
+    case 'WORKSPACE':
+      return 'var(--color-blue)';
+    default:
+      return 'var(--color-text-tertiary)';
+  }
+};
 
 const getInitials = (name: string): string => {
   if (!name || name.trim() === '') return '?';
@@ -87,9 +58,22 @@ const getLevelTone = (code?: string): LevelTone => {
 export const StudentProfilePage: React.FC = () => {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
-  const { getStudentById, loading, error } = useStudents();
+  const { getStudentById } = useStudents();
   const { fetchLevelProfiles, getProfileById } = useLevelProfiles();
+  const {
+    notes,
+    activities,
+    stats,
+    loadingNotes,
+    savingNote,
+    fetchNotes,
+    fetchActivities,
+    fetchStats,
+    saveNote,
+  } = useStudentProfile(id ?? '');
   const [student, setStudent] = useState<Student | null>(null);
+  const [pageLoading, setPageLoading] = useState(false);
+  const [pageError, setPageError] = useState('');
   const [notesTab, setNotesTab] = useState<NoteTab>('private');
   const [privateNoteDraft, setPrivateNoteDraft] = useState('');
   const [publicNoteDraft, setPublicNoteDraft] = useState('');
@@ -99,22 +83,24 @@ export const StudentProfilePage: React.FC = () => {
   const levelName = profile?.name ?? 'Sem nivel';
   const levelTone = getLevelTone(levelCode);
 
-  const exerciseDone = student ? Math.min(student.classDuration, 20) : 0;
-  const exerciseTotal = 20;
+  const exerciseDone = stats?.activitiesCompleted ?? 0;
+  const exerciseTotal = stats?.activitiesTotal ?? 0;
+  const exercisePercent = exerciseTotal > 0
+    ? Math.round((exerciseDone / exerciseTotal) * 100)
+    : 0;
 
-  const classesDone = useMemo(() => {
-    if (!student) return 0;
-    return Math.min(24, Math.max(student.classDays.length * 2, 1));
-  }, [student]);
-  const classesTotal = 24;
+  const classesDone = stats?.classesThisMonth ?? 0;
+  const classesTotal = stats?.classesTotal ?? 0;
+  const classesPercent = classesTotal > 0
+    ? Math.round((classesDone / classesTotal) * 100)
+    : 0;
 
-  const overallProgress = Math.round(
-    ((exerciseDone / exerciseTotal) + (classesDone / classesTotal)) * 50,
+  const overallPercent = clampPercent(stats?.overallProgress ?? 0);
+
+  const filteredNotes = useMemo(
+    () => notes.filter((n) => n.type === (notesTab === 'private' ? 'PRIVATE' : 'PUBLIC')),
+    [notes, notesTab],
   );
-
-  const exercisePercent = clampPercent((exerciseDone / exerciseTotal) * 100);
-  const classesPercent = clampPercent((classesDone / classesTotal) * 100);
-  const overallPercent = clampPercent(overallProgress);
 
   const breadcrumbItems = [
     { label: 'Dashboard', path: '/dashboard' },
@@ -123,18 +109,33 @@ export const StudentProfilePage: React.FC = () => {
   ];
 
   useEffect(() => {
-    if (id) {
-      getStudentById(id).then(setStudent).catch(console.error);
+    if (!id) return;
+
+    setPageLoading(true);
+    setPageError('');
+
+    Promise.all([
+      getStudentById(id).then(setStudent),
+      fetchLevelProfiles(),
+      fetchNotes(),
+      fetchActivities(),
+      fetchStats(),
+    ])
+      .catch(() => setPageError('Erro ao carregar perfil do aluno'))
+      .finally(() => setPageLoading(false));
+  }, [id, getStudentById, fetchLevelProfiles, fetchNotes, fetchActivities, fetchStats]);
+
+  const handleSaveNote = async (): Promise<void> => {
+    const content = notesTab === 'private' ? privateNoteDraft : publicNoteDraft;
+    const success = await saveNote(notesTab === 'private' ? 'PRIVATE' : 'PUBLIC', content);
+
+    if (success) {
+      if (notesTab === 'private') {
+        setPrivateNoteDraft('');
+      } else {
+        setPublicNoteDraft('');
+      }
     }
-  }, [id, getStudentById]);
-
-  useEffect(() => {
-    fetchLevelProfiles();
-  }, [fetchLevelProfiles]);
-
-  const handleSaveNote = (): void => {
-    const noteText = notesTab === 'private' ? privateNoteDraft : publicNoteDraft;
-    console.log('Salvar nota:', { tab: notesTab, note: noteText, studentId: student?.id });
   };
 
   const heroCardClass = `${styles.heroCard} ${
@@ -161,10 +162,10 @@ export const StudentProfilePage: React.FC = () => {
 
       <div className={styles.layout}>
         <main className={styles.main}>
-          {loading && <p className={styles.loading}>Carregando...</p>}
-          {error && <p className={styles.errorMsg}>{error}</p>}
+          {pageLoading && <p className={styles.loading}>Carregando...</p>}
+          {pageError && <p className={styles.errorMsg}>{pageError}</p>}
 
-          {!loading && !error && student && (
+          {!pageLoading && !pageError && student && (
             <>
               <section className={heroCardClass}>
                 <div
@@ -194,7 +195,7 @@ export const StudentProfilePage: React.FC = () => {
                     <span>
                       📅 {formatClassDays(student.classDays)} as {formatClassTime(student.classTime)}
                     </span>
-                    <span>📄 {exerciseDone}/{exerciseTotal} exercicios</span>
+                    <span>📄 {stats ? `${exerciseDone}/${exerciseTotal} exercicios` : '—'}</span>
                     {student.meetLink && (
                       <a
                         className={styles.meetLink}
@@ -239,7 +240,9 @@ export const StudentProfilePage: React.FC = () => {
               <section className={styles.statsGrid}>
                 <article className={styles.statCard}>
                   <div className={styles.statLabel}>EXERCICIOS</div>
-                  <div className={styles.statNumber}>{exerciseDone}/{exerciseTotal}</div>
+                  <div className={styles.statNumber}>
+                    {stats ? `${exerciseDone}/${exerciseTotal}` : '—'}
+                  </div>
                   <div className={styles.statSubtitle}>entregues</div>
                   <div className={styles.progressBar}>
                     <div
@@ -251,7 +254,9 @@ export const StudentProfilePage: React.FC = () => {
 
                 <article className={styles.statCard}>
                   <div className={styles.statLabel}>AULAS</div>
-                  <div className={styles.statNumber}>{classesDone}/{classesTotal}</div>
+                  <div className={styles.statNumber}>
+                    {stats ? `${classesDone}/${classesTotal}` : '—'}
+                  </div>
                   <div className={styles.statSubtitle}>do mes</div>
                   <div className={styles.progressBar}>
                     <div
@@ -277,16 +282,23 @@ export const StudentProfilePage: React.FC = () => {
               <section className={styles.activitiesCard}>
                 <h2 className={styles.activitiesTitle}>📋 Atividades</h2>
 
-                {mockActivities.map((activity) => (
-                  <div key={activity.id} className={styles.activityItem}>
-                    <span className={styles.activityDot} style={{ backgroundColor: activity.color }} />
-                    <div className={styles.activityInfo}>
-                      <div className={styles.activityTitle}>{activity.title}</div>
-                      <div className={styles.activityFolder}>{activity.folder}</div>
+                {activities.length === 0 ? (
+                  <p className={styles.emptyState}>Nenhuma atividade ainda.</p>
+                ) : (
+                  activities.map((activity) => (
+                    <div key={activity.id} className={styles.activityItem}>
+                      <span
+                        className={styles.activityDot}
+                        style={{ backgroundColor: getActivityColor(activity.type) }}
+                      />
+                      <div className={styles.activityInfo}>
+                        <div className={styles.activityTitle}>{activity.title}</div>
+                        <div className={styles.activityFolder}>{activity.folderName}</div>
+                      </div>
+                      <div className={styles.activityDate}>{formatShortDate(activity.createdAt)}</div>
                     </div>
-                    <div className={styles.activityDate}>{activity.date}</div>
-                  </div>
-                ))}
+                  ))
+                )}
               </section>
             </>
           )}
@@ -330,18 +342,29 @@ export const StudentProfilePage: React.FC = () => {
             }
           />
 
-          <button type="button" className={styles.saveNoteBtn} onClick={handleSaveNote}>
-            Salvar nota
+          <button
+            type="button"
+            className={styles.saveNoteBtn}
+            onClick={handleSaveNote}
+            disabled={savingNote}
+          >
+            {savingNote ? 'Salvando...' : 'Salvar nota'}
           </button>
 
           <h4 className={styles.historyTitle}>HISTORICO</h4>
           <div className={styles.historyList}>
-            {mockNotes.map((note) => (
-              <div key={`${note.date}-${note.text}`} className={styles.historyItem}>
-                <span className={styles.historyDate}>{note.date}</span>
-                <span className={styles.historyText}>{note.text}</span>
-              </div>
-            ))}
+            {loadingNotes ? (
+              <p className={styles.emptyState}>Carregando notas...</p>
+            ) : filteredNotes.length === 0 ? (
+              <p className={styles.emptyState}>Nenhuma nota ainda.</p>
+            ) : (
+              filteredNotes.map((note) => (
+                <div key={note.id} className={styles.historyItem}>
+                  <span className={styles.historyDate}>{formatShortDate(note.createdAt)}</span>
+                  <span className={styles.historyText}>{note.content}</span>
+                </div>
+              ))
+            )}
           </div>
         </aside>
       </div>

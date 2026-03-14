@@ -20,6 +20,17 @@ export const formatDate = (date: string): string => {
   return `${day}/${month}/${year}`;
 };
 
+export const formatShortDate = (isoDate: string): string => {
+  if (!isoDate) return '';
+  const date = new Date(isoDate);
+  return date
+    .toLocaleDateString('pt-BR', {
+      day: '2-digit',
+      month: 'short',
+    })
+    .replace('.', '');
+};
+
 // Para o filtro de dias — retorna o valor em inglês dado o label PT
 export const DAY_FILTER_OPTIONS = [
   { label: 'Todos',  value: 'ALL' },
