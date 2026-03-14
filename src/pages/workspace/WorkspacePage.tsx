@@ -3,7 +3,58 @@ import { useParams } from 'react-router-dom';
 import { Header } from '@/components/layout/Header/Header';
 import { useFolders } from '@/hooks/useFolders';
 import { useActivities } from '@/hooks/useActivities';
+import { Activity } from '@/types/activity.types';
+import {
+  collectAnswers,
+  hasUnansweredInputs,
+  processDocxHtml,
+} from '@/utils/docxHtmlProcessor';
 import styles from './WorkspacePage.module.css';
+
+interface ActivityCardProps {
+  activity: Activity;
+}
+
+const ActivityCard: React.FC<ActivityCardProps> = ({ activity }) => {
+  const exerciseRef = React.useRef<HTMLDivElement>(null);
+  const processedHtml = React.useMemo(
+    () => processDocxHtml(activity.contentHtml),
+    [activity.contentHtml],
+  );
+
+  const handleSaveAnswers = (): void => {
+    if (!exerciseRef.current) return;
+
+    if (hasUnansweredInputs(exerciseRef.current)) {
+      console.warn('Há campos não preenchidos');
+    }
+
+    const answers = collectAnswers(exerciseRef.current);
+    console.log('Respostas do aluno:', answers);
+    // TODO: enviar para API quando endpoint estiver pronto
+  };
+
+  return (
+    <div className={styles.activityCard}>
+      <div className={styles.activityHeader}>
+        <h3 className={styles.activityTitle}>{activity.title}</h3>
+        <span className={styles.activityType}>
+          {activity.type === 'EXERCISE' ? '📝 Exercício' : '💼 Workspace'}
+        </span>
+      </div>
+      <div
+        ref={exerciseRef}
+        className={`${styles.activityContent} exerciseContent`}
+        dangerouslySetInnerHTML={{ __html: processedHtml }}
+      />
+      <div className={styles.activityActions}>
+        <button type="button" className={styles.saveAnswersBtn} onClick={handleSaveAnswers}>
+          Salvar respostas
+        </button>
+      </div>
+    </div>
+  );
+};
 
 export const WorkspacePage: React.FC = () => {
   const { studentId } = useParams<{ studentId: string }>();
@@ -59,22 +110,7 @@ export const WorkspacePage: React.FC = () => {
                 {activities.length > 0 ? (
                   <div className={styles.activitiesList}>
                     {activities.map((activity) => (
-                      <div key={activity.id} className={styles.activityCard}>
-                        <div className={styles.activityHeader}>
-                          <h3 className={styles.activityTitle}>
-                            {activity.title}
-                          </h3>
-                          <span className={styles.activityType}>
-                            {activity.type === 'EXERCISE'
-                              ? '📝 Exercício'
-                              : '💼 Workspace'}
-                          </span>
-                        </div>
-                        <div
-                          className={styles.activityContent}
-                          dangerouslySetInnerHTML={{ __html: activity.contentHtml }}
-                        />
-                      </div>
+                      <ActivityCard key={activity.id} activity={activity} />
                     ))}
                   </div>
                 ) : (

@@ -132,6 +132,28 @@
   color: var(--color-text);
 }
 
+.activityActions {
+  margin-top: 12px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.saveAnswersBtn {
+  padding: 8px 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-card);
+  color: var(--color-text-primary);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.saveAnswersBtn:hover {
+  background: var(--color-bg-input);
+  border-color: var(--color-accent);
+}
+
 .noActivities {
   text-align: center;
   color: var(--color-text-muted);

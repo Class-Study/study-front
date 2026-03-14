@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import * as mammoth from 'mammoth';
+import DocxPreviewEditor from '@/components/ui/DocxPreviewEditor/DocxPreviewEditor';
 import { Modal } from '@/components/ui/Modal/Modal';
 import { useLevelProfiles } from '@/hooks/useLevelProfiles';
 import levelProfileService from '@/services/api/levelProfile.service';
@@ -33,7 +34,10 @@ interface AddTemplateForm {
   title: string;
   type: TemplateType;
   file: File | null;
+  convertedHtml?: string;
+  isConverting?: boolean;
   previewHtml?: string;
+  showPreview?: boolean;
 }
 
 const createTempId = (): string => {
@@ -294,6 +298,9 @@ export const NiveisTab: React.FC = () => {
         title: '',
         type: 'EXERCISE',
         file: null,
+        convertedHtml: '',
+        isConverting: false,
+        showPreview: false,
       },
     }));
   };
@@ -318,13 +325,16 @@ export const NiveisTab: React.FC = () => {
         title: prev[folderId]?.title ?? '',
         type: prev[folderId]?.type ?? 'EXERCISE',
         file: prev[folderId]?.file ?? null,
+        convertedHtml: prev[folderId]?.convertedHtml ?? '',
+        isConverting: prev[folderId]?.isConverting ?? false,
         previewHtml: prev[folderId]?.previewHtml,
+        showPreview: prev[folderId]?.showPreview ?? false,
         ...patch,
       },
     }));
   };
 
-  const handleFileSelected = (folderId: string, file: File | null): void => {
+  const handleFileSelected = async (folderId: string, file: File | null): Promise<void> => {
     if (!file) return;
     if (!isDocxFile(file)) return;
 
@@ -332,8 +342,25 @@ export const NiveisTab: React.FC = () => {
     updateUploadDraft(folderId, {
       file,
       title: file.name.replace(/\.docx$/i, ''),
+      convertedHtml: '',
+      isConverting: true,
       previewHtml: undefined,
+      showPreview: false,
     });
+
+    try {
+      const arrayBuffer = await file.arrayBuffer();
+      const result = await mammoth.convertToHtml({ arrayBuffer });
+      updateUploadDraft(folderId, {
+        convertedHtml: result.value,
+        previewHtml: result.value,
+        showPreview: true,
+      });
+    } catch (error) {
+      console.error('Erro ao converter .docx:', error);
+    } finally {
+      updateUploadDraft(folderId, { isConverting: false });
+    }
   };
 
   const addTemplate = (folderKey: string, template: ActivityTemplate): void => {
@@ -354,7 +381,7 @@ export const NiveisTab: React.FC = () => {
     const draft = uploadDrafts[folder.id];
     const folderKey = getFolderKey(level.id, folder.id);
 
-    if (!draft?.file || !draft.title.trim()) {
+    if (!draft?.file || !draft.title.trim() || !draft.convertedHtml) {
       return;
     }
 
@@ -365,7 +392,7 @@ export const NiveisTab: React.FC = () => {
       type: draft.type,
       file: draft.file,
       fileName: draft.file.name,
-      previewHtml: draft.previewHtml,
+      previewHtml: draft.convertedHtml,
     };
 
     addTemplate(folderKey, template);
@@ -380,13 +407,25 @@ export const NiveisTab: React.FC = () => {
       return;
     }
 
-    const arrayBuffer = await draft.file.arrayBuffer();
-    const result = await mammoth.convertToHtml({ arrayBuffer });
-    updateUploadDraft(folderId, { previewHtml: result.value });
-    setPreviewState({
-      fileName: draft.file.name,
-      html: result.value,
-    });
+    if (draft.convertedHtml) {
+      updateUploadDraft(folderId, { showPreview: true });
+      return;
+    }
+
+    updateUploadDraft(folderId, { isConverting: true });
+    try {
+      const arrayBuffer = await draft.file.arrayBuffer();
+      const result = await mammoth.convertToHtml({ arrayBuffer });
+      updateUploadDraft(folderId, {
+        convertedHtml: result.value,
+        previewHtml: result.value,
+        showPreview: true,
+      });
+    } catch (error) {
+      console.error('Erro ao converter .docx:', error);
+    } finally {
+      updateUploadDraft(folderId, { isConverting: false });
+    }
   };
 
   const validateEditForm = (): boolean => {
@@ -769,7 +808,10 @@ export const NiveisTab: React.FC = () => {
                               className={styles.templateActionBtn}
                               onClick={() => {
                                 if (template.previewHtml) {
-                                  setPreviewState({ fileName: template.fileName, html: template.previewHtml });
+                                  setPreviewState({
+                                    fileName: template.fileName,
+                                    html: template.previewHtml,
+                                  });
                                 }
                               }}
                               disabled={!template.previewHtml}
@@ -801,7 +843,7 @@ export const NiveisTab: React.FC = () => {
                             event.preventDefault();
                             setDraggingFolderId(null);
                             const file = event.dataTransfer.files[0] ?? null;
-                            handleFileSelected(folder.id, file);
+                            void handleFileSelected(folder.id, file);
                           }}
                           onClick={() => fileInputsRef.current[folder.id]?.click()}
                           role="presentation"
@@ -815,7 +857,9 @@ export const NiveisTab: React.FC = () => {
                             className={styles.fileInput}
                             type="file"
                             accept=".docx"
-                            onChange={(event) => handleFileSelected(folder.id, event.target.files?.[0] ?? null)}
+                            onChange={(event) => {
+                              void handleFileSelected(folder.id, event.target.files?.[0] ?? null);
+                            }}
                           />
                         </div>
 
@@ -851,11 +895,12 @@ export const NiveisTab: React.FC = () => {
                               <button
                                 type="button"
                                 className={styles.templatePreviewBtn}
+                                disabled={uploadDraft.isConverting}
                                 onClick={() => {
                                   void handlePreviewHtml(folder.id);
                                 }}
                               >
-                                👁 Preview HTML
+                                {uploadDraft.isConverting ? 'Convertendo...' : '👁 Preview HTML'}
                               </button>
                               <button
                                 type="button"
@@ -867,11 +912,58 @@ export const NiveisTab: React.FC = () => {
                               <button
                                 type="button"
                                 className={styles.templateSaveBtn}
+                                disabled={!uploadDraft.convertedHtml || uploadDraft.isConverting}
                                 onClick={() => handleSaveTemplate(selectedLevel, folder)}
                               >
-                                Salvar
+                                Salvar template
                               </button>
                             </div>
+
+                            {uploadDraft.showPreview && uploadDraft.convertedHtml && (
+                              <div className={styles.previewSection}>
+                                <div className={styles.previewHeader}>
+                                  <span className={styles.previewLabel}>Preview — como o aluno vai ver</span>
+                                  <button
+                                    type="button"
+                                    className={styles.closePreviewBtn}
+                                    onClick={() => updateUploadDraft(folder.id, { showPreview: false })}
+                                  >
+                                    Fechar preview
+                                  </button>
+                                </div>
+
+                                <div className={styles.previewNote}>
+                                  ⚠️ Este é o visual exato do workspace do aluno. O arquivo será convertido definitivamente ao salvar.
+                                </div>
+
+                                <div className={styles.tiptapWrapper}>
+                                  <DocxPreviewEditor html={uploadDraft.convertedHtml} editable={false} />
+                                </div>
+
+                                <div className={styles.templateFormActions}>
+                                  <button
+                                    type="button"
+                                    className={styles.templateCancelBtn}
+                                    onClick={() => {
+                                      updateUploadDraft(folder.id, {
+                                        showPreview: false,
+                                        convertedHtml: '',
+                                        previewHtml: undefined,
+                                      });
+                                    }}
+                                  >
+                                    Cancelar
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className={styles.templateSaveBtn}
+                                    onClick={() => handleSaveTemplate(selectedLevel, folder)}
+                                  >
+                                    Salvar template
+                                  </button>
+                                </div>
+                              </div>
+                            )}
                           </div>
                         )}
                       </div>
@@ -995,7 +1087,9 @@ export const NiveisTab: React.FC = () => {
       {previewState && (
         <div className={styles.previewBody}>
           <div className={styles.previewNote}>⚠️ O arquivo será convertido definitivamente ao salvar</div>
-          <div className={styles.previewHtml} dangerouslySetInnerHTML={{ __html: previewState.html }} />
+          <div className={styles.previewHtml}>
+            <DocxPreviewEditor html={previewState.html} editable={false} />
+          </div>
           <div className={styles.previewActions}>
             <button type="button" className={styles.cancelBtn} onClick={() => setPreviewState(null)}>
               Fechar preview

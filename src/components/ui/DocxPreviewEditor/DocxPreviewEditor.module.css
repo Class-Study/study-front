@@ -1,0 +1,91 @@
+.wrapper {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.readonly .editor {
+  cursor: default;
+}
+
+.editable .editor {
+  cursor: text;
+}
+
+.editor :global(.ProseMirror) {
+  outline: none;
+  font-family: var(--font-sans);
+  font-size: 15px;
+  line-height: 1.8;
+  color: var(--color-text-primary);
+  padding: 0;
+}
+
+.editor :global(.ProseMirror p) {
+  margin-bottom: 0.75rem;
+}
+
+.editor :global(.ProseMirror h1) {
+  font-family: var(--font-serif);
+  font-size: 22px;
+  font-weight: 500;
+  margin-bottom: 0.5rem;
+  margin-top: 1.25rem;
+}
+
+.editor :global(.ProseMirror h2) {
+  font-family: var(--font-serif);
+  font-size: 18px;
+  font-weight: 500;
+  margin-bottom: 0.5rem;
+  margin-top: 1rem;
+}
+
+.editor :global(.ProseMirror h3) {
+  font-family: var(--font-serif);
+  font-size: 16px;
+  font-weight: 500;
+  margin-bottom: 0.4rem;
+  margin-top: 0.75rem;
+}
+
+.editor :global(.ProseMirror strong) {
+  font-weight: 500;
+}
+
+.editor :global(.ProseMirror ol),
+.editor :global(.ProseMirror ul) {
+  padding-left: 1.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.editor :global(.ProseMirror li) {
+  margin-bottom: 0.4rem;
+}
+
+.editor :global(.ProseMirror table) {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 1rem;
+}
+
+.editor :global(.ProseMirror td),
+.editor :global(.ProseMirror th) {
+  border: 0.5px solid var(--color-border);
+  padding: 6px 10px;
+  font-size: 14px;
+}
+
+.editor :global(.ProseMirror blockquote) {
+  border-left: 3px solid var(--color-border);
+  padding-left: 1rem;
+  color: var(--color-text-secondary);
+  margin: 0.75rem 0;
+}
+
+.editable .editor :global(.ProseMirror) {
+  min-height: 200px;
+}
+
+.editable .editor :global(.ProseMirror:focus) {
+  outline: none;
+}
