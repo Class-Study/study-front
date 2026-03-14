@@ -8,6 +8,7 @@ import levelProfileService from '@/services/api/levelProfile.service';
 import {
   CreateLevelProfileRequest,
   LevelFolder,
+  LevelFolderTemplate,
   LevelProfile,
   UpdateLevelProfileRequest,
 } from '@/types/levelProfile.types';
@@ -30,16 +31,6 @@ interface NewLevelForm {
   folders: NewFolderRow[];
 }
 
-interface AddTemplateForm {
-  title: string;
-  type: TemplateType;
-  file: File | null;
-  convertedHtml?: string;
-  isConverting?: boolean;
-  previewHtml?: string;
-  showPreview?: boolean;
-}
-
 interface PendingTemplate {
   tempId: string;
   folderId: string;
@@ -47,6 +38,16 @@ interface PendingTemplate {
   type: TemplateType;
   fileName: string;
   convertedHtml: string;
+}
+
+interface PreviewState {
+  isOpen: boolean;
+  html: string;
+  fileName: string;
+  folderId: string;
+  title: string;
+  type: TemplateType;
+  mode: 'upload' | 'view';
 }
 
 const createTempId = (): string => {
@@ -134,11 +135,19 @@ export const NiveisTab: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState(false);
-  const [showUploadZone, setShowUploadZone] = useState<Record<string, boolean>>({});
-  const [uploadDrafts, setUploadDrafts] = useState<Record<string, AddTemplateForm>>({});
-  const [draggingFolderId, setDraggingFolderId] = useState<string | null>(null);
-  const [previewState, setPreviewState] = useState<{ fileName: string; html: string } | null>(null);
-  const fileInputsRef = useRef<Record<string, HTMLInputElement | null>>({});
+  const [activeUploadFolder, setActiveUploadFolder] = useState<string | null>(null);
+  const [isConverting, setIsConverting] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const [preview, setPreview] = useState<PreviewState>({
+    isOpen: false,
+    html: '',
+    fileName: '',
+    folderId: '',
+    title: '',
+    type: 'EXERCISE',
+    mode: 'upload',
+  });
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     fetchLevelProfiles();
@@ -299,106 +308,91 @@ export const NiveisTab: React.FC = () => {
     setEditError('');
     setSaveError(null);
     setSaveSuccess(false);
+    setActiveUploadFolder(null);
+    setIsConverting(false);
+    setIsDragging(false);
   };
 
-  const openUploadZone = (folderId: string): void => {
-    setShowUploadZone((prev) => ({
-      ...prev,
-      [folderId]: true,
-    }));
-    setUploadDrafts((prev) => ({
-      ...prev,
-      [folderId]: prev[folderId] ?? {
-        title: '',
-        type: 'EXERCISE',
-        file: null,
-        convertedHtml: '',
-        isConverting: false,
-        showPreview: false,
-      },
-    }));
-  };
-
-  const closeUploadZone = (folderId: string): void => {
-    setShowUploadZone((prev) => ({
-      ...prev,
-      [folderId]: false,
-    }));
-    setUploadDrafts((prev) => {
-      const next = { ...prev };
-      delete next[folderId];
-      return next;
-    });
-    setDraggingFolderId((prev) => (prev === folderId ? null : prev));
-  };
-
-  const updateUploadDraft = (folderId: string, patch: Partial<AddTemplateForm>): void => {
-    setUploadDrafts((prev) => ({
-      ...prev,
-      [folderId]: {
-        title: prev[folderId]?.title ?? '',
-        type: prev[folderId]?.type ?? 'EXERCISE',
-        file: prev[folderId]?.file ?? null,
-        convertedHtml: prev[folderId]?.convertedHtml ?? '',
-        isConverting: prev[folderId]?.isConverting ?? false,
-        previewHtml: prev[folderId]?.previewHtml,
-        showPreview: prev[folderId]?.showPreview ?? false,
-        ...patch,
-      },
-    }));
-  };
-
-  const handleFileSelected = async (folderId: string, file: File | null): Promise<void> => {
-    if (!file) return;
+  const handleFileConvert = async (file: File, folderId: string): Promise<void> => {
     if (!isDocxFile(file)) return;
 
-    openUploadZone(folderId);
-    updateUploadDraft(folderId, {
-      file,
-      title: file.name.replace(/\.docx$/i, ''),
-      convertedHtml: '',
-      isConverting: true,
-      previewHtml: undefined,
-      showPreview: false,
-    });
-
+    setIsConverting(true);
     try {
       const arrayBuffer = await file.arrayBuffer();
       const result = await mammoth.convertToHtml({ arrayBuffer });
-      updateUploadDraft(folderId, {
-        convertedHtml: result.value,
-        previewHtml: result.value,
-        showPreview: true,
+
+      setPreview({
+        isOpen: true,
+        html: result.value,
+        fileName: file.name,
+        folderId,
+        title: file.name.replace(/\.docx$/i, '').replace(/_/g, ' '),
+        type: 'EXERCISE',
+        mode: 'upload',
       });
-    } catch (error) {
-      console.error('Erro ao converter .docx:', error);
+    } catch (err) {
+      console.error('Erro ao converter .docx:', err);
     } finally {
-      updateUploadDraft(folderId, { isConverting: false });
+      setIsConverting(false);
+      setIsDragging(false);
     }
   };
 
-  const handleSaveTemplate = (folder: LevelFolder): void => {
-    const draft = uploadDrafts[folder.id];
+  const handleSaveToQueue = (): void => {
+    if (!preview.title.trim()) return;
 
-    if (!draft?.file || !draft.title.trim() || !draft.convertedHtml) {
-      return;
-    }
-
-    const template: PendingTemplate = {
+    const newTemplate: PendingTemplate = {
       tempId: createTempId(),
-      folderId: folder.id,
-      title: draft.title.trim(),
-      type: draft.type,
-      fileName: draft.file.name,
-      convertedHtml: draft.convertedHtml,
+      folderId: preview.folderId,
+      title: preview.title.trim(),
+      type: preview.type,
+      fileName: preview.fileName,
+      convertedHtml: preview.html,
     };
 
     setPendingTemplates((prev) => ({
       ...prev,
-      [folder.id]: [...(prev[folder.id] ?? []), template],
+      [preview.folderId]: [...(prev[preview.folderId] ?? []), newTemplate],
     }));
-    console.log('Template salvo:', { folderId: folder.id, template });
-    closeUploadZone(folder.id);
+
+    setPreview({
+      isOpen: false,
+      html: '',
+      fileName: '',
+      folderId: '',
+      title: '',
+      type: 'EXERCISE',
+      mode: 'upload',
+    });
+    setActiveUploadFolder(null);
+  };
+
+  const handleViewSavedTemplate = async (
+    template: LevelFolderTemplate,
+    folderId: string,
+  ): Promise<void> => {
+    if (template.convertedHtml) {
+      setPreview({
+        isOpen: true,
+        html: template.convertedHtml,
+        fileName: template.originalFilename ?? template.title,
+        folderId,
+        title: template.title,
+        type: template.type,
+        mode: 'view',
+      });
+      return;
+    }
+
+    setPreview({
+      isOpen: true,
+      html: '<p>Conteudo nao disponivel para visualizacao. O HTML sera incluido em uma proxima atualizacao da API.</p>',
+      fileName: template.originalFilename ?? template.title,
+      folderId,
+      title: template.title,
+      type: template.type,
+      mode: 'view',
+    });
   };
 
   const removePendingTemplate = (folderId: string, tempId: string): void => {
@@ -464,34 +458,6 @@ export const NiveisTab: React.FC = () => {
       setSaveError('Erro ao salvar alguns templates. Tente novamente.');
     } finally {
       setSaving(false);
-    }
-  };
-
-  const handlePreviewHtml = async (folderId: string): Promise<void> => {
-    const draft = uploadDrafts[folderId];
-
-    if (!draft?.file) {
-      return;
-    }
-
-    if (draft.convertedHtml) {
-      updateUploadDraft(folderId, { showPreview: true });
-      return;
-    }
-
-    updateUploadDraft(folderId, { isConverting: true });
-    try {
-      const arrayBuffer = await draft.file.arrayBuffer();
-      const result = await mammoth.convertToHtml({ arrayBuffer });
-      updateUploadDraft(folderId, {
-        convertedHtml: result.value,
-        previewHtml: result.value,
-        showPreview: true,
-      });
-    } catch (error) {
-      console.error('Erro ao converter .docx:', error);
-    } finally {
-      updateUploadDraft(folderId, { isConverting: false });
     }
   };
 
@@ -861,9 +827,7 @@ export const NiveisTab: React.FC = () => {
               {selectedLevel.folders.map((folder, index) => {
                 const savedTemplates = folder.templates ?? [];
                 const folderPendingTemplates = pendingTemplates[folder.id] ?? [];
-                const uploadDraft = uploadDrafts[folder.id];
-                const isDragging = draggingFolderId === folder.id;
-                const isUploadOpen = Boolean(showUploadZone[folder.id]);
+                const isUploadOpen = activeUploadFolder === folder.id;
 
                 return (
                   <section key={folder.id} className={styles.modalFolderCard}>
@@ -873,11 +837,7 @@ export const NiveisTab: React.FC = () => {
                         type="button"
                         className={styles.addTemplateBtn}
                         onClick={() => {
-                          if (isUploadOpen) {
-                            closeUploadZone(folder.id);
-                            return;
-                          }
-                          openUploadZone(folder.id);
+                          setActiveUploadFolder((prev) => (prev === folder.id ? null : folder.id));
                         }}
                       >
                         {isUploadOpen ? 'Fechar' : '+ Adicionar'}
@@ -897,15 +857,27 @@ export const NiveisTab: React.FC = () => {
                                 <span className={styles.templateFile}>{template.originalFilename}</span>
                               )}
                             </div>
-                            <button
-                              type="button"
-                              className={styles.removeTemplateBtn}
-                              onClick={() => {
-                                void handleDeleteTemplate(selectedLevel.id, folder.id, template.id);
-                              }}
-                            >
-                              ✕
-                            </button>
+                            <div className={styles.templateActions}>
+                              <button
+                                type="button"
+                                className={styles.viewTemplateBtn}
+                                title="Visualizar conteudo"
+                                onClick={() => {
+                                  void handleViewSavedTemplate(template, folder.id);
+                                }}
+                              >
+                                👁
+                              </button>
+                              <button
+                                type="button"
+                                className={styles.removeTemplateBtn}
+                                onClick={() => {
+                                  void handleDeleteTemplate(selectedLevel.id, folder.id, template.id);
+                                }}
+                              >
+                                ✕
+                              </button>
+                            </div>
                           </div>
                         ))}
 
@@ -919,15 +891,35 @@ export const NiveisTab: React.FC = () => {
                               <span className={styles.templateType}>{getTemplateTypeLabel(template.type)}</span>
                               <span className={styles.pendingBadge}>Não salvo</span>
                             </div>
-                            <button
-                              type="button"
-                              className={styles.removeTemplateBtn}
-                              onClick={() => {
-                                removePendingTemplate(folder.id, template.tempId);
-                              }}
-                            >
-                              ✕
-                            </button>
+                            <div className={styles.templateActions}>
+                              <button
+                                type="button"
+                                className={styles.viewTemplateBtn}
+                                title="Visualizar conteudo"
+                                onClick={() => {
+                                  setPreview({
+                                    isOpen: true,
+                                    html: template.convertedHtml,
+                                    fileName: template.fileName,
+                                    folderId: folder.id,
+                                    title: template.title,
+                                    type: template.type,
+                                    mode: 'view',
+                                  });
+                                }}
+                              >
+                                👁
+                              </button>
+                              <button
+                                type="button"
+                                className={styles.removeTemplateBtn}
+                                onClick={() => {
+                                  removePendingTemplate(folder.id, template.tempId);
+                                }}
+                              >
+                                ✕
+                              </button>
+                            </div>
                           </div>
                         ))}
                       </>
@@ -936,139 +928,46 @@ export const NiveisTab: React.FC = () => {
                     {isUploadOpen && (
                       <div className={styles.uploadSection}>
                         <div
-                          className={`${styles.uploadZone} ${isDragging ? styles.uploadZoneActive : ''}`}
+                          className={`${styles.dropzone} ${isDragging ? styles.dropzoneActive : ''}`}
                           onDragOver={(event) => {
                             event.preventDefault();
-                            setDraggingFolderId(folder.id);
+                            setIsDragging(true);
                           }}
-                          onDragLeave={() => setDraggingFolderId((prev) => (prev === folder.id ? null : prev))}
+                          onDragLeave={() => setIsDragging(false)}
                           onDrop={(event) => {
                             event.preventDefault();
-                            setDraggingFolderId(null);
+                            setIsDragging(false);
                             const file = event.dataTransfer.files[0] ?? null;
-                            void handleFileSelected(folder.id, file);
+                            if (file) {
+                              void handleFileConvert(file, folder.id);
+                            }
                           }}
-                          onClick={() => fileInputsRef.current[folder.id]?.click()}
+                          onClick={() => fileInputRef.current?.click()}
                           role="presentation"
                         >
-                          <div className={styles.uploadZoneText}>Arraste um arquivo .docx aqui</div>
-                          <div className={styles.uploadZoneSubtext}>ou clique para selecionar</div>
-                          <input
-                            ref={(element) => {
-                              fileInputsRef.current[folder.id] = element;
-                            }}
-                            className={styles.fileInput}
-                            type="file"
-                            accept=".docx"
-                            onChange={(event) => {
-                              void handleFileSelected(folder.id, event.target.files?.[0] ?? null);
-                            }}
-                          />
+                          {isConverting ? (
+                            <span className={styles.dropzoneConverting}>Convertendo...</span>
+                          ) : (
+                            <>
+                              <span className={styles.dropzoneText}>Arraste um arquivo .docx aqui</span>
+                              <span className={styles.dropzoneSubtext}>ou clique para selecionar</span>
+                            </>
+                          )}
                         </div>
 
-                        {uploadDraft?.file && (
-                          <div className={styles.templateFormCard}>
-                            <div className={styles.selectedFileName}>📄 {uploadDraft.file.name}</div>
-
-                            <div className={styles.templateFormField}>
-                              <label className={styles.formLabel}>Título da atividade</label>
-                              <input
-                                className={styles.templateInput}
-                                type="text"
-                                value={uploadDraft.title}
-                                onChange={(event) => updateUploadDraft(folder.id, { title: event.target.value })}
-                              />
-                            </div>
-
-                            <div className={styles.templateFormField}>
-                              <label className={styles.formLabel}>Tipo</label>
-                              <select
-                                className={styles.templateSelect}
-                                value={uploadDraft.type}
-                                onChange={(event) =>
-                                  updateUploadDraft(folder.id, { type: event.target.value as TemplateType })
-                                }
-                              >
-                                <option value="EXERCISE">Exercício</option>
-                                <option value="WORKSPACE">Workspace</option>
-                              </select>
-                            </div>
-
-                            <div className={styles.templateFormActions}>
-                              <button
-                                type="button"
-                                className={styles.templatePreviewBtn}
-                                disabled={uploadDraft.isConverting}
-                                onClick={() => {
-                                  void handlePreviewHtml(folder.id);
-                                }}
-                              >
-                                {uploadDraft.isConverting ? 'Convertendo...' : '👁 Preview HTML'}
-                              </button>
-                              <button
-                                type="button"
-                                className={styles.templateCancelBtn}
-                                onClick={() => closeUploadZone(folder.id)}
-                              >
-                                Cancelar
-                              </button>
-                              <button
-                                type="button"
-                                className={styles.templateSaveBtn}
-                                disabled={!uploadDraft.convertedHtml || uploadDraft.isConverting}
-                                onClick={() => handleSaveTemplate(folder)}
-                              >
-                                Salvar template
-                              </button>
-                            </div>
-
-                            {uploadDraft.showPreview && uploadDraft.convertedHtml && (
-                              <div className={styles.previewSection}>
-                                <div className={styles.previewHeader}>
-                                  <span className={styles.previewLabel}>Preview — como o aluno vai ver</span>
-                                  <button
-                                    type="button"
-                                    className={styles.closePreviewBtn}
-                                    onClick={() => updateUploadDraft(folder.id, { showPreview: false })}
-                                  >
-                                    Fechar preview
-                                  </button>
-                                </div>
-
-                                <div className={styles.previewNote}>
-                                  ⚠️ Este é o visual exato do workspace do aluno. O arquivo será convertido definitivamente ao salvar.
-                                </div>
-
-                                <div className={styles.tiptapWrapper}>
-                                  <DocxPreviewEditor html={uploadDraft.convertedHtml} editable={false} />
-                                </div>
-
-                                <div className={styles.templateFormActions}>
-                                  <button
-                                    type="button"
-                                    className={styles.templateCancelBtn}
-                                    onClick={() => {
-                                      updateUploadDraft(folder.id, {
-                                        showPreview: false,
-                                        convertedHtml: '',
-                                        previewHtml: undefined,
-                                      });
-                                    }}
-                                  >
-                                    Cancelar
-                                  </button>
-                                  <button
-                                    type="button"
-                                    className={styles.templateSaveBtn}
-                                    onClick={() => handleSaveTemplate(folder)}
-                                  >
-                                    Salvar template
-                                  </button>
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        )}
+                        <input
+                          ref={fileInputRef}
+                          className={styles.fileInput}
+                          type="file"
+                          accept=".docx"
+                          onChange={(event) => {
+                            const file = event.target.files?.[0];
+                            if (file && activeUploadFolder) {
+                              void handleFileConvert(file, activeUploadFolder);
+                            }
+                            event.target.value = '';
+                          }}
+                        />
                       </div>
                     )}
                   </section>
@@ -1182,24 +1081,81 @@ export const NiveisTab: React.FC = () => {
     </Modal>
 
     <Modal
-      isOpen={previewState !== null}
-      onClose={() => setPreviewState(null)}
-      size="full"
-      title={previewState ? `Preview — ${previewState.fileName}` : undefined}
+      isOpen={preview.isOpen}
+      onClose={() => setPreview((prev) => ({ ...prev, isOpen: false }))}
+      size="lg"
+      title={preview.mode === 'view' ? preview.title : `Preview — ${preview.fileName}`}
     >
-      {previewState && (
-        <div className={styles.previewBody}>
-          <div className={styles.previewNote}>⚠️ O arquivo será convertido definitivamente ao salvar</div>
-          <div className={styles.previewHtml}>
-            <DocxPreviewEditor html={previewState.html} editable={false} />
+      <div className={styles.previewModalContent}>
+        {preview.mode === 'upload' && (
+          <div className={styles.previewFormRow}>
+            <div className={styles.previewField}>
+              <label className={styles.previewLabel}>Título da atividade</label>
+              <input
+                type="text"
+                className={styles.previewInput}
+                value={preview.title}
+                onChange={(event) => setPreview((prev) => ({ ...prev, title: event.target.value }))}
+                placeholder="Nome da atividade"
+              />
+            </div>
+
+            <div className={styles.previewFieldSmall}>
+              <label className={styles.previewLabel}>Tipo</label>
+              <select
+                className={styles.previewInput}
+                value={preview.type}
+                onChange={(event) =>
+                  setPreview((prev) => ({ ...prev, type: event.target.value as TemplateType }))
+                }
+              >
+                <option value="EXERCISE">Exercício</option>
+                <option value="WORKSPACE">Workspace</option>
+              </select>
+            </div>
           </div>
+        )}
+
+        <div className={styles.previewEditorWrapper}>
+          <DocxPreviewEditor html={preview.html} editable={false} />
+        </div>
+
+        <div className={styles.previewNote}>
+          ⚠️ Este é o visual exato que o aluno verá no workspace. O conteúdo será salvo ao clicar em "Salvar tudo".
+        </div>
+
+        {preview.mode === 'upload' && (
           <div className={styles.previewActions}>
-            <button type="button" className={styles.cancelBtn} onClick={() => setPreviewState(null)}>
-              Fechar preview
+            <button
+              type="button"
+              className={styles.cancelBtn}
+              onClick={() => setPreview((prev) => ({ ...prev, isOpen: false }))}
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              className={styles.submitBtn}
+              onClick={handleSaveToQueue}
+              disabled={!preview.title.trim()}
+            >
+              Salvar template
             </button>
           </div>
-        </div>
-      )}
+        )}
+
+        {preview.mode === 'view' && (
+          <div className={styles.previewActions}>
+            <button
+              type="button"
+              className={styles.cancelBtn}
+              onClick={() => setPreview((prev) => ({ ...prev, isOpen: false }))}
+            >
+              Fechar
+            </button>
+          </div>
+        )}
+      </div>
     </Modal>
     </>
   );
