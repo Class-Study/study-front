@@ -37,13 +37,25 @@ export interface CreateLevelProfileRequest {
 
 export interface UpdateLevelProfileRequest {
   name?: LevelName;
-  code?: string;
   icon?: string;
   description?: string;
-  minScore?: number;
-  maxScore?: number;
+  folders?: {
+    name: string;
+    position: number;
+    initialFiles: number;
+  }[];
 }
 
 export interface ListLevelProfilesResponse {
   levelProfiles: LevelProfile[];
+}
+
+export interface ActivityTemplate {
+  tempId: string;
+  folderId: string;
+  title: string;
+  type: 'EXERCISE' | 'WORKSPACE';
+  file: File;
+  fileName: string;
+  previewHtml?: string;
 }

@@ -17,7 +17,7 @@
 
 .title {
   font-family: var(--font-serif);
-  font-size: 24px;
+  font-size: 28px;
   font-weight: 600;
   color: var(--color-text-primary);
 }
@@ -237,6 +237,50 @@
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   padding: 16px;
+  cursor: pointer;
+  transition: border-color 0.2s ease, transform 0.2s ease;
+}
+
+.levelCard:hover {
+  border-color: var(--color-accent);
+  transform: translateY(-1px);
+}
+
+.levelMarkerWrap {
+  width: 36px;
+  height: 36px;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.levelMarkerWrap .levelDot {
+  width: 36px;
+  height: 36px;
+  inset: 0;
+}
+
+.levelDot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  position: absolute;
+  inset: 11px;
+}
+
+.levelDotBasic {
+  background: var(--color-accent);
+}
+
+.levelDotIntermediate {
+  background: var(--color-gold);
+}
+
+.levelDotAdvanced {
+  background: var(--color-danger);
+}
+
+.levelDotCustom {
+  background: var(--color-blue);
 }
 
 .levelCardHeader {
@@ -247,8 +291,15 @@
 }
 
 .levelIcon {
-  font-size: 28px;
-  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  color: white;
+  position: relative;
+  z-index: 1;
 }
 
 .levelInfo {
@@ -356,33 +407,9 @@
   opacity: 0.85;
 }
 
-.expandedSection {
-  margin-top: 12px;
-  border-top: 1px solid var(--color-border);
-  padding-top: 12px;
-}
-
-.expandedFolder {
-  margin-bottom: 12px;
-}
-
-.expandedFolderHeader {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 6px;
-}
-
-.expandedFolderName {
-  font-family: var(--font-sans);
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--color-text-secondary);
-}
-
 .addTemplateBtn {
   font-size: 11px;
-  padding: 3px 8px;
+  padding: 6px 10px;
   background: var(--color-bg-input);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
@@ -391,14 +418,191 @@
   font-family: var(--font-sans);
 }
 
-.templateItem {
+.managementContent {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.modalTitleWrap {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.modalTitleInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.modalTitleMain {
+  font-family: var(--font-sans);
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.modalTitleSub {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--color-text-secondary);
+}
+
+.managementTabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.managementTab {
+  padding: 10px 14px;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  color: var(--color-text-secondary);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.managementTabActive {
+  color: var(--color-accent);
+  border-bottom-color: var(--color-accent);
+}
+
+.managementTab:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.managementBody {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.modalFolderCard,
+.editCard {
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 16px;
+}
+
+.modalFolderHeader {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 6px 8px;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.modalFolderName {
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.templateRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 10px;
   background: var(--color-bg-input);
+  border-radius: var(--radius-md);
+  margin-bottom: 6px;
+}
+
+.templateMeta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.templateFileIcon {
+  font-size: 16px;
+}
+
+.templateActions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.templateActionBtn {
+  width: 28px;
+  height: 28px;
   border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-card);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+
+.templateActionBtn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.uploadSection {
+  margin-top: 10px;
+}
+
+.uploadZone {
+  border: 2px dashed var(--color-border);
+  background: var(--color-bg-input);
+  border-radius: var(--radius-lg);
+  padding: 18px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.uploadZoneActive {
+  border-color: var(--color-accent);
+  background: color-mix(in srgb, var(--color-accent) 5%, var(--color-bg-input));
+}
+
+.uploadZoneText {
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text-primary);
   margin-bottom: 4px;
+}
+
+.uploadZoneSubtext {
+  font-size: 12px;
+  color: var(--color-text-tertiary);
+}
+
+.templateFormCard {
+  margin-top: 10px;
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 12px;
+}
+
+.selectedFileName {
+  font-size: 12px;
+  color: var(--color-text-primary);
+  margin-bottom: 10px;
+}
+
+.templateFormField {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 10px;
 }
 
 .templateTitle {
@@ -422,11 +626,7 @@
 }
 
 .templateForm {
-  background: var(--color-bg-card);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  padding: 10px;
-  margin-top: 6px;
+  display: none;
 }
 
 .templateFormRow {
@@ -481,6 +681,7 @@
   display: flex;
   gap: 6px;
   justify-content: flex-end;
+  align-items: center;
 }
 
 .templateSaveBtn {
@@ -489,6 +690,16 @@
   color: white;
   border: none;
   border-radius: var(--radius-sm);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.templatePreviewBtn {
+  padding: 5px 12px;
+  background: var(--color-bg-input);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-secondary);
   font-size: 12px;
   cursor: pointer;
 }
@@ -504,10 +715,58 @@
 }
 
 .emptyTemplates {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--color-text-tertiary);
   font-style: italic;
-  padding: 4px 0;
+  padding: 6px 0;
+}
+
+.systemMessage {
+  padding: 16px;
+  border-radius: var(--radius-md);
+  background: var(--color-bg-input);
+  color: var(--color-text-secondary);
+  font-size: 13px;
+}
+
+.previewBody {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.previewNote {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  background: var(--color-bg-input);
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+}
+
+.previewHtml {
+  background: var(--color-bg-input);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  color: var(--color-text-primary);
+  line-height: 1.7;
+}
+
+.previewHtml h1,
+.previewHtml h2,
+.previewHtml h3 {
+  font-family: var(--font-serif);
+  color: var(--color-text-primary);
+}
+
+.previewHtml p,
+.previewHtml li {
+  font-family: var(--font-sans);
+}
+
+.previewActions {
+  display: flex;
+  justify-content: flex-end;
 }
 
 @media (max-width: 900px) {
@@ -520,6 +779,12 @@
   }
 
   .templateFormRow {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .modalFolderHeader,
+  .templateRow {
     flex-direction: column;
     align-items: stretch;
   }
@@ -540,5 +805,9 @@
   .cardActions {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .managementTabs {
+    overflow-x: auto;
   }
 }
