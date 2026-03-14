@@ -3,9 +3,9 @@ import * as mammoth from 'mammoth';
 import DocxPreviewEditor from '@/components/ui/DocxPreviewEditor/DocxPreviewEditor';
 import { Modal } from '@/components/ui/Modal/Modal';
 import { useLevelProfiles } from '@/hooks/useLevelProfiles';
+import levelFolderTemplateService from '@/services/api/levelFolderTemplate.service';
 import levelProfileService from '@/services/api/levelProfile.service';
 import {
-  ActivityTemplate,
   CreateLevelProfileRequest,
   LevelFolder,
   LevelProfile,
@@ -40,6 +40,15 @@ interface AddTemplateForm {
   showPreview?: boolean;
 }
 
+interface PendingTemplate {
+  tempId: string;
+  folderId: string;
+  title: string;
+  type: TemplateType;
+  fileName: string;
+  convertedHtml: string;
+}
+
 const createTempId = (): string => {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
     return crypto.randomUUID();
@@ -69,8 +78,6 @@ const toSlug = (name: string): string =>
     .replace(/[\u0300-\u036f]/g, '')
     .replace(/\s+/g, '-')
     .replace(/[^a-z0-9-]/g, '');
-
-const getFolderKey = (levelId: string, folderId: string): string => `${levelId}:${folderId}`;
 
 const getFolderName = (folder: LevelFolder, index: number): string =>
   folder.name?.trim() || `${index + 1} — Pasta`;
@@ -118,12 +125,15 @@ export const NiveisTab: React.FC = () => {
   const [creating, setCreating] = useState(false);
   const [formError, setFormError] = useState('');
   const [form, setForm] = useState<NewLevelForm>(createInitialForm);
-  const [templates, setTemplates] = useState<Record<string, ActivityTemplate[]>>({});
+  const [pendingTemplates, setPendingTemplates] = useState<Record<string, PendingTemplate[]>>({});
   const [selectedLevel, setSelectedLevel] = useState<LevelProfile | null>(null);
   const [managementTab, setManagementTab] = useState<ModalTab>('activities');
   const [editForm, setEditForm] = useState<NewLevelForm>(createInitialForm);
   const [editError, setEditError] = useState('');
   const [savingEdit, setSavingEdit] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [saveSuccess, setSaveSuccess] = useState(false);
   const [showUploadZone, setShowUploadZone] = useState<Record<string, boolean>>({});
   const [uploadDrafts, setUploadDrafts] = useState<Record<string, AddTemplateForm>>({});
   const [draggingFolderId, setDraggingFolderId] = useState<string | null>(null);
@@ -279,12 +289,16 @@ export const NiveisTab: React.FC = () => {
     setManagementTab(tab);
     setEditForm(createEditForm(level));
     setEditError('');
+    setSaveError(null);
+    setSaveSuccess(false);
   };
 
   const closeManagementModal = (): void => {
     setSelectedLevel(null);
     setManagementTab('activities');
     setEditError('');
+    setSaveError(null);
+    setSaveSuccess(false);
   };
 
   const openUploadZone = (folderId: string): void => {
@@ -363,41 +377,94 @@ export const NiveisTab: React.FC = () => {
     }
   };
 
-  const addTemplate = (folderKey: string, template: ActivityTemplate): void => {
-    setTemplates((prev) => ({
-      ...prev,
-      [folderKey]: [...(prev[folderKey] ?? []), template],
-    }));
-  };
-
-  const removeTemplate = (folderKey: string, tempId: string): void => {
-    setTemplates((prev) => ({
-      ...prev,
-      [folderKey]: (prev[folderKey] ?? []).filter((item) => item.tempId !== tempId),
-    }));
-  };
-
-  const handleSaveTemplate = (level: LevelProfile, folder: LevelFolder): void => {
+  const handleSaveTemplate = (folder: LevelFolder): void => {
     const draft = uploadDrafts[folder.id];
-    const folderKey = getFolderKey(level.id, folder.id);
 
     if (!draft?.file || !draft.title.trim() || !draft.convertedHtml) {
       return;
     }
 
-    const template: ActivityTemplate = {
+    const template: PendingTemplate = {
       tempId: createTempId(),
       folderId: folder.id,
       title: draft.title.trim(),
       type: draft.type,
-      file: draft.file,
       fileName: draft.file.name,
-      previewHtml: draft.convertedHtml,
+      convertedHtml: draft.convertedHtml,
     };
 
-    addTemplate(folderKey, template);
+    setPendingTemplates((prev) => ({
+      ...prev,
+      [folder.id]: [...(prev[folder.id] ?? []), template],
+    }));
     console.log('Template salvo:', { folderId: folder.id, template });
     closeUploadZone(folder.id);
+  };
+
+  const removePendingTemplate = (folderId: string, tempId: string): void => {
+    setPendingTemplates((prev) => ({
+      ...prev,
+      [folderId]: (prev[folderId] ?? []).filter((template) => template.tempId !== tempId),
+    }));
+  };
+
+  const handleDeleteTemplate = async (
+    profileId: string,
+    folderId: string,
+    templateId: string,
+  ): Promise<void> => {
+    try {
+      await levelFolderTemplateService.delete(profileId, folderId, templateId);
+      await fetchLevelProfiles();
+    } catch {
+      console.error('Erro ao deletar template');
+    }
+  };
+
+  const handleSaveAll = async (): Promise<void> => {
+    if (!selectedLevel) return;
+
+    const selectedFolderIds = new Set(selectedLevel.folders.map((folder) => folder.id));
+    const pendingEntries = Object.entries(pendingTemplates).filter(([folderId]) =>
+      selectedFolderIds.has(folderId),
+    );
+
+    setSaving(true);
+    setSaveError(null);
+
+    try {
+      const promises: Promise<void>[] = [];
+
+      pendingEntries.forEach(([folderId, templates]) => {
+        templates.forEach((template) => {
+          const promise = levelFolderTemplateService
+            .create(selectedLevel.id, folderId, {
+              title: template.title,
+              type: template.type,
+              originalFilename: template.fileName,
+              convertedHtml: template.convertedHtml,
+            })
+            .then(() => {
+              setPendingTemplates((prev) => ({
+                ...prev,
+                [folderId]: (prev[folderId] ?? []).filter((item) => item.tempId !== template.tempId),
+              }));
+            });
+
+          promises.push(promise);
+        });
+      });
+
+      await Promise.all(promises);
+      await fetchLevelProfiles();
+
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 3000);
+    } catch {
+      setSaveError('Erro ao salvar alguns templates. Tente novamente.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handlePreviewHtml = async (folderId: string): Promise<void> => {
@@ -534,17 +601,36 @@ export const NiveisTab: React.FC = () => {
   };
 
   const selectedLevelToneClass = selectedLevel ? getLevelToneClass(getLevelTone(selectedLevel.code)) : '';
+  const selectedFolderIds = new Set((selectedLevel?.folders ?? []).map((folder) => folder.id));
+  const selectedPendingEntries = Object.entries(pendingTemplates).filter(([folderId]) => selectedFolderIds.has(folderId));
+  const hasPendingTemplates = selectedPendingEntries.some(([, list]) => list.length > 0);
+  const totalPending = selectedPendingEntries.reduce((acc, [, list]) => acc + list.length, 0);
 
   const modalTitle = selectedLevel ? (
-    <div className={styles.modalTitleWrap}>
-      <span className={`${styles.levelDot} ${selectedLevelToneClass}`} />
-      <div className={styles.modalTitleInfo}>
-        <div className={styles.modalTitleMain}>{selectedLevel.name}</div>
-        <div className={styles.modalTitleSub}>
-          {selectedLevel.description || 'Sem descrição'}
-          {selectedLevel.isSystem ? <span className={styles.systemBadge}>Sistema</span> : null}
+    <div className={`${styles.modalTitleWrap} ${styles.modalTitleWithActions}`}>
+      <div className={styles.modalTitleWrap}>
+        <span className={`${styles.levelDot} ${selectedLevelToneClass}`} />
+        <div className={styles.modalTitleInfo}>
+          <div className={styles.modalTitleMain}>{selectedLevel.name}</div>
+          <div className={styles.modalTitleSub}>
+            {selectedLevel.description || 'Sem descrição'}
+            {selectedLevel.isSystem ? <span className={styles.systemBadge}>Sistema</span> : null}
+          </div>
         </div>
       </div>
+
+      {hasPendingTemplates && (
+        <button
+          type="button"
+          className={styles.saveAllBtn}
+          onClick={() => {
+            void handleSaveAll();
+          }}
+          disabled={saving}
+        >
+          {saving ? 'Salvando...' : `Salvar tudo (${totalPending})`}
+        </button>
+      )}
     </div>
   ) : undefined;
 
@@ -764,9 +850,17 @@ export const NiveisTab: React.FC = () => {
 
           {managementTab === 'activities' && (
             <div className={styles.managementBody}>
+              {saveSuccess && (
+                <div className={styles.successBanner}>✓ Templates salvos com sucesso</div>
+              )}
+
+              {saveError && (
+                <div className={styles.errorBanner}>{saveError}</div>
+              )}
+
               {selectedLevel.folders.map((folder, index) => {
-                const folderKey = getFolderKey(selectedLevel.id, folder.id);
-                const folderTemplates = templates[folderKey] ?? [];
+                const savedTemplates = folder.templates ?? [];
+                const folderPendingTemplates = pendingTemplates[folder.id] ?? [];
                 const uploadDraft = uploadDrafts[folder.id];
                 const isDragging = draggingFolderId === folder.id;
                 const isUploadOpen = Boolean(showUploadZone[folder.id]);
@@ -790,44 +884,53 @@ export const NiveisTab: React.FC = () => {
                       </button>
                     </div>
 
-                    {folderTemplates.length === 0 ? (
+                    {savedTemplates.length === 0 && folderPendingTemplates.length === 0 ? (
                       <div className={styles.emptyTemplates}>Nenhum template ainda.</div>
                     ) : (
-                      folderTemplates.map((template) => (
-                        <div key={template.tempId} className={styles.templateRow}>
-                          <div className={styles.templateMeta}>
-                            <span className={styles.templateFileIcon}>📄</span>
-                            <div>
-                              <div className={styles.templateTitle}>{template.title}</div>
-                              <div className={styles.templateType}>{getTemplateTypeLabel(template.type)}</div>
+                      <>
+                        {savedTemplates.map((template) => (
+                          <div key={template.id} className={styles.templateItem}>
+                            <div className={styles.templateInfo}>
+                              <span className={styles.templateTitle}>{template.title}</span>
+                              <span className={styles.templateType}>{getTemplateTypeLabel(template.type)}</span>
+                              {template.originalFilename && (
+                                <span className={styles.templateFile}>{template.originalFilename}</span>
+                              )}
                             </div>
-                          </div>
-                          <div className={styles.templateActions}>
                             <button
                               type="button"
-                              className={styles.templateActionBtn}
+                              className={styles.removeTemplateBtn}
                               onClick={() => {
-                                if (template.previewHtml) {
-                                  setPreviewState({
-                                    fileName: template.fileName,
-                                    html: template.previewHtml,
-                                  });
-                                }
+                                void handleDeleteTemplate(selectedLevel.id, folder.id, template.id);
                               }}
-                              disabled={!template.previewHtml}
                             >
-                              👁
-                            </button>
-                            <button
-                              type="button"
-                              className={styles.templateActionBtn}
-                              onClick={() => removeTemplate(folderKey, template.tempId)}
-                            >
-                              🗑
+                              ✕
                             </button>
                           </div>
-                        </div>
-                      ))
+                        ))}
+
+                        {folderPendingTemplates.map((template) => (
+                          <div
+                            key={template.tempId}
+                            className={`${styles.templateItem} ${styles.templatePending}`}
+                          >
+                            <div className={styles.templateInfo}>
+                              <span className={styles.templateTitle}>{template.title}</span>
+                              <span className={styles.templateType}>{getTemplateTypeLabel(template.type)}</span>
+                              <span className={styles.pendingBadge}>Não salvo</span>
+                            </div>
+                            <button
+                              type="button"
+                              className={styles.removeTemplateBtn}
+                              onClick={() => {
+                                removePendingTemplate(folder.id, template.tempId);
+                              }}
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        ))}
+                      </>
                     )}
 
                     {isUploadOpen && (
@@ -913,7 +1016,7 @@ export const NiveisTab: React.FC = () => {
                                 type="button"
                                 className={styles.templateSaveBtn}
                                 disabled={!uploadDraft.convertedHtml || uploadDraft.isConverting}
-                                onClick={() => handleSaveTemplate(selectedLevel, folder)}
+                                onClick={() => handleSaveTemplate(folder)}
                               >
                                 Salvar template
                               </button>
@@ -957,7 +1060,7 @@ export const NiveisTab: React.FC = () => {
                                   <button
                                     type="button"
                                     className={styles.templateSaveBtn}
-                                    onClick={() => handleSaveTemplate(selectedLevel, folder)}
+                                    onClick={() => handleSaveTemplate(folder)}
                                   >
                                     Salvar template
                                   </button>

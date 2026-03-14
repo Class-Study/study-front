@@ -1,10 +1,27 @@
 export type LevelName = string;
 
+export interface LevelFolderTemplate {
+  id: string;
+  levelFolderId: string;
+  title: string;
+  type: 'EXERCISE' | 'WORKSPACE';
+  originalFilename?: string;
+  createdAt: string;
+}
+
+export interface CreateLevelFolderTemplateRequest {
+  title: string;
+  type: 'EXERCISE' | 'WORKSPACE';
+  originalFilename?: string;
+  convertedHtml: string;
+}
+
 export interface LevelFolder {
   id: string;
   name: string;
   position: number;
   initialFiles: number;
+  templates: LevelFolderTemplate[];
 }
 
 export interface LevelProfile {
