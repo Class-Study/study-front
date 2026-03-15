@@ -44,12 +44,6 @@
   display: none;
 }
 
-.formRow {
-  display: grid;
-  grid-template-columns: 1fr 180px;
-  gap: 12px;
-}
-
 .field {
   display: flex;
   flex-direction: column;
@@ -130,8 +124,3 @@
   cursor: not-allowed;
 }
 
-@media (max-width: 700px) {
-  .formRow {
-    grid-template-columns: 1fr;
-  }
-}

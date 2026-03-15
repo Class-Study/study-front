@@ -45,6 +45,38 @@ export const DocxPreviewEditor: React.FC<DocxPreviewEditorProps> = ({
 
   return (
     <div className={`${styles.wrapper} ${editable ? styles.editable : styles.readonly}`}>
+      {editable && editor && (
+        <div className={styles.toolbar}>
+          <button
+            type="button"
+            className={`${styles.toolButton} ${editor.isActive('bold') ? styles.toolButtonActive : ''}`}
+            onClick={() => editor.chain().focus().toggleBold().run()}
+          >
+            B
+          </button>
+          <button
+            type="button"
+            className={`${styles.toolButton} ${editor.isActive('italic') ? styles.toolButtonActive : ''}`}
+            onClick={() => editor.chain().focus().toggleItalic().run()}
+          >
+            I
+          </button>
+          <button
+            type="button"
+            className={`${styles.toolButton} ${editor.isActive('bulletList') ? styles.toolButtonActive : ''}`}
+            onClick={() => editor.chain().focus().toggleBulletList().run()}
+          >
+            Lista
+          </button>
+          <button
+            type="button"
+            className={`${styles.toolButton} ${editor.isActive('orderedList') ? styles.toolButtonActive : ''}`}
+            onClick={() => editor.chain().focus().toggleOrderedList().run()}
+          >
+            1.
+          </button>
+        </div>
+      )}
       <EditorContent editor={editor} className={styles.editor} />
     </div>
   );

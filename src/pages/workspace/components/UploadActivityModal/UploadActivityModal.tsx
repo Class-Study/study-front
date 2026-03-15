@@ -2,7 +2,7 @@ import React, { useMemo, useRef, useState } from 'react';
 import * as mammoth from 'mammoth';
 import { Modal } from '@/components/ui/Modal/Modal';
 import DocxPreviewEditor from '@/components/ui/DocxPreviewEditor/DocxPreviewEditor';
-import { ActivityType, WorkspaceFolder } from '@/types/workspace.types';
+import { WorkspaceFolder } from '@/types/workspace.types';
 import styles from './UploadActivityModal.module.css';
 
 interface UploadActivityModalProps {
@@ -13,7 +13,7 @@ interface UploadActivityModalProps {
   onSave: (payload: {
     folderId: string;
     title: string;
-    type: ActivityType;
+    type: 'EXERCISE';
     contentHtml: string;
     originalFilename: string;
   }) => Promise<void>;
@@ -37,7 +37,6 @@ export const UploadActivityModal: React.FC<UploadActivityModalProps> = ({
   const [isSaving, setIsSaving] = useState(false);
   const [fileName, setFileName] = useState('');
   const [title, setTitle] = useState('');
-  const [type, setType] = useState<ActivityType>('EXERCISE');
   const [contentHtml, setContentHtml] = useState('');
   const [error, setError] = useState('');
   const [folderId, setFolderId] = useState<string>('');
@@ -52,7 +51,6 @@ export const UploadActivityModal: React.FC<UploadActivityModalProps> = ({
     setIsSaving(false);
     setFileName('');
     setTitle('');
-    setType('EXERCISE');
     setContentHtml('');
     setError('');
     setFolderId(selectedFolderId ?? folders[0]?.id ?? '');
@@ -92,7 +90,7 @@ export const UploadActivityModal: React.FC<UploadActivityModalProps> = ({
       await onSave({
         folderId,
         title: title.trim(),
-        type,
+        type: 'EXERCISE',
         contentHtml,
         originalFilename: fileName,
       });
@@ -128,7 +126,7 @@ export const UploadActivityModal: React.FC<UploadActivityModalProps> = ({
             <span className={styles.dropzoneLoading}>Convertendo arquivo...</span>
           ) : (
             <>
-              <span className={styles.dropzoneTitle}>Arraste um arquivo .docx aqui</span>
+              <span className={styles.dropzoneTitle}>Arraste seu arquivo .docx aqui para gerar um novo exercício</span>
               <span className={styles.dropzoneSubtitle}>ou clique para selecionar</span>
             </>
           )}
@@ -148,33 +146,19 @@ export const UploadActivityModal: React.FC<UploadActivityModalProps> = ({
           }}
         />
 
-        <div className={styles.formRow}>
-          <div className={styles.field}>
-            <label className={styles.label}>Pasta</label>
-            <select
-              className={styles.input}
-              value={folderId}
-              onChange={(event) => setFolderId(event.target.value)}
-            >
-              {folders.map((folder) => (
-                <option key={folder.id} value={folder.id}>
-                  {folder.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className={styles.field}>
-            <label className={styles.label}>Tipo</label>
-            <select
-              className={styles.input}
-              value={type}
-              onChange={(event) => setType(event.target.value as ActivityType)}
-            >
-              <option value="EXERCISE">EXERCISE</option>
-              <option value="WORKSPACE">WORKSPACE</option>
-            </select>
-          </div>
+        <div className={styles.field}>
+          <label className={styles.label}>Pasta</label>
+          <select
+            className={styles.input}
+            value={folderId}
+            onChange={(event) => setFolderId(event.target.value)}
+          >
+            {folders.map((folder) => (
+              <option key={folder.id} value={folder.id}>
+                {folder.name}
+              </option>
+            ))}
+          </select>
         </div>
 
         <div className={styles.field}>

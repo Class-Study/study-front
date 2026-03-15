@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { Header } from '@/components/layout/Header/Header';
+import DocxPreviewEditor from '@/components/ui/DocxPreviewEditor/DocxPreviewEditor';
 import studentService from '@/services/api/student.service';
 import { useWorkspace } from '@/hooks/useWorkspace';
 import { WorkspaceSidebar } from './components/WorkspaceSidebar/WorkspaceSidebar';
@@ -53,9 +54,17 @@ export const WorkspacePage: React.FC = () => {
   const [chatVisible, setChatVisible] = useState(true);
   const [messages, setMessages] = useState<ChatMessage[]>(MOCK_CHAT);
   const [studentName, setStudentName] = useState('');
+  const [isEditingNewWorkspace, setIsEditingNewWorkspace] = useState(false);
+  const [newWorkspaceTitle, setNewWorkspaceTitle] = useState(
+    `Aula de Conversacao - ${new Date().toLocaleDateString('pt-BR')}`,
+  );
+  const [newWorkspaceContent, setNewWorkspaceContent] = useState('<p></p>');
+  const [workspaceDrafts, setWorkspaceDrafts] = useState<Record<string, {
+    title: string;
+    contentHtml: string;
+  }>>({});
+  const [workspaceDraftFeedback, setWorkspaceDraftFeedback] = useState<string | null>(null);
   const [newItemForm, setNewItemForm] = useState<{
-    type: 'folder' | 'activity';
-    folderId?: string;
     title: string;
   } | null>(null);
   const [uploadModalState, setUploadModalState] = useState<{
@@ -77,10 +86,9 @@ export const WorkspacePage: React.FC = () => {
   );
 
   const activeFolderId = useMemo(() => {
-    if (newItemForm?.folderId) return newItemForm.folderId;
     if (activeActivity?.folderId) return activeActivity.folderId;
     return exerciseFolders[0]?.id;
-  }, [activeActivity?.folderId, exerciseFolders, newItemForm?.folderId]);
+  }, [activeActivity?.folderId, exerciseFolders]);
 
   useEffect(() => {
     fetchWorkspace();
@@ -108,6 +116,26 @@ export const WorkspacePage: React.FC = () => {
       setActiveActivity(updatedActivity);
     }
   }, [activeActivity, allActivities]);
+
+  useEffect(() => {
+    if (activeActivity?.type !== 'WORKSPACE') {
+      return;
+    }
+
+    setWorkspaceDrafts((prev) => {
+      if (prev[activeActivity.id]) {
+        return prev;
+      }
+
+      return {
+        ...prev,
+        [activeActivity.id]: {
+          title: activeActivity.title,
+          contentHtml: activeActivity.contentHtml,
+        },
+      };
+    });
+  }, [activeActivity]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -141,14 +169,12 @@ export const WorkspacePage: React.FC = () => {
     }
   };
 
-  const handleCreateActivity = async (type: 'EXERCISE' | 'WORKSPACE'): Promise<void> => {
-    const folderId = newItemForm?.folderId ?? activeFolderId;
-    if (!folderId || !newItemForm?.title.trim()) return;
+  const handleCreateWorkspace = async (): Promise<void> => {
+    setIsEditingNewWorkspace(true);
+    setWorkspaceDraftFeedback(null);
 
-    const activity = await createActivity(folderId, newItemForm.title.trim(), type, '');
-    if (activity) {
-      setActiveActivity(activity);
-      setNewItemForm(null);
+    if (!newWorkspaceTitle.trim()) {
+      setNewWorkspaceTitle(`Aula de Conversacao - ${new Date().toLocaleDateString('pt-BR')}`);
     }
   };
 
@@ -162,7 +188,7 @@ export const WorkspacePage: React.FC = () => {
   const handleSaveUploadedActivity = async (payload: {
     folderId: string;
     title: string;
-    type: 'EXERCISE' | 'WORKSPACE';
+    type: 'EXERCISE';
     contentHtml: string;
     originalFilename: string;
   }): Promise<void> => {
@@ -179,6 +205,74 @@ export const WorkspacePage: React.FC = () => {
     }
 
     setActiveActivity(activity);
+  };
+
+  const handleSelectActivity = (activity: WorkspaceActivity): void => {
+    setIsEditingNewWorkspace(false);
+    setWorkspaceDraftFeedback(null);
+    setActiveActivity(activity);
+  };
+
+  const handleWorkspaceDraftSave = (): void => {
+    setWorkspaceDraftFeedback('Rascunho salvo localmente.');
+  };
+
+  const handleCloseWorkspaceDraft = (): void => {
+    setIsEditingNewWorkspace(false);
+    setWorkspaceDraftFeedback(null);
+  };
+
+  const isWorkspaceActive = isEditingNewWorkspace || activeActivity?.type === 'WORKSPACE';
+  const selectedWorkspaceDraft = activeActivity?.type === 'WORKSPACE'
+    ? workspaceDrafts[activeActivity.id]
+    : null;
+
+  const workspaceTitle = isEditingNewWorkspace
+    ? newWorkspaceTitle
+    : selectedWorkspaceDraft?.title ?? activeActivity?.title ?? '';
+
+  const workspaceContent = isEditingNewWorkspace
+    ? newWorkspaceContent
+    : selectedWorkspaceDraft?.contentHtml ?? activeActivity?.contentHtml ?? '<p></p>';
+
+  const updateWorkspaceTitle = (nextTitle: string): void => {
+    if (isEditingNewWorkspace) {
+      setNewWorkspaceTitle(nextTitle);
+      return;
+    }
+
+    if (!activeActivity || activeActivity.type !== 'WORKSPACE') {
+      return;
+    }
+
+    setWorkspaceDrafts((prev) => ({
+      ...prev,
+      [activeActivity.id]: {
+        title: nextTitle,
+        contentHtml: prev[activeActivity.id]?.contentHtml ?? activeActivity.contentHtml,
+      },
+    }));
+  };
+
+  const updateWorkspaceContent = (nextHtml: string): void => {
+    setWorkspaceDraftFeedback(null);
+
+    if (isEditingNewWorkspace) {
+      setNewWorkspaceContent(nextHtml);
+      return;
+    }
+
+    if (!activeActivity || activeActivity.type !== 'WORKSPACE') {
+      return;
+    }
+
+    setWorkspaceDrafts((prev) => ({
+      ...prev,
+      [activeActivity.id]: {
+        title: prev[activeActivity.id]?.title ?? activeActivity.title,
+        contentHtml: nextHtml,
+      },
+    }));
   };
 
   const stopResizing = (): void => {
@@ -268,31 +362,71 @@ export const WorkspacePage: React.FC = () => {
           workspaces={workspaceActivities}
           activeActivityId={activeActivity?.id ?? null}
           width={sidebarWidth}
-          onSelectActivity={setActiveActivity}
+          onSelectActivity={handleSelectActivity}
           collapsed={sidebarCollapsed}
           onToggleCollapse={() => setSidebarCollapsed((prev) => !prev)}
           onResizeStart={handleSidebarResizeStart}
           newItemForm={newItemForm}
-          defaultFolderId={activeFolderId}
           onChangeNewItemForm={setNewItemForm}
           onCreateFolder={handleCreateFolder}
-          onCreateExercise={() => handleCreateActivity('EXERCISE')}
-          onCreateWorkspace={() => handleCreateActivity('WORKSPACE')}
+          onCreateWorkspace={handleCreateWorkspace}
           onOpenUploadForFolder={handleOpenUploadForFolder}
         />
 
         <div className={styles.editorArea}>
-          <WorkspaceEditor
-            activity={activeActivity}
-            editable={activeActivity?.type === 'WORKSPACE'}
-            presence={MOCK_PRESENCE}
-            onContentChange={(html) => {
-              if (activeActivity?.id) {
-                saveContent(activeActivity.id, html);
-              }
-            }}
-            headerStatus={saving ? <span className={styles.savingIndicator}>Salvando...</span> : null}
-          />
+          {isWorkspaceActive ? (
+            <div className={styles.workspaceContainer}>
+              <div className={styles.workspaceHeaderRow}>
+                <input
+                  className={styles.workspaceTitleInput}
+                  placeholder="Titulo do Workspace..."
+                  value={workspaceTitle}
+                  onChange={(event) => updateWorkspaceTitle(event.target.value)}
+                />
+
+                <div className={styles.workspaceActions}>
+                  <button
+                    type="button"
+                    className={styles.workspaceSecondaryBtn}
+                    onClick={handleCloseWorkspaceDraft}
+                  >
+                    Fechar
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.workspacePrimaryBtn}
+                    onClick={handleWorkspaceDraftSave}
+                  >
+                    Salvar
+                  </button>
+                </div>
+              </div>
+
+              {workspaceDraftFeedback && (
+                <span className={styles.workspaceFeedback}>{workspaceDraftFeedback}</span>
+              )}
+
+              <div className={styles.workspaceEditorBody}>
+                <DocxPreviewEditor
+                  html={workspaceContent}
+                  editable={true}
+                  onChange={updateWorkspaceContent}
+                />
+              </div>
+            </div>
+          ) : (
+            <WorkspaceEditor
+              activity={activeActivity}
+              editable={false}
+              presence={MOCK_PRESENCE}
+              onContentChange={(html) => {
+                if (activeActivity?.id) {
+                  saveContent(activeActivity.id, html);
+                }
+              }}
+              headerStatus={saving ? <span className={styles.savingIndicator}>Salvando...</span> : null}
+            />
+          )}
         </div>
 
         <div className={`${styles.rightPanel} ${chatVisible ? '' : styles.rightPanelHidden}`}>

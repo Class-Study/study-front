@@ -13,18 +13,12 @@ interface WorkspaceSidebarProps {
   onToggleCollapse: () => void;
   onResizeStart: () => void;
   newItemForm: {
-    type: 'folder' | 'activity';
-    folderId?: string;
     title: string;
   } | null;
-  defaultFolderId?: string;
   onChangeNewItemForm: React.Dispatch<React.SetStateAction<{
-    type: 'folder' | 'activity';
-    folderId?: string;
     title: string;
   } | null>>;
   onCreateFolder: () => void;
-  onCreateExercise: () => void;
   onCreateWorkspace: () => void;
   onOpenUploadForFolder: (folderId: string) => void;
 }
@@ -39,10 +33,8 @@ export const WorkspaceSidebar: React.FC<WorkspaceSidebarProps> = ({
   onToggleCollapse,
   onResizeStart,
   newItemForm,
-  defaultFolderId,
   onChangeNewItemForm,
   onCreateFolder,
-  onCreateExercise,
   onCreateWorkspace,
   onOpenUploadForFolder,
 }) => {
@@ -79,8 +71,6 @@ export const WorkspaceSidebar: React.FC<WorkspaceSidebarProps> = ({
 
   const openCreateForm = (): void => {
     onChangeNewItemForm({
-      type: folders.length > 0 ? 'activity' : 'folder',
-      folderId: defaultFolderId,
       title: '',
     });
   };
@@ -107,6 +97,18 @@ export const WorkspaceSidebar: React.FC<WorkspaceSidebarProps> = ({
       <div className={styles.scrollArea}>
         {/* Workspaces section */}
         <div className={styles.sectionLabel}>Workspaces</div>
+
+        <button
+          type="button"
+          className={styles.addWorkspaceMinimal}
+          onClick={() => {
+            void onCreateWorkspace();
+          }}
+          title="Criar workspace em branco"
+        >
+          <span>+ Novo Workspace</span>
+        </button>
+
         {workspaces.map((ws) => (
           <div
             key={ws.id}
@@ -182,52 +184,10 @@ export const WorkspaceSidebar: React.FC<WorkspaceSidebarProps> = ({
       <div className={styles.footer}>
         {newItemForm ? (
           <div className={styles.createForm}>
-            <div className={styles.formTabs}>
-              <button
-                type="button"
-                className={`${styles.formTab} ${newItemForm.type === 'folder' ? styles.formTabActive : ''}`}
-                onClick={() => onChangeNewItemForm((prev) => prev ? {
-                  ...prev,
-                  type: 'folder',
-                } : prev)}
-              >
-                Pasta
-              </button>
-              <button
-                type="button"
-                className={`${styles.formTab} ${newItemForm.type === 'activity' ? styles.formTabActive : ''}`}
-                onClick={() => onChangeNewItemForm((prev) => prev ? {
-                  ...prev,
-                  type: 'activity',
-                  folderId: prev.folderId ?? defaultFolderId,
-                } : prev)}
-                disabled={folders.length === 0}
-              >
-                Atividade
-              </button>
-            </div>
-
-            {newItemForm.type === 'activity' && folders.length > 0 && (
-              <select
-                className={styles.formSelect}
-                value={newItemForm.folderId ?? defaultFolderId ?? ''}
-                onChange={(event) => onChangeNewItemForm((prev) => prev ? {
-                  ...prev,
-                  folderId: event.target.value,
-                } : prev)}
-              >
-                {folders.map((folder) => (
-                  <option key={folder.id} value={folder.id}>
-                    {folder.name}
-                  </option>
-                ))}
-              </select>
-            )}
-
             <input
               type="text"
               className={styles.formInput}
-              placeholder={newItemForm.type === 'folder' ? 'Nome da pasta' : 'Nome da atividade'}
+              placeholder="Nome da pasta"
               value={newItemForm.title}
               onChange={(event) => onChangeNewItemForm((prev) => prev ? {
                 ...prev,
@@ -244,34 +204,13 @@ export const WorkspaceSidebar: React.FC<WorkspaceSidebarProps> = ({
                 Cancelar
               </button>
 
-              {newItemForm.type === 'folder' ? (
-                <button
-                  type="button"
-                  className={styles.formPrimaryBtn}
-                  onClick={onCreateFolder}
-                >
-                  Criar pasta
-                </button>
-              ) : (
-                <>
-                  <button
-                    type="button"
-                    className={styles.formSecondaryBtn}
-                    onClick={onCreateExercise}
-                    disabled={folders.length === 0}
-                  >
-                    Exercício
-                  </button>
-                  <button
-                    type="button"
-                    className={styles.formPrimaryBtn}
-                    onClick={onCreateWorkspace}
-                    disabled={folders.length === 0}
-                  >
-                    Workspace
-                  </button>
-                </>
-              )}
+              <button
+                type="button"
+                className={styles.formPrimaryBtn}
+                onClick={onCreateFolder}
+              >
+                Criar pasta
+              </button>
             </div>
           </div>
         ) : (

@@ -69,6 +69,30 @@
   white-space: nowrap;
 }
 
+.addWorkspaceMinimal {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: calc(100% - 24px);
+  margin: 8px 12px 16px;
+  padding: 10px;
+  background: transparent;
+  border: 1px dashed var(--color-border-secondary, var(--color-border));
+  border-radius: var(--radius-md);
+  color: var(--color-text-tertiary);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.addWorkspaceMinimal:hover:not(:disabled) {
+  border-color: var(--color-primary, var(--color-accent));
+  color: var(--color-text-primary);
+  background: var(--color-bg-hover, var(--color-bg-input));
+}
+
 .folderRow {
   display: flex;
   align-items: center;
@@ -110,10 +134,6 @@
 
 .folderChevronOpen {
   transform: rotate(90deg);
-}
-
-.folderChildren {
-  /* indentation handled in activityItem padding */
 }
 
 .activityItem {
@@ -219,41 +239,6 @@
   gap: 8px;
 }
 
-.formTabs {
-  display: flex;
-  gap: 6px;
-}
-
-.formTab {
-  flex: 1;
-  background: var(--color-bg-input);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  color: var(--color-text-secondary);
-  padding: 6px 8px;
-  font-size: 11px;
-  font-family: var(--font-sans);
-  cursor: pointer;
-  transition: all 0.15s;
-}
-
-.formTab:hover:not(:disabled) {
-  color: var(--color-text-primary);
-  border-color: var(--color-accent);
-}
-
-.formTab:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.formTabActive {
-  background: rgba(45, 138, 93, 0.12);
-  border-color: var(--color-accent);
-  color: var(--color-accent);
-}
-
-.formSelect,
 .formInput {
   width: 100%;
   background: var(--color-bg-input);
@@ -266,7 +251,6 @@
   outline: none;
 }
 
-.formSelect:focus,
 .formInput:focus {
   border-color: var(--color-accent);
 }
@@ -278,7 +262,6 @@
 }
 
 .formCancelBtn,
-.formSecondaryBtn,
 .formPrimaryBtn {
   flex: 1;
   min-width: 0;
@@ -297,23 +280,16 @@
   color: var(--color-text-secondary);
 }
 
-.formSecondaryBtn {
-  background: rgba(58, 95, 196, 0.12);
-  color: var(--color-blue);
-}
-
 .formPrimaryBtn {
   background: var(--color-accent);
   color: white;
 }
 
 .formCancelBtn:hover,
-.formSecondaryBtn:hover,
 .formPrimaryBtn:hover {
   opacity: 0.86;
 }
 
-.formSecondaryBtn:disabled,
 .formPrimaryBtn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
