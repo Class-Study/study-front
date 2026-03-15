@@ -112,6 +112,12 @@
   color: var(--color-text-primary);
 }
 
+.folderRowDragOver {
+  background: color-mix(in srgb, var(--color-accent) 12%, transparent);
+  border-left: 2px solid var(--color-accent);
+  color: var(--color-text-primary);
+}
+
 .folderIcon {
   flex-shrink: 0;
   font-size: 12px;
@@ -154,6 +160,10 @@
 .activityItem:hover {
   background: var(--color-bg-input);
   color: var(--color-text-primary);
+}
+
+.activityDragging {
+  opacity: 0.55;
 }
 
 .activityItemActive {
@@ -331,4 +341,103 @@
 
 .resizeHandle:hover {
   background: rgba(45, 138, 93, 0.15);
+}
+
+.moveConfirmBody {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.moveConfirmText {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  color: var(--color-text-primary);
+  line-height: 1.5;
+}
+
+.moveFlowRow {
+  display: flex;
+  align-items: stretch;
+  gap: 10px;
+}
+
+.moveFolderBox {
+  flex: 1;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 10px;
+  background: var(--color-bg-input);
+  color: var(--color-text-secondary);
+}
+
+.moveFolderTarget {
+  border-color: var(--color-primary, var(--color-accent));
+  background: color-mix(in srgb, var(--color-primary, var(--color-accent)) 10%, transparent);
+  color: var(--color-primary, var(--color-accent));
+}
+
+.moveFolderInfo {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.moveFolderLabel {
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-tertiary);
+}
+
+.moveFolderName {
+  font-size: 12px;
+  font-family: var(--font-sans);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.moveArrow {
+  color: var(--color-text-tertiary);
+  align-self: center;
+}
+
+.moveConfirmActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.moveCancelBtn,
+.moveConfirmBtn {
+  border-radius: var(--radius-md);
+  font-family: var(--font-sans);
+  font-size: 12px;
+  padding: 8px 12px;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+
+.moveCancelBtn {
+  border: 1px solid var(--color-border);
+  color: var(--color-text-secondary);
+  background: transparent;
+}
+
+.moveConfirmBtn {
+  border: 1px solid var(--color-accent);
+  color: #fff;
+  background: var(--color-accent);
+}
+
+.moveCancelBtn:disabled,
+.moveConfirmBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }

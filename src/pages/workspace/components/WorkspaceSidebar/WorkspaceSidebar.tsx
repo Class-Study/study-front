@@ -1,5 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { ChevronRight, PanelLeftClose } from 'lucide-react';
+import { ArrowRight, ChevronRight, FolderClosed, PanelLeftClose } from 'lucide-react';
+import {
+  DragDropContext,
+  Draggable,
+  Droppable,
+  DropResult,
+} from '@hello-pangea/dnd';
+import { Modal } from '@/components/ui/Modal/Modal';
 import { WorkspaceActivity, WorkspaceFolder } from '@/types/workspace.types';
 import styles from './WorkspaceSidebar.module.css';
 
@@ -21,6 +28,16 @@ interface WorkspaceSidebarProps {
   onCreateFolder: () => void;
   onCreateWorkspace: () => void;
   onOpenUploadForFolder: (folderId: string) => void;
+  onMoveActivity: (activityId: string, targetFolderId: string) => Promise<void>;
+}
+
+interface PendingMove {
+  activityId: string;
+  activityTitle: string;
+  sourceFolderId: string;
+  sourceFolderName: string;
+  targetFolderId: string;
+  targetFolderName: string;
 }
 
 export const WorkspaceSidebar: React.FC<WorkspaceSidebarProps> = ({
@@ -37,6 +54,7 @@ export const WorkspaceSidebar: React.FC<WorkspaceSidebarProps> = ({
   onCreateFolder,
   onCreateWorkspace,
   onOpenUploadForFolder,
+  onMoveActivity,
 }) => {
   const activeFolderId = folders.find((f) =>
     f.activities.some((a) => a.id === activeActivityId),
@@ -45,6 +63,8 @@ export const WorkspaceSidebar: React.FC<WorkspaceSidebarProps> = ({
   const [openFolders, setOpenFolders] = useState<Set<string>>(
     () => new Set(activeFolderId ? [activeFolderId] : []),
   );
+  const [pendingMove, setPendingMove] = useState<PendingMove | null>(null);
+  const [confirmingMove, setConfirmingMove] = useState(false);
 
   const toggleFolder = (folderId: string): void => {
     setOpenFolders((prev) => {
@@ -77,6 +97,51 @@ export const WorkspaceSidebar: React.FC<WorkspaceSidebarProps> = ({
 
   const currentWidth = collapsed ? 0 : width;
 
+  const handleDragEnd = (result: DropResult): void => {
+    const destinationFolderId = result.destination?.droppableId;
+
+    if (!destinationFolderId) {
+      return;
+    }
+
+    const sourceFolder = folders.find((folder) =>
+      folder.activities.some((activity) => activity.id === result.draggableId),
+    );
+    const targetFolder = folders.find((folder) => folder.id === destinationFolderId);
+    const activity = sourceFolder?.activities.find((item) => item.id === result.draggableId);
+
+    if (!sourceFolder || !targetFolder || !activity) {
+      return;
+    }
+
+    if (sourceFolder.id === targetFolder.id) {
+      return;
+    }
+
+    setPendingMove({
+      activityId: result.draggableId,
+      activityTitle: activity.title,
+      sourceFolderId: sourceFolder.id,
+      sourceFolderName: sourceFolder.name,
+      targetFolderId: targetFolder.id,
+      targetFolderName: targetFolder.name,
+    });
+  };
+
+  const handleConfirmMove = async (): Promise<void> => {
+    if (!pendingMove) {
+      return;
+    }
+
+    setConfirmingMove(true);
+    try {
+      await onMoveActivity(pendingMove.activityId, pendingMove.targetFolderId);
+      setPendingMove(null);
+    } finally {
+      setConfirmingMove(false);
+    }
+  };
+
   return (
     <aside
       className={`${styles.sidebar} ${collapsed ? styles.sidebarCollapsed : ''}`}
@@ -94,6 +159,7 @@ export const WorkspaceSidebar: React.FC<WorkspaceSidebarProps> = ({
         </button>
       </div>
 
+      <DragDropContext onDragEnd={handleDragEnd}>
       <div className={styles.scrollArea}>
         {/* Workspaces section */}
         <div className={styles.sectionLabel}>Workspaces</div>
@@ -109,31 +175,46 @@ export const WorkspaceSidebar: React.FC<WorkspaceSidebarProps> = ({
           <span>+ Novo Workspace</span>
         </button>
 
-        {workspaces.map((ws) => (
-          <div
-            key={ws.id}
-            role="button"
-            tabIndex={0}
-            className={`${styles.activityItem} ${activeActivityId === ws.id ? styles.activityItemActive : ''}`}
-            onClick={() => onSelectActivity(ws)}
-            onKeyDown={(e) => e.key === 'Enter' && onSelectActivity(ws)}
-          >
-            <span className={styles.activityIcon}>■</span>
-            <span className={styles.activityLabel}>{ws.title}</span>
-            <span className={`${styles.badge} ${styles.badgeLive}`}>ao vivo</span>
-          </div>
-        ))}
+        <Droppable droppableId="workspace-pool">
+          {(provided) => (
+            <div ref={provided.innerRef} {...provided.droppableProps}>
+              {workspaces.map((ws, index) => (
+                <Draggable key={ws.id} draggableId={ws.id} index={index}>
+                  {(dragProvided, dragSnapshot) => (
+                    <div
+                      ref={dragProvided.innerRef}
+                      {...dragProvided.draggableProps}
+                      {...dragProvided.dragHandleProps}
+                      role="button"
+                      tabIndex={0}
+                      className={`${styles.activityItem} ${activeActivityId === ws.id ? styles.activityItemActive : ''} ${dragSnapshot.isDragging ? styles.activityDragging : ''}`}
+                      onClick={() => onSelectActivity(ws)}
+                      onKeyDown={(e) => e.key === 'Enter' && onSelectActivity(ws)}
+                    >
+                      <span className={styles.activityIcon}>■</span>
+                      <span className={styles.activityLabel}>{ws.title}</span>
+                      <span className={`${styles.badge} ${styles.badgeLive}`}>ao vivo</span>
+                    </div>
+                  )}
+                </Draggable>
+              ))}
+              {provided.placeholder}
+            </div>
+          )}
+        </Droppable>
 
         {/* Exercises section */}
         <div className={styles.sectionLabel}>Exercícios</div>
         {folders.map((folder) => {
           const isOpen = openFolders.has(folder.id);
           return (
-            <div key={folder.id}>
+            <Droppable key={folder.id} droppableId={folder.id}>
+              {(provided, snapshot) => (
+            <div key={folder.id} ref={provided.innerRef} {...provided.droppableProps}>
               <div
                 role="button"
                 tabIndex={0}
-                className={styles.folderRow}
+                className={`${styles.folderRow} ${snapshot.isDraggingOver ? styles.folderRowDragOver : ''}`}
                 onClick={() => toggleFolder(folder.id)}
                 onKeyDown={(e) => e.key === 'Enter' && toggleFolder(folder.id)}
               >
@@ -150,22 +231,29 @@ export const WorkspaceSidebar: React.FC<WorkspaceSidebarProps> = ({
                   {folder.activities.length === 0 ? (
                     <div className={styles.emptyFolder}>Vazio</div>
                   ) : (
-                    folder.activities.map((activity) => (
-                      <div
-                        key={activity.id}
-                        role="button"
-                        tabIndex={0}
-                        className={`${styles.activityItem} ${
-                          activeActivityId === activity.id ? styles.activityItemActive : ''
-                        }`}
-                        onClick={() => onSelectActivity(activity)}
-                        onKeyDown={(e) => e.key === 'Enter' && onSelectActivity(activity)}
-                      >
-                        <span className={styles.activityIcon}>📄</span>
-                        <span className={styles.activityLabel}>{activity.title}</span>
-                      </div>
+                    folder.activities.map((activity, index) => (
+                      <Draggable key={activity.id} draggableId={activity.id} index={index}>
+                        {(dragProvided, dragSnapshot) => (
+                          <div
+                            ref={dragProvided.innerRef}
+                            {...dragProvided.draggableProps}
+                            {...dragProvided.dragHandleProps}
+                            role="button"
+                            tabIndex={0}
+                            className={`${styles.activityItem} ${
+                              activeActivityId === activity.id ? styles.activityItemActive : ''
+                            } ${dragSnapshot.isDragging ? styles.activityDragging : ''}`}
+                            onClick={() => onSelectActivity(activity)}
+                            onKeyDown={(e) => e.key === 'Enter' && onSelectActivity(activity)}
+                          >
+                            <span className={styles.activityIcon}>📄</span>
+                            <span className={styles.activityLabel}>{activity.title}</span>
+                          </div>
+                        )}
+                      </Draggable>
                     ))
                   )}
+                  {provided.placeholder}
 
                   <button
                     type="button"
@@ -177,9 +265,12 @@ export const WorkspaceSidebar: React.FC<WorkspaceSidebarProps> = ({
                 </div>
               )}
             </div>
+              )}
+            </Droppable>
           );
         })}
       </div>
+      </DragDropContext>
 
       <div className={styles.footer}>
         {newItemForm ? (
@@ -228,6 +319,66 @@ export const WorkspaceSidebar: React.FC<WorkspaceSidebarProps> = ({
           onMouseDown={onResizeStart}
         />
       )}
+
+      <Modal
+        isOpen={pendingMove !== null}
+        onClose={() => {
+          if (!confirmingMove) {
+            setPendingMove(null);
+          }
+        }}
+        title="Confirmar Movimentação"
+        size="sm"
+      >
+        {pendingMove && (
+          <div className={styles.moveConfirmBody}>
+            <p className={styles.moveConfirmText}>
+              Deseja mover a atividade <strong>{pendingMove.activityTitle}</strong>?
+            </p>
+
+            <div className={styles.moveFlowRow}>
+              <div className={styles.moveFolderBox}>
+                <FolderClosed size={14} />
+                <div className={styles.moveFolderInfo}>
+                  <span className={styles.moveFolderLabel}>De</span>
+                  <span className={styles.moveFolderName}>{pendingMove.sourceFolderName}</span>
+                </div>
+              </div>
+
+              <ArrowRight size={16} className={styles.moveArrow} />
+
+              <div className={`${styles.moveFolderBox} ${styles.moveFolderTarget}`}>
+                <FolderClosed size={14} />
+                <div className={styles.moveFolderInfo}>
+                  <span className={styles.moveFolderLabel}>Para</span>
+                  <span className={styles.moveFolderName}>{pendingMove.targetFolderName}</span>
+                </div>
+              </div>
+            </div>
+
+            <div className={styles.moveConfirmActions}>
+              <button
+                type="button"
+                className={styles.moveCancelBtn}
+                onClick={() => setPendingMove(null)}
+                disabled={confirmingMove}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                className={styles.moveConfirmBtn}
+                onClick={() => {
+                  void handleConfirmMove();
+                }}
+                disabled={confirmingMove}
+              >
+                {confirmingMove ? 'Movendo...' : 'Confirmar'}
+              </button>
+            </div>
+          </div>
+        )}
+      </Modal>
     </aside>
   );
 };

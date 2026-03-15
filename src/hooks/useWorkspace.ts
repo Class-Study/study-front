@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import workspaceService from '@/services/api/workspace.service';
+import activityService from '@/services/api/activity.service';
 import {
   WorkspaceActivity,
   WorkspaceData,
@@ -127,6 +128,78 @@ export const useWorkspace = (studentId: string) => {
     }
   }, [studentId]);
 
+  const moveActivity = useCallback(async (
+    activityId: string,
+    targetFolderId: string,
+  ): Promise<boolean> => {
+    if (!workspace) {
+      return false;
+    }
+
+    let sourceFolderId: string | null = null;
+    let sourceActivity: WorkspaceActivity | null = null;
+
+    workspace.folders.forEach((folder) => {
+      const found = folder.activities.find((activity) => activity.id === activityId);
+      if (found) {
+        sourceFolderId = folder.id;
+        sourceActivity = found;
+      }
+    });
+
+    if (!sourceFolderId || !sourceActivity || sourceFolderId === targetFolderId) {
+      return true;
+    }
+
+    const previousWorkspace = workspace;
+
+    setWorkspace((prev) => {
+      if (!prev) return prev;
+
+      const targetFolderExists = prev.folders.some((folder) => folder.id === targetFolderId);
+      if (!targetFolderExists) {
+        return prev;
+      }
+
+      return {
+        ...prev,
+        folders: prev.folders.map((folder) => {
+          if (folder.id === sourceFolderId) {
+            return {
+              ...folder,
+              activities: folder.activities.filter((activity) => activity.id !== activityId),
+            };
+          }
+
+          if (folder.id === targetFolderId && sourceActivity) {
+            return {
+              ...folder,
+              activities: [
+                ...folder.activities,
+                {
+                  ...sourceActivity,
+                  folderId: targetFolderId,
+                },
+              ],
+            };
+          }
+
+          return folder;
+        }),
+      };
+    });
+
+    try {
+      await activityService.update(activityId, {
+        folderId: targetFolderId,
+      });
+      return true;
+    } catch {
+      setWorkspace(previousWorkspace);
+      return false;
+    }
+  }, [workspace]);
+
   const workspaceActivities = useMemo(
     () => workspace?.folders
       .flatMap((folder) => folder.activities)
@@ -153,5 +226,6 @@ export const useWorkspace = (studentId: string) => {
     saveContent,
     createActivity,
     createFolder,
+    moveActivity,
   };
 };

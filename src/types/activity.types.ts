@@ -21,4 +21,5 @@ export interface UpdateActivityRequest {
   title?: string;
   type?: ActivityType;
   convertedHtml?: string;
+  folderId?: string;
 }

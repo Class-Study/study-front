@@ -38,6 +38,7 @@ export const WorkspacePage: React.FC = () => {
     saveContent,
     createActivity,
     createFolder,
+    moveActivity,
   } = useWorkspace(studentId ?? '');
 
   const [activeActivity, setActiveActivity] = useState<WorkspaceActivity | null>(null);
@@ -213,6 +214,16 @@ export const WorkspacePage: React.FC = () => {
     setActiveActivity(activity);
   };
 
+  const handleMoveActivity = async (
+    activityId: string,
+    targetFolderId: string,
+  ): Promise<void> => {
+    const moved = await moveActivity(activityId, targetFolderId);
+    if (!moved) {
+      alert('Nao foi possivel mover a atividade. Tente novamente.');
+    }
+  };
+
   const handleWorkspaceDraftSave = (): void => {
     setWorkspaceDraftFeedback('Rascunho salvo localmente.');
   };
@@ -371,6 +382,7 @@ export const WorkspacePage: React.FC = () => {
           onCreateFolder={handleCreateFolder}
           onCreateWorkspace={handleCreateWorkspace}
           onOpenUploadForFolder={handleOpenUploadForFolder}
+          onMoveActivity={handleMoveActivity}
         />
 
         <div className={styles.editorArea}>
