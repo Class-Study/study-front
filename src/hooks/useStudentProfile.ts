@@ -5,16 +5,20 @@ import {
   StudentActivity,
   StudentStats,
   NoteType,
+  StudentExerciseFolder,
 } from '@/types/studentProfile.types';
 
 export const useStudentProfile = (studentId: string) => {
   const [notes, setNotes] = useState<StudentNote[]>([]);
   const [activities, setActivities] = useState<StudentActivity[]>([]);
+  const [exerciseFolders, setExerciseFolders] = useState<StudentExerciseFolder[]>([]);
   const [stats, setStats] = useState<StudentStats | null>(null);
   const [loadingNotes, setLoadingNotes] = useState(false);
   const [loadingActivities, setLoadingActivities] = useState(false);
+  const [loadingFolders, setLoadingFolders] = useState(false);
   const [loadingStats, setLoadingStats] = useState(false);
   const [savingNote, setSavingNote] = useState(false);
+  const [creatingExercise, setCreatingExercise] = useState(false);
 
   const fetchNotes = useCallback(async () => {
     if (!studentId) return;
@@ -39,6 +43,19 @@ export const useStudentProfile = (studentId: string) => {
       console.error('Erro ao carregar atividades');
     } finally {
       setLoadingActivities(false);
+    }
+  }, [studentId]);
+
+  const fetchFolders = useCallback(async () => {
+    if (!studentId) return;
+    setLoadingFolders(true);
+    try {
+      const data = await studentProfileService.getExerciseFolders(studentId);
+      setExerciseFolders(data);
+    } catch {
+      console.error('Erro ao carregar pastas do aluno');
+    } finally {
+      setLoadingFolders(false);
     }
   }, [studentId]);
 
@@ -76,17 +93,51 @@ export const useStudentProfile = (studentId: string) => {
     [studentId],
   );
 
+  const createExercise = useCallback(
+    async (
+      folderId: string,
+      title: string,
+      contentHtml: string,
+      originalFilename: string,
+    ): Promise<StudentActivity | null> => {
+      if (!studentId) return null;
+
+      setCreatingExercise(true);
+      try {
+        const newActivity = await studentProfileService.createExercise(studentId, folderId, {
+          title,
+          type: 'EXERCISE',
+          contentHtml,
+          originalFilename,
+        });
+        setActivities((prev) => [newActivity, ...prev]);
+        return newActivity;
+      } catch {
+        console.error('Erro ao criar exercício');
+        return null;
+      } finally {
+        setCreatingExercise(false);
+      }
+    },
+    [studentId],
+  );
+
   return {
     notes,
     activities,
+    exerciseFolders,
     stats,
     loadingNotes,
     loadingActivities,
+    loadingFolders,
     loadingStats,
     savingNote,
+    creatingExercise,
     fetchNotes,
     fetchActivities,
+    fetchFolders,
     fetchStats,
     saveNote,
+    createExercise,
   };
 };

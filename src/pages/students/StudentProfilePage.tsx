@@ -6,9 +6,10 @@ import studentService from '@/services/api/student.service';
 import { useLevelProfiles } from '@/hooks/useLevelProfiles';
 import { useStudentProfile } from '@/hooks/useStudentProfile';
 import { Student } from '@/types/student.types';
-import { ActivityType } from '@/types/studentProfile.types';
+import { ActivityType, StudentExerciseFolder } from '@/types/studentProfile.types';
 import { formatClassDays, formatClassTime, formatShortDate } from '@/utils/classDay.utils';
 import { ConfirmModal } from '@/components/ui/ConfirmModal/ConfirmModal';
+import { CreateExerciseModal } from './components/CreateExerciseModal/CreateExerciseModal';
 import styles from './StudentProfilePage.module.css';
 
 type NoteTab = 'private' | 'public';
@@ -65,13 +66,19 @@ export const StudentProfilePage: React.FC = () => {
   const {
     notes,
     activities,
+    exerciseFolders,
     stats,
     loadingNotes,
+    loadingActivities,
+    loadingFolders,
     savingNote,
+    creatingExercise,
     fetchNotes,
     fetchActivities,
+    fetchFolders,
     fetchStats,
     saveNote,
+    createExercise,
   } = useStudentProfile(id ?? '');
   const [student, setStudent] = useState<Student | null>(null);
   const [blocking, setBlocking] = useState(false);
@@ -81,6 +88,8 @@ export const StudentProfilePage: React.FC = () => {
   const [notesTab, setNotesTab] = useState<NoteTab>('private');
   const [privateNoteDraft, setPrivateNoteDraft] = useState('');
   const [publicNoteDraft, setPublicNoteDraft] = useState('');
+  const [isCreateExerciseModalOpen, setIsCreateExerciseModalOpen] = useState(false);
+  const [exerciseFeedback, setExerciseFeedback] = useState('');
 
   const profile = getProfileById(student?.levelProfileId);
   const levelCode = profile?.code ?? 'basic';
@@ -106,6 +115,48 @@ export const StudentProfilePage: React.FC = () => {
     [notes, notesTab],
   );
 
+  const exerciseSections = useMemo(() => {
+    const exercises = activities.filter((activity) => activity.type === 'EXERCISE');
+    const groupedActivities = new Map<string, typeof exercises>();
+
+    exercises.forEach((activity) => {
+      const current = groupedActivities.get(activity.folderId) ?? [];
+      groupedActivities.set(activity.folderId, [...current, activity]);
+    });
+
+    const knownFolderIds = new Set<string>();
+    const sections = exerciseFolders.map((folder) => {
+      knownFolderIds.add(folder.id);
+      return {
+        id: folder.id,
+        name: folder.name,
+        position: folder.position,
+        activities: groupedActivities.get(folder.id) ?? [],
+      };
+    });
+
+    exercises.forEach((activity) => {
+      if (knownFolderIds.has(activity.folderId)) {
+        return;
+      }
+
+      sections.push({
+        id: activity.folderId,
+        name: activity.folderName || 'Sem pasta',
+        position: Number.MAX_SAFE_INTEGER,
+        activities: exercises.filter((item) => item.folderId === activity.folderId),
+      });
+      knownFolderIds.add(activity.folderId);
+    });
+
+    return sections.sort((a, b) => a.position - b.position || a.name.localeCompare(b.name));
+  }, [activities, exerciseFolders]);
+
+  const defaultExerciseFolderId = useMemo(() => {
+    const firstFolder = exerciseSections[0];
+    return firstFolder?.id ?? null;
+  }, [exerciseSections]);
+
   const breadcrumbItems = [
     { label: 'Dashboard', path: '/dashboard' },
     { label: 'Alunos', path: '/dashboard' },
@@ -123,11 +174,12 @@ export const StudentProfilePage: React.FC = () => {
       fetchLevelProfiles(),
       fetchNotes(),
       fetchActivities(),
+      fetchFolders(),
       fetchStats(),
     ])
       .catch(() => setPageError('Erro ao carregar perfil do aluno'))
       .finally(() => setPageLoading(false));
-  }, [id, getStudentById, fetchLevelProfiles, fetchNotes, fetchActivities, fetchStats]);
+  }, [id, getStudentById, fetchLevelProfiles, fetchNotes, fetchActivities, fetchFolders, fetchStats]);
 
   const handleBlockClick = (): void => {
     setConfirmModal({ isOpen: true, action: 'block' });
@@ -167,6 +219,33 @@ export const StudentProfilePage: React.FC = () => {
         setPublicNoteDraft('');
       }
     }
+  };
+
+  const handleOpenCreateExercise = (): void => {
+    setExerciseFeedback('');
+    setIsCreateExerciseModalOpen(true);
+  };
+
+  const handleSaveExercise = async (payload: {
+    folderId: string;
+    title: string;
+    type: 'EXERCISE';
+    contentHtml: string;
+    originalFilename: string;
+  }): Promise<void> => {
+    const createdActivity = await createExercise(
+      payload.folderId,
+      payload.title,
+      payload.contentHtml,
+      payload.originalFilename,
+    );
+
+    if (!createdActivity) {
+      throw new Error('Falha ao criar exercício');
+    }
+
+    setExerciseFeedback('Exercício criado com sucesso.');
+    setIsCreateExerciseModalOpen(false);
   };
 
   const heroCardClass = `${styles.heroCard} ${
@@ -327,22 +406,54 @@ export const StudentProfilePage: React.FC = () => {
               </section>
 
               <section className={styles.activitiesCard}>
-                <h2 className={styles.activitiesTitle}>📋 Atividades</h2>
+                <div className={styles.activitiesHeader}>
+                  <div>
+                    <h2 className={styles.activitiesTitle}>EXERCÍCIOS</h2>
+                    <p className={styles.activitiesSubtitle}>Organize e publique novos exercícios nas pastas deste aluno.</p>
+                  </div>
 
-                {activities.length === 0 ? (
-                  <p className={styles.emptyState}>Nenhuma atividade ainda.</p>
+                  <button
+                    type="button"
+                    className={styles.addExerciseBtn}
+                    onClick={handleOpenCreateExercise}
+                    disabled={exerciseSections.length === 0}
+                    title={exerciseSections.length === 0 ? 'O aluno ainda não possui pastas' : 'Criar novo exercício'}
+                  >
+                    + Novo Exercício
+                  </button>
+                </div>
+
+                {exerciseFeedback && <p className={styles.successMsg}>{exerciseFeedback}</p>}
+
+                {loadingActivities || loadingFolders ? (
+                  <p className={styles.emptyState}>Carregando exercícios...</p>
+                ) : exerciseSections.length === 0 ? (
+                  <p className={styles.emptyState}>Nenhuma pasta disponível para exercícios.</p>
                 ) : (
-                  activities.map((activity) => (
-                    <div key={activity.id} className={styles.activityItem}>
-                      <span
-                        className={styles.activityDot}
-                        style={{ backgroundColor: getActivityColor(activity.type) }}
-                      />
-                      <div className={styles.activityInfo}>
-                        <div className={styles.activityTitle}>{activity.title}</div>
-                        <div className={styles.activityFolder}>{activity.folderName}</div>
+                  exerciseSections.map((folder) => (
+                    <div key={folder.id} className={styles.folderSection}>
+                      <div className={styles.folderHeaderRow}>
+                        <div className={styles.folderHeading}>📁 {folder.name}</div>
+                        <span className={styles.folderCount}>{folder.activities.length} exercício(s)</span>
                       </div>
-                      <div className={styles.activityDate}>{formatShortDate(activity.createdAt)}</div>
+
+                      {folder.activities.length === 0 ? (
+                        <p className={styles.folderEmpty}>Nenhum exercício nesta pasta.</p>
+                      ) : (
+                        folder.activities.map((activity) => (
+                          <div key={activity.id} className={styles.activityItem}>
+                            <span
+                              className={styles.activityDot}
+                              style={{ backgroundColor: getActivityColor(activity.type) }}
+                            />
+                            <div className={styles.activityInfo}>
+                              <div className={styles.activityTitle}>{activity.title}</div>
+                              <div className={styles.activityFolder}>{activity.folderName}</div>
+                            </div>
+                            <div className={styles.activityDate}>{formatShortDate(activity.createdAt)}</div>
+                          </div>
+                        ))
+                      )}
                     </div>
                   ))
                 )}
@@ -430,6 +541,17 @@ export const StudentProfilePage: React.FC = () => {
         }
         confirmLabel={confirmModal.action === 'block' ? 'Bloquear' : 'Desbloquear'}
         variant={confirmModal.action === 'block' ? 'danger' : 'default'}
+      />
+      <CreateExerciseModal
+        isOpen={isCreateExerciseModalOpen}
+        folders={exerciseSections.map((folder): StudentExerciseFolder => ({
+          id: folder.id,
+          name: folder.name,
+          position: folder.position,
+        }))}
+        selectedFolderId={defaultExerciseFolderId}
+        onClose={() => setIsCreateExerciseModalOpen(false)}
+        onSave={handleSaveExercise}
       />
     </div>
   );

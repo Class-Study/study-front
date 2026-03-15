@@ -1,0 +1,255 @@
+.shell {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.headerCopy {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.title {
+  margin: 0;
+  font-family: var(--font-serif);
+  font-size: 22px;
+  color: var(--color-text-primary);
+}
+
+.subtitle {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  line-height: 1.6;
+}
+
+.fieldGrid {
+  display: grid;
+  grid-template-columns: minmax(180px, 220px) minmax(0, 1fr);
+  gap: 14px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.label {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-tertiary);
+}
+
+.input {
+  width: 100%;
+  box-sizing: border-box;
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border-primary, var(--color-border));
+  border-radius: var(--radius-md);
+  padding: 11px 12px;
+  color: var(--color-text-primary);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  outline: none;
+}
+
+.input:focus {
+  border-color: var(--color-accent);
+}
+
+.dropzone {
+  border: 1.5px dashed var(--color-border-primary, var(--color-border));
+  border-radius: var(--radius-lg);
+  padding: 28px;
+  text-align: center;
+  cursor: pointer;
+  background: var(--color-bg-card);
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.dropzoneActive {
+  border-color: var(--color-accent);
+  background: color-mix(in srgb, var(--color-accent) 8%, var(--color-bg-card));
+}
+
+.dropzoneTitle {
+  display: block;
+  font-family: var(--font-serif);
+  font-size: 20px;
+  color: var(--color-text-primary);
+  margin-bottom: 6px;
+}
+
+.dropzoneSubtitle,
+.dropzoneLoading {
+  display: block;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  color: var(--color-text-secondary);
+}
+
+.dropzoneLoading {
+  color: var(--color-accent);
+}
+
+.hiddenInput {
+  display: none;
+}
+
+.fileCard {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border-primary, var(--color-border));
+  background: var(--color-bg-card);
+}
+
+.fileLabel {
+  display: block;
+  font-family: var(--font-sans);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-text-tertiary);
+  margin-bottom: 4px;
+}
+
+.fileName {
+  display: block;
+  font-family: var(--font-sans);
+  font-size: 14px;
+  color: var(--color-text-primary);
+}
+
+.fileAction,
+.secondaryBtn,
+.previewBtn,
+.primaryBtn,
+.backBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: var(--radius-md);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: opacity 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+}
+
+.fileAction,
+.secondaryBtn,
+.previewBtn,
+.backBtn {
+  padding: 9px 14px;
+  background: transparent;
+  color: var(--color-text-secondary);
+  border: 1px solid var(--color-border-primary, var(--color-border));
+}
+
+.fileAction:hover,
+.secondaryBtn:hover,
+.previewBtn:hover,
+.backBtn:hover {
+  border-color: var(--color-accent);
+  color: var(--color-text-primary);
+}
+
+.primaryBtn {
+  padding: 10px 16px;
+  background: var(--color-accent);
+  border: 1px solid var(--color-accent);
+  color: #fff;
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.error {
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--color-danger) 10%, transparent);
+  color: var(--color-danger);
+  font-family: var(--font-sans);
+  font-size: 13px;
+}
+
+.previewTopBar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.previewMeta {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.previewTitle {
+  font-family: var(--font-serif);
+  font-size: 24px;
+  color: var(--color-text-primary);
+}
+
+.previewFile {
+  font-family: var(--font-sans);
+  font-size: 12px;
+  color: var(--color-text-tertiary);
+}
+
+.previewNotice {
+  font-family: var(--font-sans);
+  font-size: 13px;
+  color: var(--color-text-secondary);
+}
+
+.previewPanel {
+  border: 1px solid var(--color-border-primary, var(--color-border));
+  border-radius: var(--radius-lg);
+  background: var(--color-bg-card);
+  padding: 24px;
+  min-height: 0;
+  overflow: auto;
+}
+
+.secondaryBtn:disabled,
+.previewBtn:disabled,
+.primaryBtn:disabled,
+.backBtn:disabled,
+.fileAction:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+@media (max-width: 900px) {
+  .fieldGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .previewTopBar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .fileCard {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}

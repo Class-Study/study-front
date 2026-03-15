@@ -22,6 +22,19 @@ export interface StudentActivity {
   createdAt: string;
 }
 
+export interface StudentExerciseFolder {
+  id: string;
+  name: string;
+  position: number;
+}
+
+export interface CreateStudentExerciseRequest {
+  title: string;
+  type: 'EXERCISE';
+  contentHtml: string;
+  originalFilename: string;
+}
+
 export interface StudentStats {
   activitiesCompleted: number;
   activitiesTotal: number;

@@ -4,7 +4,18 @@ import {
   CreateStudentNoteRequest,
   StudentActivity,
   StudentStats,
+  StudentExerciseFolder,
+  CreateStudentExerciseRequest,
 } from '@/types/studentProfile.types';
+
+interface StudentWorkspaceResponse {
+  studentId: string;
+  folders: Array<{
+    id: string;
+    name: string;
+    position: number;
+  }>;
+}
 
 const studentProfileService = {
   getNotes: async (studentId: string): Promise<StudentNote[]> => {
@@ -22,6 +33,23 @@ const studentProfileService = {
 
   getActivities: async (studentId: string): Promise<StudentActivity[]> => {
     const { data } = await api.get<StudentActivity[]>(`/students/${studentId}/activities`);
+    return data;
+  },
+
+  getExerciseFolders: async (studentId: string): Promise<StudentExerciseFolder[]> => {
+    const { data } = await api.get<StudentWorkspaceResponse>(`/students/${studentId}/workspace`);
+    return [...data.folders].sort((a, b) => a.position - b.position);
+  },
+
+  createExercise: async (
+    studentId: string,
+    folderId: string,
+    payload: CreateStudentExerciseRequest,
+  ): Promise<StudentActivity> => {
+    const { data } = await api.post<StudentActivity>(
+      `/students/${studentId}/folders/${folderId}/activities`,
+      payload,
+    );
     return data;
   },
 
