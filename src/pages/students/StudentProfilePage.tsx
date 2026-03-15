@@ -2,11 +2,13 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Header } from '@/components/layout/Header/Header';
 import { useStudents } from '@/hooks/useStudents';
+import studentService from '@/services/api/student.service';
 import { useLevelProfiles } from '@/hooks/useLevelProfiles';
 import { useStudentProfile } from '@/hooks/useStudentProfile';
 import { Student } from '@/types/student.types';
 import { ActivityType } from '@/types/studentProfile.types';
 import { formatClassDays, formatClassTime, formatShortDate } from '@/utils/classDay.utils';
+import { ConfirmModal } from '@/components/ui/ConfirmModal/ConfirmModal';
 import styles from './StudentProfilePage.module.css';
 
 type NoteTab = 'private' | 'public';
@@ -72,6 +74,8 @@ export const StudentProfilePage: React.FC = () => {
     saveNote,
   } = useStudentProfile(id ?? '');
   const [student, setStudent] = useState<Student | null>(null);
+  const [blocking, setBlocking] = useState(false);
+  const [confirmModal, setConfirmModal] = useState<{ isOpen: boolean; action: 'block' | 'unblock' }>({ isOpen: false, action: 'block' });
   const [pageLoading, setPageLoading] = useState(false);
   const [pageError, setPageError] = useState('');
   const [notesTab, setNotesTab] = useState<NoteTab>('private');
@@ -124,6 +128,33 @@ export const StudentProfilePage: React.FC = () => {
       .catch(() => setPageError('Erro ao carregar perfil do aluno'))
       .finally(() => setPageLoading(false));
   }, [id, getStudentById, fetchLevelProfiles, fetchNotes, fetchActivities, fetchStats]);
+
+  const handleBlockClick = (): void => {
+    setConfirmModal({ isOpen: true, action: 'block' });
+  };
+
+  const handleUnblockClick = (): void => {
+    setConfirmModal({ isOpen: true, action: 'unblock' });
+  };
+
+  const handleConfirmAction = async (): Promise<void> => {
+    if (!student) return;
+    setBlocking(true);
+    try {
+      if (confirmModal.action === 'block') {
+        await studentService.block(student.id);
+        setStudent(prev => prev ? { ...prev, status: 'BLOCKED' } : prev);
+      } else {
+        await studentService.unblock(student.id);
+        setStudent(prev => prev ? { ...prev, status: 'ACTIVE' } : prev);
+      }
+      setConfirmModal({ isOpen: false, action: 'block' });
+    } catch {
+      alert(`Erro ao ${confirmModal.action === 'block' ? 'bloquear' : 'desbloquear'} aluno.`);
+    } finally {
+      setBlocking(false);
+    }
+  };
 
   const handleSaveNote = async (): Promise<void> => {
     const content = notesTab === 'private' ? privateNoteDraft : publicNoteDraft;
@@ -210,9 +241,25 @@ export const StudentProfilePage: React.FC = () => {
                 </div>
 
                 <div className={styles.heroActions}>
-                  <button type="button" className={`${styles.actionBtn} ${styles.actionBtnBlock}`}>
-                    🔒 Bloquear
-                  </button>
+                  {student.status === 'BLOCKED' ? (
+                    <button
+                      type="button"
+                      className={`${styles.actionBtn} ${styles.actionBtnUnblock}`}
+                      onClick={handleUnblockClick}
+                      disabled={blocking}
+                    >
+                      ✓ Desbloquear
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      className={`${styles.actionBtn} ${styles.actionBtnBlock}`}
+                      onClick={handleBlockClick}
+                      disabled={blocking}
+                    >
+                      🔒 Bloquear
+                    </button>
+                  )}
 
                   <button
                     type="button"
@@ -368,6 +415,22 @@ export const StudentProfilePage: React.FC = () => {
           </div>
         </aside>
       </div>
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        onClose={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+        onConfirm={handleConfirmAction}
+        loading={blocking}
+        title={confirmModal.action === 'block'
+          ? `Bloquear ${student?.name}?`
+          : `Desbloquear ${student?.name}?`
+        }
+        description={confirmModal.action === 'block'
+          ? 'O aluno não conseguirá mais fazer login na plataforma. Você poderá desbloquear a qualquer momento.'
+          : 'O aluno voltará a ter acesso à plataforma normalmente.'
+        }
+        confirmLabel={confirmModal.action === 'block' ? 'Bloquear' : 'Desbloquear'}
+        variant={confirmModal.action === 'block' ? 'danger' : 'default'}
+      />
     </div>
   );
 };

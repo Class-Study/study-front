@@ -46,6 +46,10 @@ const studentService = {
   block: async (id: string): Promise<void> => {
     await api.delete(`/students/${id}`);
   },
+
+  unblock: async (id: string): Promise<void> => {
+    await api.patch(`/students/${id}/unblock`);
+  },
 };
 
 export default studentService;

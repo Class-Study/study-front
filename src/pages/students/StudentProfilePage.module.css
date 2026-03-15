@@ -189,6 +189,20 @@
   color: var(--color-success);
 }
 
+.actionBtnUnblock {
+  background: rgba(45, 138, 93, 0.15);
+  color: var(--color-success);
+}
+
+.actionBtnUnblock:hover {
+  opacity: 0.85;
+}
+
+.actionBtnUnblock:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .statsGrid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);

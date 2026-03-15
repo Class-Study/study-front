@@ -1,0 +1,76 @@
+.content {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 8px 0;
+}
+
+.title {
+  font-family: var(--font-serif);
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin: 0;
+}
+
+.description {
+  font-family: var(--font-sans);
+  font-size: 14px;
+  color: var(--color-text-secondary);
+  line-height: 1.6;
+  margin: 0;
+}
+
+.actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-top: 8px;
+}
+
+.cancelBtn {
+  padding: 8px 16px;
+  background: var(--color-bg-input);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text-secondary);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.cancelBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.confirmBtn {
+  padding: 8px 16px;
+  border: none;
+  border-radius: var(--radius-md);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.confirmBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.danger {
+  background: var(--color-danger);
+  color: white;
+}
+
+.warning {
+  background: var(--color-accent-2);
+  color: white;
+}
+
+.default {
+  background: var(--color-accent);
+  color: white;
+}
