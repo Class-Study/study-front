@@ -153,6 +153,15 @@ export const NiveisTab: React.FC = () => {
     fetchLevelProfiles();
   }, [fetchLevelProfiles]);
 
+  useEffect(() => {
+    if (!selectedLevel) return;
+
+    const updated = levelProfiles.find((profile) => profile.id === selectedLevel.id);
+    if (updated) {
+      setSelectedLevel(updated);
+    }
+  }, [levelProfiles, selectedLevel]);
+
   const existingCodes = useMemo(
     () => new Set(levelProfiles.map((profile) => profile.code.toLowerCase())),
     [levelProfiles],
@@ -367,26 +376,13 @@ export const NiveisTab: React.FC = () => {
     setActiveUploadFolder(null);
   };
 
-  const handleViewSavedTemplate = async (
+  const handleViewSavedTemplate = (
     template: LevelFolderTemplate,
     folderId: string,
-  ): Promise<void> => {
-    if (template.convertedHtml) {
-      setPreview({
-        isOpen: true,
-        html: template.convertedHtml,
-        fileName: template.originalFilename ?? template.title,
-        folderId,
-        title: template.title,
-        type: template.type,
-        mode: 'view',
-      });
-      return;
-    }
-
+  ): void => {
     setPreview({
       isOpen: true,
-      html: '<p>Conteudo nao disponivel para visualizacao. O HTML sera incluido em uma proxima atualizacao da API.</p>',
+      html: template.convertedHtml ?? '',
       fileName: template.originalFilename ?? template.title,
       folderId,
       title: template.title,
@@ -428,6 +424,7 @@ export const NiveisTab: React.FC = () => {
 
     try {
       const promises: Promise<void>[] = [];
+      const savedTemplates: Array<{ folderId: string; template: LevelFolderTemplate }> = [];
 
       pendingEntries.forEach(([folderId, templates]) => {
         templates.forEach((template) => {
@@ -438,7 +435,15 @@ export const NiveisTab: React.FC = () => {
               originalFilename: template.fileName,
               convertedHtml: template.convertedHtml,
             })
-            .then(() => {
+            .then((saved) => {
+              savedTemplates.push({
+                folderId,
+                template: {
+                  ...saved,
+                  convertedHtml: template.convertedHtml,
+                },
+              });
+
               setPendingTemplates((prev) => ({
                 ...prev,
                 [folderId]: (prev[folderId] ?? []).filter((item) => item.tempId !== template.tempId),
@@ -450,7 +455,25 @@ export const NiveisTab: React.FC = () => {
       });
 
       await Promise.all(promises);
-      await fetchLevelProfiles();
+
+      setSelectedLevel((prev) => {
+        if (!prev) return prev;
+
+        return {
+          ...prev,
+          folders: prev.folders.map((folder) => {
+            const newTemplates = savedTemplates
+              .filter((saved) => saved.folderId === folder.id)
+              .map((saved) => saved.template);
+
+            return newTemplates.length > 0
+              ? { ...folder, templates: [...(folder.templates ?? []), ...newTemplates] }
+              : folder;
+          }),
+        };
+      });
+
+      void fetchLevelProfiles();
 
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
@@ -1116,13 +1139,29 @@ export const NiveisTab: React.FC = () => {
           </div>
         )}
 
-        <div className={styles.previewEditorWrapper}>
-          <DocxPreviewEditor html={preview.html} editable={false} />
-        </div>
+        {preview.mode === 'upload' && (
+          <>
+            <div className={styles.previewEditorWrapper}>
+              <DocxPreviewEditor html={preview.html} editable={false} />
+            </div>
 
-        <div className={styles.previewNote}>
-          ⚠️ Este é o visual exato que o aluno verá no workspace. O conteúdo será salvo ao clicar em "Salvar tudo".
-        </div>
+            <div className={styles.previewNote}>
+              ⚠️ Este é o visual exato que o aluno verá no workspace. O conteúdo será salvo ao clicar em "Salvar tudo".
+            </div>
+          </>
+        )}
+
+        {preview.mode === 'view' && !preview.html && (
+          <div className={styles.noPreviewMsg}>
+            Preview não disponível para este template.
+          </div>
+        )}
+
+        {preview.mode === 'view' && preview.html && (
+          <div className={styles.previewEditorWrapper}>
+            <DocxPreviewEditor html={preview.html} editable={false} />
+          </div>
+        )}
 
         {preview.mode === 'upload' && (
           <div className={styles.previewActions}>
