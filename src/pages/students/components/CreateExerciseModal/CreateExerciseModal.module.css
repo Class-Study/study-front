@@ -4,6 +4,51 @@
   gap: 20px;
 }
 
+.orDivider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.orDividerLine {
+  flex: 1;
+  height: 1px;
+  background: var(--color-border);
+}
+
+.orDividerText {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  color: var(--color-text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+}
+
+.btnCreateManual {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 9px 14px;
+  background: transparent;
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text-secondary);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 400;
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+}
+
+.btnCreateManual:hover {
+  border-color: var(--color-accent);
+  color: var(--color-text-primary);
+  background: color-mix(in srgb, var(--color-accent) 6%, transparent);
+}
+
 .headerCopy {
   display: flex;
   flex-direction: column;

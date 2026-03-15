@@ -48,7 +48,7 @@ interface PreviewState {
   title: string;
   type: TemplateType;
   propagateToStudents: boolean;
-  mode: 'upload' | 'view';
+  mode: 'upload' | 'view' | 'freetext';
 }
 
 const createTempId = (): string => {
@@ -455,7 +455,7 @@ export const NiveisTab: React.FC = () => {
             .create(selectedLevel.id, folderId, {
               title: template.title,
               type: template.type,
-              originalFilename: template.fileName,
+              ...(template.fileName ? { originalFilename: template.fileName } : {}),
               convertedHtml: template.convertedHtml,
               propagateToStudents: template.propagateToStudents,
             })
@@ -1028,6 +1028,32 @@ export const NiveisTab: React.FC = () => {
                             event.target.value = '';
                           }}
                         />
+
+                        <div className={styles.freeTextDivider}>
+                          <span className={styles.freeTextDividerLine} />
+                          <span className={styles.freeTextDividerText}>ou</span>
+                          <span className={styles.freeTextDividerLine} />
+                        </div>
+
+                        <button
+                          type="button"
+                          className={styles.btnFreeText}
+                          onClick={() => {
+                            setActiveUploadFolder(null);
+                            setPreview({
+                              isOpen: true,
+                              html: '<p></p>',
+                              fileName: '',
+                              folderId: folder.id,
+                              title: '',
+                              type: 'EXERCISE',
+                              propagateToStudents: false,
+                              mode: 'freetext',
+                            });
+                          }}
+                        >
+                          ✏️ Criar atividade manualmente (texto livre)
+                        </button>
                       </div>
                     )}
                   </section>
@@ -1137,7 +1163,7 @@ export const NiveisTab: React.FC = () => {
       isOpen={preview.isOpen}
       onClose={() => setPreview((prev) => ({ ...prev, isOpen: false }))}
       size="lg"
-      title={preview.mode === 'view' ? preview.title : `Preview — ${preview.fileName}`}
+      title={preview.mode === 'view' ? preview.title : preview.mode === 'freetext' ? 'Nova Atividade Livre' : `Preview — ${preview.fileName}`}
     >
       <div className={styles.previewModalContent}>
         {preview.mode === 'upload' && (
@@ -1155,7 +1181,7 @@ export const NiveisTab: React.FC = () => {
 
             <div className={styles.previewFieldSmall}>
               <label className={styles.previewLabel}>Tipo</label>
-              <select
+              <select disabled
                 className={styles.previewInput}
                 value={preview.type}
                 onChange={(event) =>
@@ -1163,7 +1189,34 @@ export const NiveisTab: React.FC = () => {
                 }
               >
                 <option value="EXERCISE">Exercício</option>
-                <option value="WORKSPACE">Workspace</option>
+              </select>
+            </div>
+          </div>
+        )}
+
+        {preview.mode === 'freetext' && (
+          <div className={styles.previewFormRow}>
+            <div className={styles.previewField}>
+              <label className={styles.previewLabel}>Título da atividade</label>
+              <input
+                type="text"
+                className={styles.previewInput}
+                value={preview.title}
+                onChange={(event) => setPreview((prev) => ({ ...prev, title: event.target.value }))}
+                placeholder="Ex: Exercício — Tempos Verbais"
+              />
+            </div>
+
+            <div className={styles.previewFieldSmall}>
+              <label className={styles.previewLabel}>Tipo</label>
+              <select disabled
+                className={styles.previewInput}
+                value={preview.type}
+                onChange={(event) =>
+                  setPreview((prev) => ({ ...prev, type: event.target.value as TemplateType }))
+                }
+              >
+                <option value="EXERCISE">Exercício</option>
               </select>
             </div>
           </div>
@@ -1181,6 +1234,16 @@ export const NiveisTab: React.FC = () => {
           </>
         )}
 
+        {preview.mode === 'freetext' && (
+          <div className={styles.previewEditorWrapper}>
+            <DocxPreviewEditor
+              html={preview.html}
+              editable
+              onChange={(html) => setPreview((prev) => ({ ...prev, html }))}
+            />
+          </div>
+        )}
+
         {preview.mode === 'view' && !preview.html && (
           <div className={styles.noPreviewMsg}>
             Preview não disponível para este template.
@@ -1193,7 +1256,7 @@ export const NiveisTab: React.FC = () => {
           </div>
         )}
 
-        {preview.mode === 'upload' && (
+        {(preview.mode === 'upload' || preview.mode === 'freetext') && (
           <div className={styles.previewActions}>
             <button
               type="button"

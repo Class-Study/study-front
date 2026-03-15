@@ -12,6 +12,7 @@ import { formatClassDays, formatClassTime, formatShortDate } from '@/utils/class
 import { ConfirmModal } from '@/components/ui/ConfirmModal/ConfirmModal';
 import { CreateExerciseModal } from './components/CreateExerciseModal/CreateExerciseModal';
 import { EditStudentModal } from './components/EditStudentModal/EditStudentModal';
+import { FreeTextExerciseModal } from './components/FreeTextExerciseModal/FreeTextExerciseModal';
 import styles from './StudentProfilePage.module.css';
 
 type NoteTab = 'private' | 'public';
@@ -97,6 +98,7 @@ export const StudentProfilePage: React.FC = () => {
   const [privateNoteDraft, setPrivateNoteDraft] = useState('');
   const [publicNoteDraft, setPublicNoteDraft] = useState('');
   const [isCreateExerciseModalOpen, setIsCreateExerciseModalOpen] = useState(false);
+  const [isFreeTextExerciseModalOpen, setIsFreeTextExerciseModalOpen] = useState(false);
   const [isEditStudentModalOpen, setIsEditStudentModalOpen] = useState(false);
   const [exerciseFeedback, setExerciseFeedback] = useState('');
   const [profileFeedback, setProfileFeedback] = useState('');
@@ -234,6 +236,11 @@ export const StudentProfilePage: React.FC = () => {
   const handleOpenCreateExercise = (): void => {
     setExerciseFeedback('');
     setIsCreateExerciseModalOpen(true);
+  };
+
+  const handleOpenFreeTextExercise = (): void => {
+    setExerciseFeedback('');
+    setIsFreeTextExerciseModalOpen(true);
   };
 
   const handleOpenEditStudent = (): void => {
@@ -477,7 +484,7 @@ export const StudentProfilePage: React.FC = () => {
                     className={styles.addExerciseBtn}
                     onClick={handleOpenCreateExercise}
                     disabled={exerciseSections.length === 0}
-                    title={exerciseSections.length === 0 ? 'O aluno ainda não possui pastas' : 'Criar novo exercício'}
+                    title={exerciseSections.length === 0 ? 'O aluno ainda não possui pastas' : 'Adicionar exercício'}
                   >
                     + Novo Exercício
                   </button>
@@ -611,6 +618,18 @@ export const StudentProfilePage: React.FC = () => {
         }))}
         selectedFolderId={defaultExerciseFolderId}
         onClose={() => setIsCreateExerciseModalOpen(false)}
+        onCreateFreeText={handleOpenFreeTextExercise}
+        onSave={handleSaveExercise}
+      />
+      <FreeTextExerciseModal
+        isOpen={isFreeTextExerciseModalOpen}
+        folders={exerciseSections.map((folder) => ({
+          id: folder.id,
+          name: folder.name,
+          position: folder.position,
+        }))}
+        selectedFolderId={defaultExerciseFolderId}
+        onClose={() => setIsFreeTextExerciseModalOpen(false)}
         onSave={handleSaveExercise}
       />
       <EditStudentModal

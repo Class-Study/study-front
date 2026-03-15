@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowLeft, Eye } from 'lucide-react';
+import { ArrowLeft, Eye, PencilLine } from 'lucide-react';
 import * as mammoth from 'mammoth';
 import { Modal } from '@/components/ui/Modal/Modal';
 import DocxPreviewEditor from '@/components/ui/DocxPreviewEditor/DocxPreviewEditor';
@@ -11,6 +11,7 @@ interface CreateExerciseModalProps {
   folders: StudentExerciseFolder[];
   selectedFolderId: string | null;
   onClose: () => void;
+  onCreateFreeText?: () => void;
   onSave: (payload: {
     folderId: string;
     title: string;
@@ -31,6 +32,7 @@ export const CreateExerciseModal: React.FC<CreateExerciseModalProps> = ({
   folders,
   selectedFolderId,
   onClose,
+  onCreateFreeText,
   onSave,
 }) => {
   const inputRef = useRef<HTMLInputElement | null>(null);
@@ -220,6 +222,25 @@ export const CreateExerciseModal: React.FC<CreateExerciseModalProps> = ({
                 event.target.value = '';
               }}
             />
+
+            {onCreateFreeText && (
+              <div className={styles.orDivider}>
+                <span className={styles.orDividerLine} />
+                <span className={styles.orDividerText}>ou</span>
+                <span className={styles.orDividerLine} />
+              </div>
+            )}
+
+            {onCreateFreeText && (
+              <button
+                type="button"
+                className={styles.btnCreateManual}
+                onClick={onCreateFreeText}
+              >
+                <PencilLine size={15} />
+                Criar atividade manualmente (texto livre)
+              </button>
+            )}
 
             {file && (
               <div className={styles.fileCard}>
