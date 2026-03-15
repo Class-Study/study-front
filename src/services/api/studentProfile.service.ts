@@ -23,6 +23,11 @@ const studentProfileService = {
     return data;
   },
 
+  getMyNotes: async (): Promise<StudentNote[]> => {
+    const { data } = await api.get<StudentNote[]>('/students/me/notes');
+    return data;
+  },
+
   createNote: async (
     studentId: string,
     payload: CreateStudentNoteRequest,
@@ -36,8 +41,18 @@ const studentProfileService = {
     return data;
   },
 
+  getMyActivities: async (): Promise<StudentActivity[]> => {
+    const { data } = await api.get<StudentActivity[]>('/students/me/activities');
+    return data;
+  },
+
   getExerciseFolders: async (studentId: string): Promise<StudentExerciseFolder[]> => {
     const { data } = await api.get<StudentWorkspaceResponse>(`/students/${studentId}/workspace`);
+    return [...data.folders].sort((a, b) => a.position - b.position);
+  },
+
+  getMyExerciseFolders: async (): Promise<StudentExerciseFolder[]> => {
+    const { data } = await api.get<StudentWorkspaceResponse>('/students/me/workspace');
     return [...data.folders].sort((a, b) => a.position - b.position);
   },
 
@@ -55,6 +70,11 @@ const studentProfileService = {
 
   getStats: async (studentId: string): Promise<StudentStats> => {
     const { data } = await api.get<StudentStats>(`/students/${studentId}/stats`);
+    return data;
+  },
+
+  getMyStats: async (): Promise<StudentStats> => {
+    const { data } = await api.get<StudentStats>('/students/me/stats');
     return data;
   },
 };

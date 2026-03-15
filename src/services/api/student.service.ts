@@ -30,6 +30,11 @@ const studentService = {
     return data;
   },
 
+  getMe: async (): Promise<Student> => {
+    const { data } = await api.get<Student>('/students/me');
+    return data;
+  },
+
   create: async (payload: CreateStudentRequest): Promise<void> => {
     await api.post('/students', payload);
   },
@@ -58,8 +63,17 @@ const studentService = {
     return data;
   },
 
+  getMyNotes: async (): Promise<StudentNote[]> => {
+    const { data } = await api.get<StudentNote[]>('/students/me/notes');
+    return data;
+  },
+
   saveNote: async (id: string, payload: UpdateStudentNoteRequest): Promise<void> => {
     await api.post(`/students/${id}/notes`, payload);
+  },
+
+  saveMyNote: async (payload: UpdateStudentNoteRequest): Promise<void> => {
+    await api.post('/students/me/notes', payload);
   },
 };
 

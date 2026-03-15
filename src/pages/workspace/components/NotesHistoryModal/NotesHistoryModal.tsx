@@ -37,15 +37,20 @@ export const NotesHistoryModal: React.FC<NotesHistoryModalProps> = ({
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (!isOpen || !studentId) return;
+    if (!isOpen) return;
+    if (!isTeacher && !user) return;
+    if (isTeacher && !studentId) return;
 
     setLoading(true);
-    studentService
-      .getNotes(studentId)
+    const request = isTeacher
+      ? studentService.getNotes(studentId)
+      : studentService.getMyNotes();
+
+    request
       .then((data) => setNotes(data))
       .catch(() => setNotes([]))
       .finally(() => setLoading(false));
-  }, [isOpen, studentId]);
+  }, [isOpen, isTeacher, studentId, user]);
 
   const filteredNotes = notes.filter((n) => n.type === activeTab);
 

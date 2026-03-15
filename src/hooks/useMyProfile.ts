@@ -1,4 +1,5 @@
 import { useCallback, useState } from 'react';
+import axios from 'axios';
 import studentService from '@/services/api/student.service';
 import studentProfileService from '@/services/api/studentProfile.service';
 import { Student } from '@/types/student.types';
@@ -17,7 +18,8 @@ interface UseMyProfileResult {
   stats: StudentStats | null;
   loading: boolean;
   error: string;
-  fetchAll: (studentId: string) => Promise<void>;
+  accountInactive: boolean;
+  fetchAll: () => Promise<void>;
 }
 
 export const useMyProfile = (): UseMyProfileResult => {
@@ -28,34 +30,36 @@ export const useMyProfile = (): UseMyProfileResult => {
   const [stats, setStats] = useState<StudentStats | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [accountInactive, setAccountInactive] = useState(false);
 
-  const fetchAll = useCallback(async (studentId: string): Promise<void> => {
-    if (!studentId) {
-      setError('Aluno nao identificado. Faca login novamente.');
-      return;
-    }
-
+  const fetchAll = useCallback(async (): Promise<void> => {
     setLoading(true);
     setError('');
+    setAccountInactive(false);
     try {
       const [profileData, notesData, activitiesData, foldersData, statsData] = await Promise.all([
-        studentService.getById(studentId),
-        studentProfileService.getNotes(studentId),
-        studentProfileService.getActivities(studentId),
-        studentProfileService.getExerciseFolders(studentId),
-        studentProfileService.getStats(studentId),
+        studentService.getMe(),
+        studentProfileService.getMyNotes(),
+        studentProfileService.getMyActivities(),
+        studentProfileService.getMyExerciseFolders(),
+        studentProfileService.getMyStats(),
       ]);
       setStudent(profileData);
       setNotes(notesData);
       setActivities(activitiesData);
       setFolders(foldersData);
       setStats(statsData);
-    } catch {
-      setError('Erro ao carregar seu perfil. Tente novamente.');
+    } catch (err) {
+      if (axios.isAxiosError(err) && err.response?.status === 403) {
+        setAccountInactive(true);
+        setError('Sua conta esta inativa. Entre em contato com seu professor.');
+      } else {
+        setError('Erro ao carregar seu perfil. Tente novamente.');
+      }
     } finally {
       setLoading(false);
     }
   }, []);
 
-  return { student, notes, activities, folders, stats, loading, error, fetchAll };
+  return { student, notes, activities, folders, stats, loading, error, accountInactive, fetchAll };
 };

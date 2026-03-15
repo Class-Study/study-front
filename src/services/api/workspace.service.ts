@@ -25,6 +25,11 @@ const workspaceService = {
     return data;
   },
 
+  getMyWorkspace: async (): Promise<WorkspaceData> => {
+    const { data } = await api.get<WorkspaceResponse>('/students/me/workspace');
+    return data;
+  },
+
   getActivity: async (id: string): Promise<WorkspaceActivity> => {
     const { data } = await api.get<WorkspaceActivity>(`/activities/${id}`);
     return data;

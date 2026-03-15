@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Header } from '@/components/layout/Header/Header';
-import { useAuth } from '@/hooks/useAuth';
 import { useMyProfile } from '@/hooks/useMyProfile';
 import { useLevelProfiles } from '@/hooks/useLevelProfiles';
 import { ActivityType } from '@/types/studentProfile.types';
@@ -40,8 +39,7 @@ const getLevelTone = (code?: string): LevelTone => {
 
 export const MyProfilePage: React.FC = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
-  const { student, notes, activities, folders, stats, loading, error, fetchAll } = useMyProfile();
+  const { student, notes, activities, folders, stats, loading, error, accountInactive, fetchAll } = useMyProfile();
   const { fetchLevelProfiles, getProfileById } = useLevelProfiles();
   const [newPublicNote, setNewPublicNote] = useState('');
   const [noteSaving, setNoteSaving] = useState(false);
@@ -50,10 +48,14 @@ export const MyProfilePage: React.FC = () => {
 
   useEffect(() => {
     void fetchLevelProfiles();
-    if (user?.id) {
-      void fetchAll(user.id);
+    void fetchAll();
+  }, [fetchAll, fetchLevelProfiles]);
+
+  useEffect(() => {
+    if (accountInactive) {
+      navigate('/account-inactive', { replace: true });
     }
-  }, [fetchAll, fetchLevelProfiles, user?.id]);
+  }, [accountInactive, navigate]);
 
   useEffect(() => {
     return () => {
@@ -66,7 +68,7 @@ export const MyProfilePage: React.FC = () => {
   const workspacePath = '/student/workspace';
 
   const handleSavePublicNote = async (): Promise<void> => {
-    if (!user?.id || !newPublicNote.trim() || noteSaving) {
+    if (!newPublicNote.trim() || noteSaving) {
       return;
     }
 
@@ -76,13 +78,13 @@ export const MyProfilePage: React.FC = () => {
 
     setNoteSaving(true);
     try {
-      await studentService.saveNote(user.id, {
+      await studentService.saveMyNote({
         type: 'PUBLIC',
         content: newPublicNote.trim(),
       });
       setNewPublicNote('');
       setNoteFeedback('success');
-      await fetchAll(user.id);
+      await fetchAll();
     } catch {
       setNoteFeedback('error');
     } finally {

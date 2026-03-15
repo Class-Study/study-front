@@ -45,7 +45,7 @@ export const WorkspacePage: React.FC = () => {
     createActivity,
     createFolder,
     moveActivity,
-  } = useWorkspace(targetStudentId);
+  } = useWorkspace(targetStudentId, isStudent);
 
   const [activeActivity, setActiveActivity] = useState<WorkspaceActivity | null>(null);
   const [sidebarWidth, setSidebarWidth] = useState<number>(() => {
@@ -99,9 +99,9 @@ export const WorkspacePage: React.FC = () => {
 
   useEffect(() => {
     if (accessDenied) {
-      navigate('/access-denied', { replace: true });
+      navigate(isStudent ? '/account-inactive' : '/access-denied', { replace: true });
     }
-  }, [accessDenied, navigate]);
+  }, [accessDenied, isStudent, navigate]);
 
   useEffect(() => {
     fetchWorkspace();

@@ -8,7 +8,7 @@ import {
   WorkspaceFolder,
 } from '@/types/workspace.types';
 
-export const useWorkspace = (studentId: string) => {
+export const useWorkspace = (studentId: string, studentView: boolean = false) => {
   const [workspace, setWorkspace] = useState<WorkspaceData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -17,14 +17,16 @@ export const useWorkspace = (studentId: string) => {
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   const fetchWorkspace = useCallback(async () => {
-    if (!studentId) return;
+    if (!studentView && !studentId) return;
 
     setLoading(true);
     setError(null);
     setAccessDenied(false);
 
     try {
-      const data = await workspaceService.getWorkspace(studentId);
+      const data = studentView
+        ? await workspaceService.getMyWorkspace()
+        : await workspaceService.getWorkspace(studentId);
       setWorkspace({
         ...data,
         folders: [...data.folders].sort((a, b) => a.position - b.position),
@@ -39,7 +41,7 @@ export const useWorkspace = (studentId: string) => {
     } finally {
       setLoading(false);
     }
-  }, [studentId]);
+  }, [studentId, studentView]);
 
   useEffect(() => {
     return () => {

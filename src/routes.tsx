@@ -8,6 +8,7 @@ import { BillingPage } from '@/pages/billing/BillingPage';
 import { WorkspacePage } from '@/pages/workspace/WorkspacePage';
 import { MyProfilePage } from '@/pages/me/MyProfilePage';
 import { AccessDeniedPage } from '@/pages/errors/AccessDeniedPage';
+import { AccountInactivePage } from '@/pages/errors/AccountInactivePage';
 
 export const AppRoutes: React.FC = () => {
   return (
@@ -44,7 +45,7 @@ export const AppRoutes: React.FC = () => {
       <Route
         path="/dashboard/student/:studentId/workspace"
         element={
-          <PrivateRoute>
+          <PrivateRoute requiredRoles={['TEACHER', 'ADMIN']}>
             <WorkspacePage />
           </PrivateRoute>
         }
@@ -79,6 +80,7 @@ export const AppRoutes: React.FC = () => {
       />
 
       <Route path="/access-denied" element={<AccessDeniedPage />} />
+      <Route path="/account-inactive" element={<AccountInactivePage />} />
 
       <Route path="/" element={<Navigate to="/dashboard" replace />} />
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
