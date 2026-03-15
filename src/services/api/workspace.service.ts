@@ -30,8 +30,8 @@ const workspaceService = {
     return data;
   },
 
-  updateContent: async (id: string, contentHtml: string): Promise<void> => {
-    await api.patch(`/activities/${id}/content`, { contentHtml });
+  updateContent: async (id: string, convertedHtml: string): Promise<void> => {
+    await api.patch(`/activities/${id}/content`, { convertedHtml });
   },
 
   createActivity: async (

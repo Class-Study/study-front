@@ -31,7 +31,7 @@ export interface StudentExerciseFolder {
 export interface CreateStudentExerciseRequest {
   title: string;
   type: 'EXERCISE';
-  contentHtml: string;
+  convertedHtml: string;
   originalFilename: string;
 }
 

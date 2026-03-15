@@ -4,7 +4,7 @@ export interface WorkspaceActivity {
   id: string;
   title: string;
   type: ActivityType;
-  contentHtml: string;
+  convertedHtml: string;
   folderId: string;
   createdAt: string;
 }
@@ -33,7 +33,7 @@ export interface ChatMessage {
 export interface CreateActivityRequest {
   title: string;
   type: ActivityType;
-  contentHtml: string;
+  convertedHtml: string;
   originalFilename?: string;
 }
 

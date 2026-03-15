@@ -61,7 +61,7 @@ export const WorkspacePage: React.FC = () => {
   const [newWorkspaceContent, setNewWorkspaceContent] = useState('<p></p>');
   const [workspaceDrafts, setWorkspaceDrafts] = useState<Record<string, {
     title: string;
-    contentHtml: string;
+    convertedHtml: string;
   }>>({});
   const [workspaceDraftFeedback, setWorkspaceDraftFeedback] = useState<string | null>(null);
   const [newItemForm, setNewItemForm] = useState<{
@@ -131,7 +131,7 @@ export const WorkspacePage: React.FC = () => {
         ...prev,
         [activeActivity.id]: {
           title: activeActivity.title,
-          contentHtml: activeActivity.contentHtml,
+          convertedHtml: activeActivity.convertedHtml,
         },
       };
     });
@@ -189,14 +189,14 @@ export const WorkspacePage: React.FC = () => {
     folderId: string;
     title: string;
     type: 'EXERCISE';
-    contentHtml: string;
+    convertedHtml: string;
     originalFilename: string;
   }): Promise<void> => {
     const activity = await createActivity(
       payload.folderId,
       payload.title,
       payload.type,
-      payload.contentHtml,
+      payload.convertedHtml,
       payload.originalFilename,
     );
 
@@ -233,7 +233,7 @@ export const WorkspacePage: React.FC = () => {
 
   const workspaceContent = isEditingNewWorkspace
     ? newWorkspaceContent
-    : selectedWorkspaceDraft?.contentHtml ?? activeActivity?.contentHtml ?? '<p></p>';
+    : selectedWorkspaceDraft?.convertedHtml ?? activeActivity?.convertedHtml ?? '<p></p>';
 
   const updateWorkspaceTitle = (nextTitle: string): void => {
     if (isEditingNewWorkspace) {
@@ -249,7 +249,7 @@ export const WorkspacePage: React.FC = () => {
       ...prev,
       [activeActivity.id]: {
         title: nextTitle,
-        contentHtml: prev[activeActivity.id]?.contentHtml ?? activeActivity.contentHtml,
+        convertedHtml: prev[activeActivity.id]?.convertedHtml ?? activeActivity.convertedHtml,
       },
     }));
   };
@@ -270,7 +270,7 @@ export const WorkspacePage: React.FC = () => {
       ...prev,
       [activeActivity.id]: {
         title: prev[activeActivity.id]?.title ?? activeActivity.title,
-        contentHtml: nextHtml,
+        convertedHtml: nextHtml,
       },
     }));
   };

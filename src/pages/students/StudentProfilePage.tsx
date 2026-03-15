@@ -230,13 +230,13 @@ export const StudentProfilePage: React.FC = () => {
     folderId: string;
     title: string;
     type: 'EXERCISE';
-    contentHtml: string;
+    convertedHtml: string;
     originalFilename: string;
   }): Promise<void> => {
     const createdActivity = await createExercise(
       payload.folderId,
       payload.title,
-      payload.contentHtml,   // modal still uses contentHtml internally; hook maps → contentHtml
+      payload.convertedHtml,
       payload.originalFilename,
     );
 

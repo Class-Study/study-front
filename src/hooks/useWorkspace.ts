@@ -58,7 +58,7 @@ export const useWorkspace = (studentId: string) => {
               ...folder,
               activities: folder.activities.map((activity) => (
                 activity.id === activityId
-                  ? { ...activity, contentHtml: html }
+                  ? { ...activity, convertedHtml: html }
                   : activity
               )),
             })),
@@ -76,14 +76,14 @@ export const useWorkspace = (studentId: string) => {
     folderId: string,
     title: string,
     type: 'EXERCISE' | 'WORKSPACE',
-    contentHtml: string = '',
+    convertedHtml: string = '',
     originalFilename?: string,
   ): Promise<WorkspaceActivity | null> => {
     try {
       const activity = await workspaceService.createActivity(studentId, folderId, {
         title,
         type,
-        contentHtml,
+        convertedHtml,
         originalFilename,
       });
 

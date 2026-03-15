@@ -5,7 +5,7 @@ export interface Activity {
   folderId: string;
   title: string;
   type: ActivityType;
-  contentHtml: string;
+  convertedHtml: string;
   createdBy: string;
   createdAt: string;
   updatedAt: string;
@@ -14,11 +14,11 @@ export interface Activity {
 export interface CreateActivityRequest {
   title: string;
   type: ActivityType;
-  contentHtml: string;
+  convertedHtml: string;
 }
 
 export interface UpdateActivityRequest {
   title?: string;
   type?: ActivityType;
-  contentHtml?: string;
+  convertedHtml?: string;
 }

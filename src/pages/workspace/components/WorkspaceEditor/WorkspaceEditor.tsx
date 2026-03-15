@@ -27,7 +27,7 @@ export const WorkspaceEditor: React.FC<WorkspaceEditorProps> = ({
 }) => {
   const editor = useEditor({
     extensions: [StarterKit, Typography],
-    content: activity?.contentHtml ?? '',
+    content: activity?.convertedHtml ?? '',
     editable,
     onUpdate: ({ editor: currentEditor }) => {
       if (activity?.id) {
@@ -38,7 +38,7 @@ export const WorkspaceEditor: React.FC<WorkspaceEditorProps> = ({
 
   useEffect(() => {
     if (editor && activity) {
-      editor.commands.setContent(activity.contentHtml);
+      editor.commands.setContent(activity.convertedHtml);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activity?.id]);

@@ -6,7 +6,7 @@ export interface LevelFolderTemplate {
   title: string;
   type: 'EXERCISE' | 'WORKSPACE';
   originalFilename?: string;
-  contentHtml?: string;
+  convertedHtml?: string;
   createdAt: string;
 }
 
@@ -14,7 +14,7 @@ export interface CreateLevelFolderTemplateRequest {
   title: string;
   type: 'EXERCISE' | 'WORKSPACE';
   originalFilename?: string;
-  contentHtml: string;
+  convertedHtml: string;
   propagateToStudents: boolean;
 }
 

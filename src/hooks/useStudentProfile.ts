@@ -97,7 +97,7 @@ export const useStudentProfile = (studentId: string) => {
     async (
       folderId: string,
       title: string,
-      contentHtml: string,
+      convertedHtml: string,
       originalFilename: string,
     ): Promise<StudentActivity | null> => {
       if (!studentId) return null;
@@ -107,7 +107,7 @@ export const useStudentProfile = (studentId: string) => {
         const newActivity = await studentProfileService.createExercise(studentId, folderId, {
           title,
           type: 'EXERCISE',
-          contentHtml,
+          convertedHtml,
           originalFilename,
         });
         setActivities((prev) => [newActivity, ...prev]);

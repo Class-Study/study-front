@@ -14,7 +14,7 @@ interface UploadActivityModalProps {
     folderId: string;
     title: string;
     type: 'EXERCISE';
-    contentHtml: string;
+    convertedHtml: string;
     originalFilename: string;
   }) => Promise<void>;
 }
@@ -37,11 +37,11 @@ export const UploadActivityModal: React.FC<UploadActivityModalProps> = ({
   const [isSaving, setIsSaving] = useState(false);
   const [fileName, setFileName] = useState('');
   const [title, setTitle] = useState('');
-  const [contentHtml, setContentHtml] = useState('');
+  const [convertedHtml, setConvertedHtml] = useState('');
   const [error, setError] = useState('');
   const [folderId, setFolderId] = useState<string>('');
 
-  const hasPreview = useMemo(() => contentHtml.trim().length > 0, [contentHtml]);
+  const hasPreview = useMemo(() => convertedHtml.trim().length > 0, [convertedHtml]);
 
   React.useEffect(() => {
     if (!isOpen) return;
@@ -51,7 +51,7 @@ export const UploadActivityModal: React.FC<UploadActivityModalProps> = ({
     setIsSaving(false);
     setFileName('');
     setTitle('');
-    setContentHtml('');
+    setConvertedHtml('');
     setError('');
     setFolderId(selectedFolderId ?? folders[0]?.id ?? '');
   }, [isOpen, folders, selectedFolderId]);
@@ -71,7 +71,7 @@ export const UploadActivityModal: React.FC<UploadActivityModalProps> = ({
 
       setFileName(file.name);
       setTitle(titleFromFilename(file.name));
-      setContentHtml(result.value);
+      setConvertedHtml(result.value);
     } catch {
       setError('Não foi possível converter o .docx. Verifique se o arquivo está válido.');
     } finally {
@@ -81,7 +81,7 @@ export const UploadActivityModal: React.FC<UploadActivityModalProps> = ({
   };
 
   const handleSave = async (): Promise<void> => {
-    if (!folderId || !fileName || !title.trim() || !contentHtml) return;
+    if (!folderId || !fileName || !title.trim() || !convertedHtml) return;
 
     setIsSaving(true);
     setError('');
@@ -91,7 +91,7 @@ export const UploadActivityModal: React.FC<UploadActivityModalProps> = ({
         folderId,
         title: title.trim(),
         type: 'EXERCISE',
-        contentHtml,
+        convertedHtml,
         originalFilename: fileName,
       });
       onClose();
@@ -176,7 +176,7 @@ export const UploadActivityModal: React.FC<UploadActivityModalProps> = ({
 
         {hasPreview && (
           <div className={styles.previewWrap}>
-            <DocxPreviewEditor html={contentHtml} editable={false} />
+            <DocxPreviewEditor html={convertedHtml} editable={false} />
           </div>
         )}
 
