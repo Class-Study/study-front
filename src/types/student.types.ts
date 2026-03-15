@@ -56,3 +56,17 @@ export interface UpdateStudentRequest {
 export interface ListStudentsResponse {
   students: Student[];
 }
+
+export type NoteType = 'PRIVATE' | 'PUBLIC';
+
+export interface StudentNote {
+  id?: string;
+  type: NoteType;
+  content: string;
+  createdAt?: string;
+}
+
+export interface UpdateStudentNoteRequest {
+  type: NoteType;
+  content: string;
+}

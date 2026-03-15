@@ -1,8 +1,10 @@
 import api from './client';
 import {
   Student,
+  StudentNote,
   CreateStudentRequest,
   UpdateStudentRequest,
+  UpdateStudentNoteRequest,
   ListStudentsResponse,
 } from '@/types/student.types';
 import { PageResponse } from '@/types/api.types';
@@ -49,6 +51,15 @@ const studentService = {
 
   unblock: async (id: string): Promise<void> => {
     await api.patch(`/students/${id}/unblock`);
+  },
+
+  getNotes: async (id: string): Promise<StudentNote[]> => {
+    const { data } = await api.get<StudentNote[]>(`/students/${id}/notes`);
+    return data;
+  },
+
+  saveNote: async (id: string, payload: UpdateStudentNoteRequest): Promise<void> => {
+    await api.post(`/students/${id}/notes`, payload);
   },
 };
 

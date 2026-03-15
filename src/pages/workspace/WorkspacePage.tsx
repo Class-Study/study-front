@@ -450,7 +450,10 @@ export const WorkspacePage: React.FC = () => {
             />
           </div>
           <div className={styles.notesSection}>
-            <WorkspaceNotes activityTitle={activeActivity?.title ?? ''} />
+            <WorkspaceNotes
+              activityTitle={activeActivity?.title ?? ''}
+              studentId={studentId ?? ''}
+            />
           </div>
         </div>
       </div>
