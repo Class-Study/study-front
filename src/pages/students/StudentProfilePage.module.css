@@ -45,6 +45,33 @@
   position: relative;
 }
 
+.heroNameRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.editInfoBtn {
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-input);
+  color: var(--color-text-secondary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: border-color 0.2s ease, color 0.2s ease, background 0.2s ease;
+}
+
+.editInfoBtn:hover {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+  background: color-mix(in srgb, var(--color-accent) 10%, transparent);
+}
+
 .heroCardBasic {
   border-top-color: var(--color-blue);
 }
@@ -81,7 +108,7 @@
   font-size: 22px;
   font-weight: 600;
   color: var(--color-text-primary);
-  margin-bottom: 6px;
+  margin: 0;
 }
 
 .heroMeta {

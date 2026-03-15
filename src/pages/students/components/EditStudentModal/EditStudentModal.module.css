@@ -1,0 +1,42 @@
+.shell {
+  max-height: 78vh;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
+.header {
+  margin-bottom: 16px;
+}
+
+.title {
+  font-family: 'Playfair Display', serif;
+  font-size: 24px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin: 0 0 6px;
+}
+
+.subtitle {
+  margin: 0;
+  font-size: 13px;
+  color: var(--color-text-tertiary);
+}
+
+.submitError {
+  background: rgba(196, 58, 58, 0.1);
+  border: 1px solid var(--color-danger);
+  border-radius: var(--radius-md);
+  color: var(--color-danger);
+  padding: 12px 14px;
+  font-size: 13px;
+  margin-bottom: 16px;
+}
+
+.info {
+  margin-top: 8px;
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  background: var(--color-bg-input);
+  color: var(--color-text-tertiary);
+  font-size: 12px;
+}

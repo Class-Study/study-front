@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { Pencil } from 'lucide-react';
 import { Header } from '@/components/layout/Header/Header';
 import { useStudents } from '@/hooks/useStudents';
 import studentService from '@/services/api/student.service';
@@ -10,6 +11,7 @@ import { ActivityType, StudentExerciseFolder } from '@/types/studentProfile.type
 import { formatClassDays, formatClassTime, formatShortDate } from '@/utils/classDay.utils';
 import { ConfirmModal } from '@/components/ui/ConfirmModal/ConfirmModal';
 import { CreateExerciseModal } from './components/CreateExerciseModal/CreateExerciseModal';
+import { EditStudentModal } from './components/EditStudentModal/EditStudentModal';
 import styles from './StudentProfilePage.module.css';
 
 type NoteTab = 'private' | 'public';
@@ -62,7 +64,12 @@ export const StudentProfilePage: React.FC = () => {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const { getStudentById } = useStudents();
-  const { fetchLevelProfiles, getProfileById } = useLevelProfiles();
+  const {
+    levelProfiles,
+    loading: loadingProfiles,
+    fetchLevelProfiles,
+    getProfileById,
+  } = useLevelProfiles();
   const {
     notes,
     activities,
@@ -77,6 +84,7 @@ export const StudentProfilePage: React.FC = () => {
     fetchActivities,
     fetchFolders,
     fetchStats,
+    refreshWorkspace,
     saveNote,
     createExercise,
   } = useStudentProfile(id ?? '');
@@ -89,7 +97,9 @@ export const StudentProfilePage: React.FC = () => {
   const [privateNoteDraft, setPrivateNoteDraft] = useState('');
   const [publicNoteDraft, setPublicNoteDraft] = useState('');
   const [isCreateExerciseModalOpen, setIsCreateExerciseModalOpen] = useState(false);
+  const [isEditStudentModalOpen, setIsEditStudentModalOpen] = useState(false);
   const [exerciseFeedback, setExerciseFeedback] = useState('');
+  const [profileFeedback, setProfileFeedback] = useState('');
 
   const profile = getProfileById(student?.levelProfileId);
   const levelCode = profile?.code ?? 'basic';
@@ -226,6 +236,43 @@ export const StudentProfilePage: React.FC = () => {
     setIsCreateExerciseModalOpen(true);
   };
 
+  const handleOpenEditStudent = (): void => {
+    setProfileFeedback('');
+    setIsEditStudentModalOpen(true);
+  };
+
+  const handleSaveStudentChanges = async (payload: {
+    name?: string;
+    email?: string;
+    phone?: string;
+    levelProfileId?: string;
+    classTime?: string;
+    classDays?: string[];
+    classDuration?: number;
+    classRate?: number;
+    meetPlatform?: string;
+    meetLink?: string;
+    startDate?: string;
+    status?: 'ACTIVE' | 'BLOCKED' | 'INACTIVE';
+  }): Promise<void> => {
+    if (!student) {
+      return;
+    }
+
+    const levelChanged = payload.levelProfileId !== undefined;
+
+    const updatedStudent = await studentService.update(student.id, payload);
+    setStudent(updatedStudent);
+
+    if (levelChanged) {
+      // Level change triggers a backend folder restructure — clear stale data and re-fetch
+      await refreshWorkspace();
+      setProfileFeedback('Perfil e conteúdo do aluno atualizados com sucesso!');
+    } else {
+      setProfileFeedback('Perfil atualizado com sucesso.');
+    }
+  };
+
   const handleSaveExercise = async (payload: {
     folderId: string;
     title: string;
@@ -286,7 +333,18 @@ export const StudentProfilePage: React.FC = () => {
                 </div>
 
                 <div className={styles.heroInfo}>
-                  <h1 className={styles.heroName}>{student.name}</h1>
+                  <div className={styles.heroNameRow}>
+                    <h1 className={styles.heroName}>{student.name}</h1>
+                    <button
+                      type="button"
+                      className={styles.editInfoBtn}
+                      title="Editar Informações"
+                      aria-label="Editar Informações"
+                      onClick={handleOpenEditStudent}
+                    >
+                      <Pencil size={16} />
+                    </button>
+                  </div>
 
                   <div className={styles.heroMeta}>
                     <span className={levelTagClass}>{levelName}</span>
@@ -362,6 +420,8 @@ export const StudentProfilePage: React.FC = () => {
                   </button>
                 </div>
               </section>
+
+              {profileFeedback && <p className={styles.successMsg}>{profileFeedback}</p>}
 
               <section className={styles.statsGrid}>
                 <article className={styles.statCard}>
@@ -552,6 +612,14 @@ export const StudentProfilePage: React.FC = () => {
         selectedFolderId={defaultExerciseFolderId}
         onClose={() => setIsCreateExerciseModalOpen(false)}
         onSave={handleSaveExercise}
+      />
+      <EditStudentModal
+        isOpen={isEditStudentModalOpen}
+        student={student}
+        levelProfiles={levelProfiles}
+        loadingProfiles={loadingProfiles}
+        onClose={() => setIsEditStudentModalOpen(false)}
+        onSave={handleSaveStudentChanges}
       />
     </div>
   );

@@ -93,6 +93,15 @@ export const useStudentProfile = (studentId: string) => {
     [studentId],
   );
 
+  const refreshWorkspace = useCallback(async () => {
+    if (!studentId) return;
+    // Clear stale data immediately to prevent ghost folders/activities
+    setExerciseFolders([]);
+    setActivities([]);
+    setStats(null);
+    await Promise.all([fetchFolders(), fetchActivities(), fetchStats()]);
+  }, [studentId, fetchFolders, fetchActivities, fetchStats]);
+
   const createExercise = useCallback(
     async (
       folderId: string,
@@ -137,6 +146,7 @@ export const useStudentProfile = (studentId: string) => {
     fetchActivities,
     fetchFolders,
     fetchStats,
+    refreshWorkspace,
     saveNote,
     createExercise,
   };
