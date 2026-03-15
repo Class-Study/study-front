@@ -5,17 +5,13 @@ import studentProfileService from '@/services/api/studentProfile.service';
 import { Student } from '@/types/student.types';
 import {
   StudentActivity,
-  StudentExerciseFolder,
   StudentNote,
-  StudentStats,
 } from '@/types/studentProfile.types';
 
 interface UseMyProfileResult {
   student: Student | null;
   notes: StudentNote[];
   activities: StudentActivity[];
-  folders: StudentExerciseFolder[];
-  stats: StudentStats | null;
   loading: boolean;
   error: string;
   accountInactive: boolean;
@@ -26,8 +22,6 @@ export const useMyProfile = (): UseMyProfileResult => {
   const [student, setStudent] = useState<Student | null>(null);
   const [notes, setNotes] = useState<StudentNote[]>([]);
   const [activities, setActivities] = useState<StudentActivity[]>([]);
-  const [folders, setFolders] = useState<StudentExerciseFolder[]>([]);
-  const [stats, setStats] = useState<StudentStats | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [accountInactive, setAccountInactive] = useState(false);
@@ -37,18 +31,14 @@ export const useMyProfile = (): UseMyProfileResult => {
     setError('');
     setAccountInactive(false);
     try {
-      const [profileData, notesData, activitiesData, foldersData, statsData] = await Promise.all([
+      const [profileData, activitiesData, notesData] = await Promise.all([
         studentService.getMe(),
-        studentProfileService.getMyNotes(),
         studentProfileService.getMyActivities(),
-        studentProfileService.getMyExerciseFolders(),
-        studentProfileService.getMyStats(),
+        studentProfileService.getMyNotes(),
       ]);
       setStudent(profileData);
       setNotes(notesData);
       setActivities(activitiesData);
-      setFolders(foldersData);
-      setStats(statsData);
     } catch (err) {
       if (axios.isAxiosError(err) && err.response?.status === 403) {
         setAccountInactive(true);
@@ -61,5 +51,5 @@ export const useMyProfile = (): UseMyProfileResult => {
     }
   }, []);
 
-  return { student, notes, activities, folders, stats, loading, error, accountInactive, fetchAll };
+  return { student, notes, activities, loading, error, accountInactive, fetchAll };
 };

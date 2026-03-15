@@ -19,6 +19,19 @@ export interface Student {
   classRate: number;
   meetPlatform?: string;
   meetLink?: string;
+  levelName?: string;
+  levelCode?: string;
+  levelProfileName?: string;
+  levelProfileCode?: string;
+  teacherName?: string;
+  teacherEmail?: string;
+  teacherPhone?: string;
+  teacher?: {
+    id?: string;
+    name?: string;
+    email?: string;
+    phone?: string;
+  };
   startDate: string;
   createdAt: string;
 }

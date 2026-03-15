@@ -1,10 +1,9 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Header } from '@/components/layout/Header/Header';
+import { Modal } from '@/components/ui/Modal/Modal';
 import { useMyProfile } from '@/hooks/useMyProfile';
-import { useLevelProfiles } from '@/hooks/useLevelProfiles';
 import { ActivityType } from '@/types/studentProfile.types';
-import studentService from '@/services/api/student.service';
 import { formatClassDays, formatClassTime, formatShortDate } from '@/utils/classDay.utils';
 import styles from './MyProfilePage.module.css';
 
@@ -37,19 +36,26 @@ const getLevelTone = (code?: string): LevelTone => {
   return 'basic';
 };
 
+const FOLDER_ORDER = ['TO DO', 'IN PROGRESS', 'VOCABULARY', 'DONE'] as const;
+
+const normalizeFolderName = (name?: string): string => (name ?? '').trim().toUpperCase();
+
+const stripLeadingOrder = (name: string): string => name.replace(/^\s*\d+\s*-\s*/, '').trim();
+
+const getTeacherDetails = (student: NonNullable<ReturnType<typeof useMyProfile>['student']>) => ({
+  name: student.teacher?.name ?? student.teacherName ?? 'Professor nao informado',
+  email: student.teacher?.email ?? student.teacherEmail ?? 'Email nao informado',
+  phone: student.teacher?.phone ?? student.teacherPhone ?? 'Telefone nao informado',
+});
+
 export const MyProfilePage: React.FC = () => {
   const navigate = useNavigate();
-  const { student, notes, activities, folders, stats, loading, error, accountInactive, fetchAll } = useMyProfile();
-  const { fetchLevelProfiles, getProfileById } = useLevelProfiles();
-  const [newPublicNote, setNewPublicNote] = useState('');
-  const [noteSaving, setNoteSaving] = useState(false);
-  const [noteFeedback, setNoteFeedback] = useState<'success' | 'error' | null>(null);
-  const noteFeedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const { student, notes, activities, loading, error, accountInactive, fetchAll } = useMyProfile();
+  const [selectedActivityId, setSelectedActivityId] = useState<string | null>(null);
 
   useEffect(() => {
-    void fetchLevelProfiles();
     void fetchAll();
-  }, [fetchAll, fetchLevelProfiles]);
+  }, [fetchAll]);
 
   useEffect(() => {
     if (accountInactive) {
@@ -57,89 +63,66 @@ export const MyProfilePage: React.FC = () => {
     }
   }, [accountInactive, navigate]);
 
-  useEffect(() => {
-    return () => {
-      if (noteFeedbackTimerRef.current) {
-        clearTimeout(noteFeedbackTimerRef.current);
-      }
-    };
-  }, []);
-
-  const workspacePath = '/student/workspace';
-
-  const handleSavePublicNote = async (): Promise<void> => {
-    if (!newPublicNote.trim() || noteSaving) {
-      return;
-    }
-
-    if (noteFeedbackTimerRef.current) {
-      clearTimeout(noteFeedbackTimerRef.current);
-    }
-
-    setNoteSaving(true);
-    try {
-      await studentService.saveMyNote({
-        type: 'PUBLIC',
-        content: newPublicNote.trim(),
-      });
-      setNewPublicNote('');
-      setNoteFeedback('success');
-      await fetchAll();
-    } catch {
-      setNoteFeedback('error');
-    } finally {
-      setNoteSaving(false);
-      noteFeedbackTimerRef.current = setTimeout(() => {
-        setNoteFeedback(null);
-      }, 3000);
-    }
-  };
-
-  const profile = getProfileById(student?.levelProfileId);
-  const levelCode = profile?.code ?? 'basic';
-  const levelName = profile?.name ?? 'Sem nível';
+  const levelCode = student?.levelCode ?? student?.levelProfileCode ?? 'basic';
+  const levelName = student?.levelName ?? student?.levelProfileName ?? stripLeadingOrder(student?.levelProfileId ?? 'Sem nivel');
   const levelTone = getLevelTone(levelCode);
 
-  const exerciseDone = stats?.activitiesCompleted ?? 0;
-  const exerciseTotal = stats?.activitiesTotal ?? 0;
-  const exercisePercent = exerciseTotal > 0 ? Math.round((exerciseDone / exerciseTotal) * 100) : 0;
+  const exerciseActivities = useMemo(
+    () => activities.filter((activity) => activity.type === 'EXERCISE'),
+    [activities],
+  );
 
-  const classesDone = stats?.classesThisMonth ?? 0;
-  const classesTotal = stats?.classesTotal ?? 0;
-  const classesPercent = classesTotal > 0 ? Math.round((classesDone / classesTotal) * 100) : 0;
+  const doneExercises = useMemo(
+    () => exerciseActivities.filter((activity) => normalizeFolderName(activity.folderName) === 'DONE').length,
+    [exerciseActivities],
+  );
 
-  const overallPercent = clampPercent(stats?.overallProgress ?? 0);
+  const exerciseTotal = exerciseActivities.length;
+  const exercisePercent = exerciseTotal > 0 ? Math.round((doneExercises / exerciseTotal) * 100) : 0;
+
+  const currentMonth = new Date().getMonth();
+  const currentYear = new Date().getFullYear();
+  const classesThisMonth = useMemo(
+    () => activities.filter((activity) => {
+      if (activity.type !== 'WORKSPACE') return false;
+      const date = new Date(activity.createdAt);
+      return date.getMonth() === currentMonth && date.getFullYear() === currentYear;
+    }).length,
+    [activities, currentMonth, currentYear],
+  );
+
+  const classesPercent = clampPercent(classesThisMonth * 10);
+  const overallPercent = exercisePercent;
 
   // Only PUBLIC notes are shown to the student
   const publicNotes = useMemo(() => notes.filter((n) => n.type === 'PUBLIC'), [notes]);
 
+  const selectedActivity = useMemo(
+    () => exerciseActivities.find((activity) => activity.id === selectedActivityId) ?? null,
+    [exerciseActivities, selectedActivityId],
+  );
+
   const exerciseSections = useMemo(() => {
-    const exercises = activities.filter((a) => a.type === 'EXERCISE');
-    const grouped = new Map<string, typeof exercises>();
-    exercises.forEach((a) => {
-      grouped.set(a.folderId, [...(grouped.get(a.folderId) ?? []), a]);
+    const grouped = new Map<string, typeof exerciseActivities>();
+
+    exerciseActivities.forEach((activity) => {
+      const normalized = stripLeadingOrder(normalizeFolderName(activity.folderName));
+      const folderKey = FOLDER_ORDER.includes(normalized as (typeof FOLDER_ORDER)[number])
+        ? normalized
+        : 'TO DO';
+
+      grouped.set(folderKey, [...(grouped.get(folderKey) ?? []), activity]);
     });
 
-    const knownIds = new Set<string>();
-    const sections = folders.map((f) => {
-      knownIds.add(f.id);
-      return { id: f.id, name: f.name, position: f.position, activities: grouped.get(f.id) ?? [] };
-    });
+    return FOLDER_ORDER.map((folderName, index) => ({
+      id: `${index + 1}-${folderName}`,
+      label: `${index + 1} - ${folderName}`,
+      activities: grouped.get(folderName) ?? [],
+    }));
+  }, [exerciseActivities]);
 
-    exercises.forEach((a) => {
-      if (!knownIds.has(a.folderId)) {
-        knownIds.add(a.folderId);
-        sections.push({
-          id: a.folderId,
-          name: a.folderName || 'Sem pasta',
-          position: Number.MAX_SAFE_INTEGER,
-          activities: exercises.filter((x) => x.folderId === a.folderId),
-        });
-      }
-    });
-
-    return sections.sort((a, b) => a.position - b.position || a.name.localeCompare(b.name));
-  }, [activities, folders]);
+  const teacher = student ? getTeacherDetails(student) : null;
+  const studentStatus = student?.status === 'ACTIVE' ? 'Ativo' : student?.status === 'BLOCKED' ? 'Bloqueado' : 'Inativo';
 
   const heroCardClass = `${styles.heroCard} ${
     levelTone === 'basic' ? styles.heroCardBasic : levelTone === 'intermediate' ? styles.heroCardIntermediate : styles.heroCardAdvanced
@@ -189,11 +172,12 @@ export const MyProfilePage: React.FC = () => {
 
                   <div className={styles.heroMeta}>
                     <span className={levelTagClass}>{levelName}</span>
+                    <span className={styles.studentStatus}>Status: {studentStatus}</span>
                   </div>
 
                   <div className={styles.heroDetails}>
                     <span>📅 {formatClassDays(student.classDays)} às {formatClassTime(student.classTime)}</span>
-                    <span>📄 {stats ? `${exerciseDone}/${exerciseTotal} exercícios` : '—'}</span>
+                    <span>🖥️ {student.meetPlatform || 'Plataforma nao informada'}</span>
                     {student.meetLink && (
                       <a className={styles.meetLink} href={student.meetLink} target="_blank" rel="noreferrer">
                         Link da aula
@@ -201,33 +185,21 @@ export const MyProfilePage: React.FC = () => {
                     )}
                   </div>
                 </div>
+              </section>
 
-                <div className={styles.heroActions}>
-                  <button
-                    type="button"
-                    className={`${styles.actionBtn} ${styles.actionBtnWorkspace}`}
-                    onClick={() => navigate(workspacePath)}
-                  >
-                    ⊞ Workspace
-                  </button>
-
-                  {student.meetLink && (
-                    <button
-                      type="button"
-                      className={`${styles.actionBtn} ${styles.actionBtnMeet}`}
-                      onClick={() => window.open(student.meetLink!, '_blank', 'noopener,noreferrer')}
-                    >
-                      🎥 Entrar na aula
-                    </button>
-                  )}
-                </div>
+              {/* Teacher card */}
+              <section className={styles.teacherCard}>
+                <h2 className={styles.teacherTitle}>Professor</h2>
+                <p className={styles.teacherName}>{teacher?.name}</p>
+                <p className={styles.teacherMeta}>{teacher?.email}</p>
+                <p className={styles.teacherMeta}>{teacher?.phone}</p>
               </section>
 
               {/* Stats */}
               <section className={styles.statsGrid}>
                 <article className={styles.statCard}>
                   <div className={styles.statLabel}>EXERCÍCIOS</div>
-                  <div className={styles.statNumber}>{stats ? `${exerciseDone}/${exerciseTotal}` : '—'}</div>
+                  <div className={styles.statNumber}>{`${doneExercises}/${exerciseTotal}`}</div>
                   <div className={styles.statSubtitle}>entregues</div>
                   <div className={styles.progressBar}>
                     <div className={styles.progressFill} style={{ width: `${exercisePercent}%`, background: 'var(--color-accent-2)' }} />
@@ -236,7 +208,7 @@ export const MyProfilePage: React.FC = () => {
 
                 <article className={styles.statCard}>
                   <div className={styles.statLabel}>AULAS</div>
-                  <div className={styles.statNumber}>{stats ? `${classesDone}/${classesTotal}` : '—'}</div>
+                  <div className={styles.statNumber}>{classesThisMonth}</div>
                   <div className={styles.statSubtitle}>do mês</div>
                   <div className={styles.progressBar}>
                     <div className={styles.progressFill} style={{ width: `${classesPercent}%`, background: 'var(--color-accent)' }} />
@@ -268,7 +240,7 @@ export const MyProfilePage: React.FC = () => {
                   exerciseSections.map((folder) => (
                     <div key={folder.id} className={styles.folderSection}>
                       <div className={styles.folderHeaderRow}>
-                        <div className={styles.folderHeading}>📁 {folder.name}</div>
+                        <div className={styles.folderHeading}>📁 {folder.label}</div>
                         <span className={styles.folderCount}>{folder.activities.length} exercício(s)</span>
                       </div>
 
@@ -281,8 +253,8 @@ export const MyProfilePage: React.FC = () => {
                             role="button"
                             tabIndex={0}
                             className={styles.activityItem}
-                            onClick={() => navigate(workspacePath)}
-                            onKeyDown={(e) => e.key === 'Enter' && navigate(workspacePath)}
+                            onClick={() => setSelectedActivityId(activity.id)}
+                            onKeyDown={(e) => e.key === 'Enter' && setSelectedActivityId(activity.id)}
                           >
                             <span className={styles.activityDot} style={{ backgroundColor: getActivityColor(activity.type) }} />
                             <div className={styles.activityInfo}>
@@ -306,32 +278,6 @@ export const MyProfilePage: React.FC = () => {
           <h3 className={styles.panelTitle}>ORIENTAÇÕES DO PROFESSOR</h3>
           <p className={styles.panelSubtitle}>Notas públicas deixadas pelo seu professor.</p>
 
-          <div className={styles.noteForm}>
-            <textarea
-              className={styles.noteInput}
-              placeholder="Escreva uma nota pública para seu professor..."
-              value={newPublicNote}
-              onChange={(event) => setNewPublicNote(event.target.value)}
-              disabled={noteSaving}
-            />
-            {noteFeedback === 'success' && (
-              <span className={styles.feedbackSuccess}>Nota pública salva com sucesso!</span>
-            )}
-            {noteFeedback === 'error' && (
-              <span className={styles.feedbackError}>Erro ao salvar a nota. Tente novamente.</span>
-            )}
-            <button
-              type="button"
-              className={styles.noteSaveBtn}
-              onClick={() => {
-                void handleSavePublicNote();
-              }}
-              disabled={noteSaving || !newPublicNote.trim()}
-            >
-              {noteSaving ? 'Salvando...' : 'Salvar Nota Pública'}
-            </button>
-          </div>
-
           <div className={styles.historyList}>
             {publicNotes.length === 0 ? (
               <p className={styles.emptyState}>Nenhuma orientação registrada ainda.</p>
@@ -346,6 +292,19 @@ export const MyProfilePage: React.FC = () => {
           </div>
         </aside>
       </div>
+
+      <Modal
+        isOpen={Boolean(selectedActivity)}
+        onClose={() => setSelectedActivityId(null)}
+        title={selectedActivity?.title ?? 'Exercício'}
+        size="lg"
+      >
+        <div className={styles.previewMeta}>Criado em {selectedActivity?.createdAt ? formatShortDate(selectedActivity.createdAt) : '-'}</div>
+        <div
+          className={styles.previewContent}
+          dangerouslySetInnerHTML={{ __html: selectedActivity?.convertedHtml || '<p>Conteudo indisponivel.</p>' }}
+        />
+      </Modal>
     </div>
   );
 };

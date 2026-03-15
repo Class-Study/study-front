@@ -71,6 +71,15 @@ export const AppRoutes: React.FC = () => {
       />
 
       <Route
+        path="/me"
+        element={
+          <PrivateRoute requiredRoles={['STUDENT']}>
+            <MyProfilePage />
+          </PrivateRoute>
+        }
+      />
+
+      <Route
         path="/student/workspace"
         element={
           <PrivateRoute requiredRoles={['STUDENT']}>

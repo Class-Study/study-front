@@ -59,7 +59,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       // Redireciona conforme role
       if (user.role === 'STUDENT') {
-        navigate('/student/profile');
+        navigate('/me');
       } else {
         navigate('/dashboard'); // TEACHER e ADMIN
       }

@@ -19,6 +19,7 @@ export interface StudentActivity {
   type: ActivityType;
   folderName: string;
   folderId: string;
+  convertedHtml?: string;
   createdAt: string;
 }
 
