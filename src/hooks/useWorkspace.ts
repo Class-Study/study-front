@@ -76,12 +76,15 @@ export const useWorkspace = (studentId: string) => {
     folderId: string,
     title: string,
     type: 'EXERCISE' | 'WORKSPACE',
+    contentHtml: string = '',
+    originalFilename?: string,
   ): Promise<WorkspaceActivity | null> => {
     try {
-      const activity = await workspaceService.createActivity(folderId, {
+      const activity = await workspaceService.createActivity(studentId, folderId, {
         title,
         type,
-        contentHtml: '',
+        contentHtml,
+        originalFilename,
       });
 
       setWorkspace((prev) => {
@@ -102,7 +105,7 @@ export const useWorkspace = (studentId: string) => {
       console.error('Erro ao criar atividade');
       return null;
     }
-  }, []);
+  }, [studentId]);
 
   const createFolder = useCallback(async (name: string): Promise<WorkspaceFolder | null> => {
     try {

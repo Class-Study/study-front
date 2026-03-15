@@ -26,6 +26,7 @@ interface WorkspaceSidebarProps {
   onCreateFolder: () => void;
   onCreateExercise: () => void;
   onCreateWorkspace: () => void;
+  onOpenUploadForFolder: (folderId: string) => void;
 }
 
 export const WorkspaceSidebar: React.FC<WorkspaceSidebarProps> = ({
@@ -43,6 +44,7 @@ export const WorkspaceSidebar: React.FC<WorkspaceSidebarProps> = ({
   onCreateFolder,
   onCreateExercise,
   onCreateWorkspace,
+  onOpenUploadForFolder,
 }) => {
   const activeFolderId = folders.find((f) =>
     f.activities.some((a) => a.id === activeActivityId),
@@ -162,6 +164,14 @@ export const WorkspaceSidebar: React.FC<WorkspaceSidebarProps> = ({
                       </div>
                     ))
                   )}
+
+                  <button
+                    type="button"
+                    className={styles.newFileBtn}
+                    onClick={() => onOpenUploadForFolder(folder.id)}
+                  >
+                    + Novo Arquivo
+                  </button>
                 </div>
               )}
             </div>

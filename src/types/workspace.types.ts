@@ -34,6 +34,7 @@ export interface CreateActivityRequest {
   title: string;
   type: ActivityType;
   contentHtml: string;
+  originalFilename?: string;
 }
 
 export interface CreateFolderRequest {

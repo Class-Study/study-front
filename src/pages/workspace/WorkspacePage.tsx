@@ -7,6 +7,7 @@ import { WorkspaceSidebar } from './components/WorkspaceSidebar/WorkspaceSidebar
 import { WorkspaceEditor } from './components/WorkspaceEditor/WorkspaceEditor';
 import { WorkspaceChat } from './components/WorkspaceChat/WorkspaceChat';
 import { WorkspaceNotes } from './components/WorkspaceNotes/WorkspaceNotes';
+import { UploadActivityModal } from './components/UploadActivityModal/UploadActivityModal';
 import { ChatMessage, WorkspaceActivity } from '@/types/workspace.types';
 import styles from './WorkspacePage.module.css';
 
@@ -57,6 +58,13 @@ export const WorkspacePage: React.FC = () => {
     folderId?: string;
     title: string;
   } | null>(null);
+  const [uploadModalState, setUploadModalState] = useState<{
+    isOpen: boolean;
+    folderId: string | null;
+  }>({
+    isOpen: false,
+    folderId: null,
+  });
   const bodyRef = useRef<HTMLDivElement | null>(null);
   const isResizingRef = useRef(false);
 
@@ -137,11 +145,40 @@ export const WorkspacePage: React.FC = () => {
     const folderId = newItemForm?.folderId ?? activeFolderId;
     if (!folderId || !newItemForm?.title.trim()) return;
 
-    const activity = await createActivity(folderId, newItemForm.title.trim(), type);
+    const activity = await createActivity(folderId, newItemForm.title.trim(), type, '');
     if (activity) {
       setActiveActivity(activity);
       setNewItemForm(null);
     }
+  };
+
+  const handleOpenUploadForFolder = (folderId: string): void => {
+    setUploadModalState({
+      isOpen: true,
+      folderId,
+    });
+  };
+
+  const handleSaveUploadedActivity = async (payload: {
+    folderId: string;
+    title: string;
+    type: 'EXERCISE' | 'WORKSPACE';
+    contentHtml: string;
+    originalFilename: string;
+  }): Promise<void> => {
+    const activity = await createActivity(
+      payload.folderId,
+      payload.title,
+      payload.type,
+      payload.contentHtml,
+      payload.originalFilename,
+    );
+
+    if (!activity) {
+      throw new Error('Falha ao criar atividade');
+    }
+
+    setActiveActivity(activity);
   };
 
   const stopResizing = (): void => {
@@ -241,6 +278,7 @@ export const WorkspacePage: React.FC = () => {
           onCreateFolder={handleCreateFolder}
           onCreateExercise={() => handleCreateActivity('EXERCISE')}
           onCreateWorkspace={() => handleCreateActivity('WORKSPACE')}
+          onOpenUploadForFolder={handleOpenUploadForFolder}
         />
 
         <div className={styles.editorArea}>
@@ -270,6 +308,14 @@ export const WorkspacePage: React.FC = () => {
           </div>
         </div>
       </div>
+
+      <UploadActivityModal
+        isOpen={uploadModalState.isOpen}
+        folders={exerciseFolders}
+        selectedFolderId={uploadModalState.folderId}
+        onClose={() => setUploadModalState({ isOpen: false, folderId: null })}
+        onSave={handleSaveUploadedActivity}
+      />
     </div>
   );
 };

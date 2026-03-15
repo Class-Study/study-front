@@ -35,11 +35,12 @@ const workspaceService = {
   },
 
   createActivity: async (
+    studentId: string,
     folderId: string,
     payload: CreateActivityRequest,
   ): Promise<WorkspaceActivity> => {
     const { data } = await api.post<WorkspaceActivity>(
-      `/folders/${folderId}/activities`,
+      `/students/${studentId}/folders/${folderId}/activities`,
       payload,
     );
     return data;
