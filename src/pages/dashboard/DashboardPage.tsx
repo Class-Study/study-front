@@ -294,7 +294,7 @@ export const DashboardPage: React.FC = () => {
                     <div className={styles.progressSection}>
                       <div className={styles.progressLabel}>
                         Duração
-                        <span className={styles.progressPercent}>{student.classDuration}h</span>
+                        <span className={styles.progressPercent}>{student.classDuration}min</span>
                       </div>
                       <div className={styles.progressBar}>
                         <progress
