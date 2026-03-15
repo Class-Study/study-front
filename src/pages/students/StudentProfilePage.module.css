@@ -23,7 +23,7 @@
 }
 
 .notesPanel {
-  width: 280px;
+  width: 35rem;
   flex-shrink: 0;
   background: var(--color-bg-card);
   border-left: 1px solid var(--color-border);
@@ -392,6 +392,9 @@
 .historyText {
   font-size: 13px;
   color: var(--color-text-primary);
+  word-break: break-word;
+  overflow-wrap: break-word;
+  white-space: pre-wrap;
 }
 
 .loading,
