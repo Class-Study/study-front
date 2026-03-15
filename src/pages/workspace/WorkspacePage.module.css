@@ -1,9 +1,10 @@
 .page {
   flex: 1;
-  min-height: 100vh;
+  height: 100vh;
   display: flex;
   flex-direction: column;
   background: var(--color-bg-page);
+  overflow: hidden;
 }
 
 .toolbar {
@@ -64,6 +65,7 @@
   display: flex;
   overflow: hidden;
   height: calc(100vh - 92px); /* header 56px + toolbar 36px */
+  min-height: 0;
 }
 
 .editorArea {

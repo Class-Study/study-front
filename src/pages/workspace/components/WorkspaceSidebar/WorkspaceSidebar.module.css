@@ -1,6 +1,4 @@
 .sidebar {
-  width: 200px;
-  min-width: 200px;
   background: var(--color-bg-card);
   border-right: 1px solid var(--color-border);
   display: flex;
@@ -8,6 +6,7 @@
   transition: width 0.2s ease, min-width 0.2s ease;
   overflow: hidden;
   flex-shrink: 0;
+  position: relative;
 }
 
 .sidebarCollapsed {
@@ -321,4 +320,18 @@
   color: var(--color-text-secondary);
   border-color: var(--color-text-tertiary);
   background: var(--color-bg-input);
+}
+
+.resizeHandle {
+  position: absolute;
+  top: 0;
+  right: -3px;
+  width: 6px;
+  height: 100%;
+  cursor: col-resize;
+  z-index: 10;
+}
+
+.resizeHandle:hover {
+  background: rgba(45, 138, 93, 0.15);
 }

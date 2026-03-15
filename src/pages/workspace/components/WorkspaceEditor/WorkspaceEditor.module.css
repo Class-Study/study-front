@@ -67,6 +67,25 @@
 .editorScroll {
   flex: 1;
   overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-text-tertiary) transparent;
+}
+
+.editorScroll::-webkit-scrollbar {
+  width: 4px;
+}
+
+.editorScroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.editorScroll::-webkit-scrollbar-thumb {
+  background: var(--color-text-tertiary);
+  border-radius: 999px;
+}
+
+.editorScroll::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-secondary);
 }
 
 .editorContent {

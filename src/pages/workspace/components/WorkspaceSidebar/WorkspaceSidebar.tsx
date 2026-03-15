@@ -7,9 +7,11 @@ interface WorkspaceSidebarProps {
   folders: WorkspaceFolder[];
   workspaces: WorkspaceActivity[];
   activeActivityId: string | null;
+  width: number;
   onSelectActivity: (activity: WorkspaceActivity) => void;
   collapsed: boolean;
   onToggleCollapse: () => void;
+  onResizeStart: () => void;
   newItemForm: {
     type: 'folder' | 'activity';
     folderId?: string;
@@ -30,9 +32,11 @@ export const WorkspaceSidebar: React.FC<WorkspaceSidebarProps> = ({
   folders,
   workspaces,
   activeActivityId,
+  width,
   onSelectActivity,
   collapsed,
   onToggleCollapse,
+  onResizeStart,
   newItemForm,
   defaultFolderId,
   onChangeNewItemForm,
@@ -79,8 +83,13 @@ export const WorkspaceSidebar: React.FC<WorkspaceSidebarProps> = ({
     });
   };
 
+  const currentWidth = collapsed ? 0 : width;
+
   return (
-    <aside className={`${styles.sidebar} ${collapsed ? styles.sidebarCollapsed : ''}`}>
+    <aside
+      className={`${styles.sidebar} ${collapsed ? styles.sidebarCollapsed : ''}`}
+      style={{ width: `${currentWidth}px`, minWidth: `${currentWidth}px` }}
+    >
       <div className={styles.header}>
         <span className={styles.headerLabel}>Arquivos &amp; WS</span>
         <button
@@ -261,6 +270,15 @@ export const WorkspaceSidebar: React.FC<WorkspaceSidebarProps> = ({
           </button>
         )}
       </div>
+
+      {!collapsed && (
+        <div
+          className={styles.resizeHandle}
+          role="separator"
+          aria-orientation="vertical"
+          onMouseDown={onResizeStart}
+        />
+      )}
     </aside>
   );
 };

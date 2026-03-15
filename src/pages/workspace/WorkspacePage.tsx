@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { Header } from '@/components/layout/Header/Header';
 import studentService from '@/services/api/student.service';
@@ -20,6 +20,10 @@ const MOCK_PRESENCE = [
   { name: 'Aluna online', color: '--color-blue' },
 ];
 
+const SIDEBAR_MIN_WIDTH = 200;
+const SIDEBAR_MAX_WIDTH = 450;
+const SIDEBAR_WIDTH_STORAGE_KEY = 'workspace.sidebar.width';
+
 export const WorkspacePage: React.FC = () => {
   const { studentId } = useParams<{ studentId: string }>();
   const {
@@ -35,6 +39,15 @@ export const WorkspacePage: React.FC = () => {
   } = useWorkspace(studentId ?? '');
 
   const [activeActivity, setActiveActivity] = useState<WorkspaceActivity | null>(null);
+  const [sidebarWidth, setSidebarWidth] = useState<number>(() => {
+    if (typeof window === 'undefined') return 240;
+
+    const raw = window.localStorage.getItem(SIDEBAR_WIDTH_STORAGE_KEY);
+    const parsed = Number(raw);
+    if (Number.isNaN(parsed)) return 240;
+
+    return Math.min(SIDEBAR_MAX_WIDTH, Math.max(SIDEBAR_MIN_WIDTH, parsed));
+  });
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [chatVisible, setChatVisible] = useState(true);
   const [messages, setMessages] = useState<ChatMessage[]>(MOCK_CHAT);
@@ -44,6 +57,8 @@ export const WorkspacePage: React.FC = () => {
     folderId?: string;
     title: string;
   } | null>(null);
+  const bodyRef = useRef<HTMLDivElement | null>(null);
+  const isResizingRef = useRef(false);
 
   const allActivities = useMemo(
     () => [
@@ -86,6 +101,11 @@ export const WorkspacePage: React.FC = () => {
     }
   }, [activeActivity, allActivities]);
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    window.localStorage.setItem(SIDEBAR_WIDTH_STORAGE_KEY, String(sidebarWidth));
+  }, [sidebarWidth]);
+
   const handleSendMessage = (content: string): void => {
     const newMsg: ChatMessage = {
       id: crypto.randomUUID(),
@@ -123,6 +143,45 @@ export const WorkspacePage: React.FC = () => {
       setNewItemForm(null);
     }
   };
+
+  const stopResizing = (): void => {
+    isResizingRef.current = false;
+    window.removeEventListener('mousemove', handleSidebarResize);
+    window.removeEventListener('mouseup', stopResizing);
+    document.body.style.cursor = '';
+    document.body.style.userSelect = '';
+  };
+
+  const handleSidebarResize = (event: MouseEvent): void => {
+    if (!isResizingRef.current) return;
+
+    const containerLeft = bodyRef.current?.getBoundingClientRect().left ?? 0;
+    const nextWidth = Math.min(
+      SIDEBAR_MAX_WIDTH,
+      Math.max(SIDEBAR_MIN_WIDTH, event.clientX - containerLeft),
+    );
+
+    setSidebarWidth(nextWidth);
+  };
+
+  const handleSidebarResizeStart = (): void => {
+    if (sidebarCollapsed) {
+      setSidebarCollapsed(false);
+    }
+
+    isResizingRef.current = true;
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+    window.addEventListener('mousemove', handleSidebarResize);
+    window.addEventListener('mouseup', stopResizing);
+  };
+
+  useEffect(() => {
+    return () => {
+      window.removeEventListener('mousemove', handleSidebarResize);
+      window.removeEventListener('mouseup', stopResizing);
+    };
+  }, []);
 
   if (loading) {
     return (
@@ -166,14 +225,16 @@ export const WorkspacePage: React.FC = () => {
         </button>
       </div>
 
-      <div className={styles.body}>
+      <div className={styles.body} ref={bodyRef}>
         <WorkspaceSidebar
           folders={exerciseFolders}
           workspaces={workspaceActivities}
           activeActivityId={activeActivity?.id ?? null}
+          width={sidebarWidth}
           onSelectActivity={setActiveActivity}
           collapsed={sidebarCollapsed}
           onToggleCollapse={() => setSidebarCollapsed((prev) => !prev)}
+          onResizeStart={handleSidebarResizeStart}
           newItemForm={newItemForm}
           defaultFolderId={activeFolderId}
           onChangeNewItemForm={setNewItemForm}
