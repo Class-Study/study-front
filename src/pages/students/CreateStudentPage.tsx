@@ -55,7 +55,7 @@ const durationOptions = [
 
 export const CreateStudentPage: React.FC = () => {
   const navigate = useNavigate();
-  const { levelProfiles = [], fetchLevelProfiles = () => {} } = useLevelProfiles() || {};
+  const { levelProfiles, loading: loadingProfiles, fetchLevelProfiles } = useLevelProfiles();
   const breadcrumbItems = [
     { label: 'Dashboard', path: '/dashboard' },
     { label: 'Alunos', path: '/dashboard' },
@@ -233,9 +233,6 @@ export const CreateStudentPage: React.FC = () => {
     );
     return platform?.placeholder || 'https://...';
   };
-
-  // Get system levels only (isSystem=true)
-  const systemLevels = levelProfiles.filter((lp) => lp.isSystem !== false);
 
   return (
     <div className={styles.page}>
@@ -441,44 +438,50 @@ export const CreateStudentPage: React.FC = () => {
           <section className={styles.section}>
             <div className={styles.sectionLabel}>NÍVEL DO ALUNO</div>
 
-            <div className={styles.levelCards}>
-              {systemLevels.map((level) => (
-                <button
-                  key={level.id}
-                  type="button"
-                  className={`${styles.levelCard} ${
-                    form.levelProfileId === level.id
-                      ? styles.levelCardActive
-                      : ''
-                  }`}
-                  onClick={() => handleLevelSelect(level.id)}
-                >
-                  <div className={styles.levelCardIcon}>{level.icon}</div>
-                  <div className={styles.levelCardName}>{level.name}</div>
-                  <div className={styles.levelCardDesc}>{level.description}</div>
-                </button>
-              ))}
-            </div>
+            {loadingProfiles ? (
+              <div className={styles.loadingProfiles}>Carregando níveis...</div>
+            ) : (
+              <div className={styles.levelCards}>
+                {levelProfiles.map((profile) => (
+                  <button
+                    key={profile.id}
+                    type="button"
+                    className={`${styles.levelCard} ${
+                      form.levelProfileId === profile.id
+                        ? styles.levelCardActive
+                        : ''
+                    }`}
+                    onClick={() => handleLevelSelect(profile.id)}
+                  >
+                    <div className={styles.levelCardIcon}>{profile.icon}</div>
+                    <div className={styles.levelCardName}>{profile.name}</div>
+                    <div className={styles.levelCardDesc}>{profile.description ?? 'Perfil Personalizado'}</div>
+                  </button>
+                ))}
+              </div>
+            )}
 
             {errors.levelProfileId && (
               <div className={styles.error}>{errors.levelProfileId}</div>
             )}
 
-            {selectedLevelProfile && selectedLevelProfile.folders && (
+            {selectedLevelProfile && selectedLevelProfile.folders && selectedLevelProfile.folders.length > 0 && (
               <div className={styles.folderPreview}>
                 <div className={styles.folderPreviewTitle}>
                   📁 Espaço gerado automaticamente
                 </div>
-                {selectedLevelProfile.folders.map((folder, idx) => (
-                  <div key={idx} className={styles.folderItem}>
-                    <span className={styles.folderName}>{folder.name}</span>
-                    <span className={styles.folderCount}>
-                      {folder.initialFiles > 0
-                        ? `${folder.initialFiles} arq.`
-                        : 'vazio'}
-                    </span>
-                  </div>
-                ))}
+                {[...selectedLevelProfile.folders]
+                  .sort((a, b) => a.position - b.position)
+                  .map((folder) => (
+                    <div key={folder.id} className={styles.folderItem}>
+                      <span className={styles.folderName}>{folder.name}</span>
+                      <span className={styles.folderCount}>
+                        {folder.initialFiles > 0
+                          ? `${folder.initialFiles} arq.`
+                          : 'vazio'}
+                      </span>
+                    </div>
+                  ))}
               </div>
             )}
           </section>

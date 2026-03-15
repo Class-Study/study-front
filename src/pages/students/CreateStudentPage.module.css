@@ -176,6 +176,14 @@
 }
 
 /* ══ LEVEL CARDS ══ */
+.loadingProfiles {
+  font-family: var(--font-sans);
+  font-size: 13px;
+  color: var(--color-text-tertiary);
+  padding: 16px 0;
+  font-style: italic;
+}
+
 .levelCards {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
