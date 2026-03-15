@@ -6,6 +6,8 @@ import { CreateStudentPage } from '@/pages/students/CreateStudentPage';
 import { StudentProfilePage } from '@/pages/students/StudentProfilePage';
 import { BillingPage } from '@/pages/billing/BillingPage';
 import { WorkspacePage } from '@/pages/workspace/WorkspacePage';
+import { MyProfilePage } from '@/pages/me/MyProfilePage';
+import MyWorkspacePage from '@/pages/me/MyWorkspacePage';
 
 export const AppRoutes: React.FC = () => {
   return (
@@ -53,6 +55,25 @@ export const AppRoutes: React.FC = () => {
         element={
           <PrivateRoute requiredRoles={['TEACHER', 'ADMIN']}>
             <BillingPage />
+          </PrivateRoute>
+        }
+      />
+
+      {/* Student-only routes */}
+      <Route
+        path="/me/profile"
+        element={
+          <PrivateRoute requiredRoles={['STUDENT']}>
+            <MyProfilePage />
+          </PrivateRoute>
+        }
+      />
+
+      <Route
+        path="/me/workspace"
+        element={
+          <PrivateRoute requiredRoles={['STUDENT']}>
+            <MyWorkspacePage />
           </PrivateRoute>
         }
       />
