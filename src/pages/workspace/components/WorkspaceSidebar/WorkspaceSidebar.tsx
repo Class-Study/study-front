@@ -33,6 +33,9 @@ interface WorkspaceSidebarProps {
   allowCreate?: boolean;
   allowMove?: boolean;
   allowWorkspaceMove?: boolean;
+  allowCreateWorkspace?: boolean;
+  allowCreateFolder?: boolean;
+  allowUploadToFolder?: boolean;
 }
 
 interface PendingMove {
@@ -63,9 +66,15 @@ export const WorkspaceSidebar: React.FC<WorkspaceSidebarProps> = ({
   allowCreate,
   allowMove,
   allowWorkspaceMove = true,
+  allowCreateWorkspace,
+  allowCreateFolder,
+  allowUploadToFolder,
 }) => {
   const canCreate = allowCreate ?? !readOnly;
   const canMove = allowMove ?? !readOnly;
+  const canCreateWorkspace = allowCreateWorkspace ?? canCreate;
+  const canCreateFolder = allowCreateFolder ?? canCreate;
+  const canUploadToFolder = allowUploadToFolder ?? canCreate;
 
   const activeFolderId = folders.find((f) =>
     f.activities.some((a) => a.id === activeActivityId),
@@ -183,7 +192,7 @@ export const WorkspaceSidebar: React.FC<WorkspaceSidebarProps> = ({
         {/* Workspaces section */}
         <div className={styles.sectionLabel}>Workspaces</div>
 
-        {canCreate && (
+        {canCreateWorkspace && (
           <button
             type="button"
             className={styles.addWorkspaceMinimal}
@@ -281,7 +290,7 @@ export const WorkspaceSidebar: React.FC<WorkspaceSidebarProps> = ({
                   )}
                   {provided.placeholder}
 
-                  {canCreate && (
+                  {canUploadToFolder && (
                     <button
                       type="button"
                       className={styles.newFileBtn}
@@ -300,7 +309,7 @@ export const WorkspaceSidebar: React.FC<WorkspaceSidebarProps> = ({
       </div>
       </DragDropContext>
 
-      {canCreate && (
+      {canCreateFolder && (
         <div className={styles.footer}>
           {newItemForm ? (
             <div className={styles.createForm}>

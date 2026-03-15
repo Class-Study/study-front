@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Header } from '@/components/layout/Header/Header';
+import DocxPreviewEditor from '@/components/ui/DocxPreviewEditor/DocxPreviewEditor';
 import { useAuth } from '@/hooks/useAuth';
 import { useMyWorkspace } from '@/hooks/useMyWorkspace';
 import { WorkspaceSidebar } from './components/WorkspaceSidebar/WorkspaceSidebar';
@@ -55,6 +56,12 @@ export const StudentWorkspacePage: React.FC = () => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [chatVisible, setChatVisible] = useState(true);
   const [messages, setMessages] = useState<ChatMessage[]>(MOCK_CHAT);
+  const [isEditingNewWorkspace, setIsEditingNewWorkspace] = useState(false);
+  const [newWorkspaceTitle, setNewWorkspaceTitle] = useState(
+    `Novo Workspace - ${new Date().toLocaleDateString('pt-BR')}`,
+  );
+  const [newWorkspaceContent, setNewWorkspaceContent] = useState('<p></p>');
+  const [workspaceDraftFeedback, setWorkspaceDraftFeedback] = useState<string | null>(null);
   const bodyRef = useRef<HTMLDivElement | null>(null);
   const isResizingRef = useRef(false);
 
@@ -112,7 +119,27 @@ export const StudentWorkspacePage: React.FC = () => {
   ];
 
   const handleSelectActivity = (activity: WorkspaceActivity): void => {
+    setIsEditingNewWorkspace(false);
+    setWorkspaceDraftFeedback(null);
     setActiveActivity(activity);
+  };
+
+  const handleCreateWorkspace = (): void => {
+    setIsEditingNewWorkspace(true);
+    setWorkspaceDraftFeedback(null);
+
+    if (!newWorkspaceTitle.trim()) {
+      setNewWorkspaceTitle(`Novo Workspace - ${new Date().toLocaleDateString('pt-BR')}`);
+    }
+  };
+
+  const handleWorkspaceDraftSave = (): void => {
+    setWorkspaceDraftFeedback('Rascunho salvo localmente.');
+  };
+
+  const handleCloseWorkspaceDraft = (): void => {
+    setIsEditingNewWorkspace(false);
+    setWorkspaceDraftFeedback(null);
   };
 
   const handleMoveActivity = async (
@@ -219,26 +246,71 @@ export const StudentWorkspacePage: React.FC = () => {
           newItemForm={null}
           onChangeNewItemForm={() => {}}
           onCreateFolder={() => {}}
-          onCreateWorkspace={() => {}}
+          onCreateWorkspace={handleCreateWorkspace}
           onOpenUploadForFolder={() => {}}
           onMoveActivity={handleMoveActivity}
           readOnly={true}
           allowCreate={false}
           allowMove={true}
           allowWorkspaceMove={false}
+          allowCreateWorkspace={true}
+          allowCreateFolder={false}
+          allowUploadToFolder={false}
         />
 
         <div className={styles.editorArea}>
-          <WorkspaceEditor
-            activity={activeActivity}
-            editable={activeActivity?.type === 'EXERCISE'}
-            onContentChange={(html) => {
-              if (activeActivity?.id && activeActivity.type === 'EXERCISE') {
-                saveContent(activeActivity.id, html);
-              }
-            }}
-            headerStatus={saving ? <span className={styles.savingIndicator}>Salvando...</span> : null}
-          />
+          {isEditingNewWorkspace ? (
+            <div className={styles.workspaceContainer}>
+              <div className={styles.workspaceHeaderRow}>
+                <input
+                  className={styles.workspaceTitleInput}
+                  placeholder="Titulo do Workspace..."
+                  value={newWorkspaceTitle}
+                  onChange={(event) => setNewWorkspaceTitle(event.target.value)}
+                />
+
+                <div className={styles.workspaceActions}>
+                  <button
+                    type="button"
+                    className={styles.workspaceSecondaryBtn}
+                    onClick={handleCloseWorkspaceDraft}
+                  >
+                    Fechar
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.workspacePrimaryBtn}
+                    onClick={handleWorkspaceDraftSave}
+                  >
+                    Salvar
+                  </button>
+                </div>
+              </div>
+
+              {workspaceDraftFeedback && (
+                <span className={styles.workspaceFeedback}>{workspaceDraftFeedback}</span>
+              )}
+
+              <div className={styles.workspaceEditorBody}>
+                <DocxPreviewEditor
+                  html={newWorkspaceContent}
+                  editable={true}
+                  onChange={setNewWorkspaceContent}
+                />
+              </div>
+            </div>
+          ) : (
+            <WorkspaceEditor
+              activity={activeActivity}
+              editable={activeActivity?.type === 'EXERCISE'}
+              onContentChange={(html) => {
+                if (activeActivity?.id && activeActivity.type === 'EXERCISE') {
+                  saveContent(activeActivity.id, html);
+                }
+              }}
+              headerStatus={saving ? <span className={styles.savingIndicator}>Salvando...</span> : null}
+            />
+          )}
         </div>
 
         <div className={`${styles.rightPanel} ${chatVisible ? '' : styles.rightPanelHidden}`}>
