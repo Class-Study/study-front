@@ -1,173 +1,126 @@
-.container {
-  display: flex;
-  min-height: 100vh;
-}
-
-.content {
+.page {
   flex: 1;
-  margin-left: 250px;
-  background: var(--color-background);
   min-height: 100vh;
-}
-
-.layout {
-  display: grid;
-  grid-template-columns: 250px 1fr;
-  height: calc(100vh - 80px);
-}
-
-.sidebar {
-  background: var(--color-surface);
-  border-right: 1px solid var(--color-border);
-  padding: 20px;
-  overflow-y: auto;
-}
-
-.sidebarTitle {
-  margin: 0 0 16px 0;
-  font-size: 0.875rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  color: var(--color-text-muted);
-}
-
-.foldersList {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  background: var(--color-bg-page);
 }
 
-.folderItem {
+.toolbar {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 12px;
-  background: none;
-  border: none;
-  border-radius: var(--border-radius-md);
-  color: var(--color-text);
-  cursor: pointer;
-  transition: all 0.2s ease;
-  text-align: left;
-}
-
-.folderItem:hover {
-  background: var(--color-background);
-}
-
-.folderItem.active {
-  background: var(--color-primary-light);
-  color: white;
-}
-
-.folderIcon {
-  font-size: 1.25rem;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 4px 16px;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-bg-card);
+  height: 36px;
   flex-shrink: 0;
 }
 
-.folderName {
-  font-size: 0.9375rem;
-  font-weight: 500;
-  word-break: break-word;
+.expandSidebarBtn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--color-text-tertiary);
+  font-size: 10px;
+  padding: 4px 6px;
+  border-radius: 4px;
+  margin-right: auto;
+  transition: color 0.15s, background 0.15s;
 }
 
-.empty {
-  text-align: center;
-  color: var(--color-text-muted);
-  font-size: 0.875rem;
-  padding: 20px;
+.expandSidebarBtn:hover {
+  color: var(--color-text-primary);
+  background: var(--color-bg-input);
 }
 
-.main {
-  padding: 30px;
-  overflow-y: auto;
+.chatToggleBtn {
+  padding: 4px 12px;
+  background: var(--color-bg-input);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text-secondary);
+  font-family: var(--font-sans);
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.15s;
 }
 
-.mainTitle {
-  margin: 0 0 30px 0;
-  font-size: 1.75rem;
-  font-weight: 700;
-  color: var(--color-text);
+.chatToggleBtn:hover {
+  border-color: var(--color-accent);
+  color: var(--color-text-primary);
 }
 
-.activitiesList {
+.chatToggleBtnActive {
+  background: rgba(45, 138, 93, 0.12);
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+
+.body {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+  height: calc(100vh - 92px); /* header 56px + toolbar 36px */
+}
+
+.editorArea {
+  flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  min-width: 0;
+  overflow: hidden;
 }
 
-.activityCard {
-  background: var(--color-surface);
-  border-radius: var(--border-radius-lg);
-  padding: 20px;
-  box-shadow: var(--shadow-sm);
-}
-
-.activityHeader {
+.rightPanel {
+  width: 300px;
+  flex-shrink: 0;
   display: flex;
-  align-items: start;
-  justify-content: space-between;
-  margin-bottom: 16px;
-  gap: 12px;
-}
-
-.activityTitle {
-  margin: 0;
-  font-size: 1.125rem;
-  font-weight: 700;
-  color: var(--color-text);
-  flex: 1;
-}
-
-.activityType {
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: var(--color-text-muted);
-  white-space: nowrap;
-}
-
-.activityContent {
-  font-size: 0.9375rem;
-  line-height: 1.6;
-  color: var(--color-text);
-}
-
-.activityActions {
-  margin-top: 12px;
-  display: flex;
-  justify-content: flex-end;
-}
-
-.saveAnswersBtn {
-  padding: 8px 14px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--color-border);
+  flex-direction: column;
+  border-left: 1px solid var(--color-border);
   background: var(--color-bg-card);
-  color: var(--color-text-primary);
-  font-size: 0.8125rem;
-  font-weight: 500;
-  transition: background-color 0.2s ease, border-color 0.2s ease;
+  overflow: hidden;
 }
 
-.saveAnswersBtn:hover {
-  background: var(--color-bg-input);
-  border-color: var(--color-accent);
+.rightPanelHidden {
+  display: none;
 }
 
-.noActivities {
-  text-align: center;
-  color: var(--color-text-muted);
-  padding: 40px;
+.chatSection {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  border-bottom: 1px solid var(--color-border);
+  min-height: 0;
+  overflow: hidden;
 }
 
-.placeholder {
+.notesSection {
+  height: 180px;
+  flex-shrink: 0;
+}
+
+.loadingState,
+.errorState {
+  flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 100%;
-  color: var(--color-text-muted);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  color: var(--color-text-tertiary);
+  padding: 32px;
 }
 
-.placeholder p {
-  font-size: 1.125rem;
+.errorState {
+  color: var(--color-danger);
+}
+
+.savingIndicator {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  color: var(--color-text-tertiary);
+  white-space: nowrap;
 }
