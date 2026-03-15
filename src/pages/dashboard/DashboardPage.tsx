@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Bell, CreditCard, PlusSquare, Search } from 'lucide-react';
+import { CreditCard, PlusSquare, Search } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Header } from '@/components/layout/Header/Header';
 import { useStudents } from '@/hooks/useStudents';
@@ -310,11 +310,16 @@ export const DashboardPage: React.FC = () => {
                         💰 R$ {student.classRate?.toFixed(2)}
                       </span>
                       <div className={styles.actionButtons}>
-                        <button className={styles.iconBtn} title="Workspace" type="button">
+                        <button
+                          className={styles.iconBtn}
+                          title="Abrir Workspace"
+                          type="button"
+                          onClick={e => {
+                            e.stopPropagation();
+                            navigate(`/dashboard/student/${student.id}/workspace`);
+                          }}
+                        >
                           <PlusSquare size={14} />
-                        </button>
-                        <button className={styles.iconBtn} title="Notificação" type="button">
-                          <Bell size={14} />
                         </button>
                       </div>
                     </div>

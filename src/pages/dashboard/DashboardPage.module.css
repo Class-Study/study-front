@@ -68,7 +68,9 @@
   border-radius: var(--radius-lg);
   padding: 24px;
   box-shadow: var(--shadow-md);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 .statCard:hover {
@@ -77,7 +79,11 @@
 }
 
 .statCard.primary {
-  background: linear-gradient(135deg, var(--color-accent) 0%, var(--color-accent-hover) 100%);
+  background: linear-gradient(
+    135deg,
+    var(--color-accent) 0%,
+    var(--color-accent-hover) 100%
+  );
   color: var(--color-text-inverse);
 }
 
@@ -231,7 +237,9 @@
   padding: 16px;
   cursor: pointer;
   box-shadow: var(--shadow-sm);
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease;
 }
 
 .studentCard.levelBasic {
@@ -456,14 +464,16 @@
 }
 
 .iconBtn {
-  width: 28px;
-  height: 28px;
+  width: 2rem;
+  height: 2rem;
   border-radius: var(--radius-md);
   border: 1px solid var(--color-border);
   background: var(--color-bg-tag);
   color: var(--color-text-secondary);
   cursor: pointer;
-  transition: background 0.2s ease, color 0.2s ease;
+  transition:
+    background 0.2s ease,
+    color 0.2s ease;
   display: flex;
   align-items: center;
   justify-content: center;
