@@ -23,7 +23,7 @@
 }
 
 .notesPanel {
-  width: 35rem;
+  width: 35%;
   flex-shrink: 0;
   background: var(--color-bg-card);
   border-left: 1px solid var(--color-border);
