@@ -14,10 +14,22 @@ interface StudentWorkspaceResponse {
     id: string;
     name: string;
     position: number;
+    activities?: StudentActivity[];
   }>;
 }
 
 type ListPayload<T> = T[] | { items?: T[]; data?: T[]; activities?: T[]; notes?: T[] };
+
+type ActivitiesPayload =
+  | ListPayload<StudentActivity>
+  | {
+      folders?: Array<{
+        id: string;
+        name: string;
+        position?: number;
+        activities?: StudentActivity[];
+      }>;
+    };
 
 const extractList = <T>(payload: ListPayload<T>): T[] => {
   if (Array.isArray(payload)) return payload;
@@ -26,6 +38,23 @@ const extractList = <T>(payload: ListPayload<T>): T[] => {
   if (Array.isArray(payload.activities)) return payload.activities;
   if (Array.isArray(payload.notes)) return payload.notes;
   return [];
+};
+
+const extractActivities = (payload: ActivitiesPayload): StudentActivity[] => {
+  const directList = extractList(payload as ListPayload<StudentActivity>);
+  if (directList.length > 0) return directList;
+
+  if (!('folders' in payload) || !Array.isArray(payload.folders)) return [];
+
+  return payload.folders.flatMap((folder) => {
+    if (!Array.isArray(folder.activities)) return [];
+
+    return folder.activities.map((activity) => ({
+      ...activity,
+      folderId: activity.folderId ?? folder.id,
+      folderName: activity.folderName ?? folder.name,
+    }));
+  });
 };
 
 const studentProfileService = {
@@ -48,13 +77,13 @@ const studentProfileService = {
   },
 
   getActivities: async (studentId: string): Promise<StudentActivity[]> => {
-    const { data } = await api.get<ListPayload<StudentActivity>>(`/students/${studentId}/activities`);
-    return extractList(data);
+    const { data } = await api.get<ActivitiesPayload>(`/students/${studentId}/activities`);
+    return extractActivities(data);
   },
 
   getMyActivities: async (): Promise<StudentActivity[]> => {
-    const { data } = await api.get<ListPayload<StudentActivity>>('/students/me/activities');
-    return extractList(data);
+    const { data } = await api.get<ActivitiesPayload>('/students/me/activities');
+    return extractActivities(data);
   },
 
   getExerciseFolders: async (studentId: string): Promise<StudentExerciseFolder[]> => {
