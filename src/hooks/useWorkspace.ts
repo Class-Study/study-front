@@ -190,8 +190,8 @@ export const useWorkspace = (studentId: string) => {
     });
 
     try {
-      await activityService.update(activityId, {
-        folderId: targetFolderId,
+      await activityService.move(activityId, {
+        targetFolderId,
       });
       return true;
     } catch {

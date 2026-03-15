@@ -17,6 +17,10 @@ export interface CreateActivityRequest {
   convertedHtml: string;
 }
 
+export interface MoveActivityRequest {
+  targetFolderId: string;
+}
+
 export interface UpdateActivityRequest {
   title?: string;
   type?: ActivityType;

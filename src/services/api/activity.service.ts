@@ -2,6 +2,7 @@ import api from './client';
 import {
   Activity,
   CreateActivityRequest,
+  MoveActivityRequest,
   UpdateActivityRequest,
 } from '@/types/activity.types';
 
@@ -40,6 +41,17 @@ const activityService = {
   ): Promise<Activity> => {
     const { data } = await api.patch<Activity>(
       `/activities/${id}`,
+      payload,
+    );
+    return data;
+  },
+
+  move: async (
+    id: string,
+    payload: MoveActivityRequest,
+  ): Promise<Activity> => {
+    const { data } = await api.patch<Activity>(
+      `/folders/activities/${id}/move`,
       payload,
     );
     return data;
