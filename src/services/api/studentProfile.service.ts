@@ -42,12 +42,12 @@ const studentProfileService = {
   },
 
   createExercise: async (
-    studentId: string,
+    _studentId: string,
     folderId: string,
     payload: CreateStudentExerciseRequest,
   ): Promise<StudentActivity> => {
     const { data } = await api.post<StudentActivity>(
-      `/students/${studentId}/folders/${folderId}/activities`,
+      `/folders/${folderId}/activities`,
       payload,
     );
     return data;

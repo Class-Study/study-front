@@ -236,7 +236,7 @@ export const StudentProfilePage: React.FC = () => {
     const createdActivity = await createExercise(
       payload.folderId,
       payload.title,
-      payload.contentHtml,
+      payload.contentHtml,   // modal still uses contentHtml internally; hook maps → contentHtml
       payload.originalFilename,
     );
 

@@ -36,7 +36,7 @@ interface PendingTemplate {
   title: string;
   type: TemplateType;
   fileName: string;
-  convertedHtml: string;
+  contentHtml: string;
   propagateToStudents: boolean;
 }
 
@@ -373,7 +373,7 @@ export const NiveisTab: React.FC = () => {
       title: preview.title.trim(),
       type: preview.type,
       fileName: preview.fileName,
-      convertedHtml: preview.html,
+      contentHtml: preview.html,
       propagateToStudents: propagate,
     };
 
@@ -403,7 +403,7 @@ export const NiveisTab: React.FC = () => {
   ): void => {
     setPreview({
       isOpen: true,
-      html: template.convertedHtml ?? '',
+      html: template.contentHtml ?? '',
       fileName: template.originalFilename ?? template.title,
       folderId,
       title: template.title,
@@ -456,7 +456,7 @@ export const NiveisTab: React.FC = () => {
               title: template.title,
               type: template.type,
               originalFilename: template.fileName,
-              convertedHtml: template.convertedHtml,
+              contentHtml: template.contentHtml,
               propagateToStudents: template.propagateToStudents,
             })
             .then((saved) => {
@@ -468,7 +468,7 @@ export const NiveisTab: React.FC = () => {
                 folderId,
                 template: {
                   ...saved,
-                  convertedHtml: template.convertedHtml,
+                  contentHtml: template.contentHtml,
                 },
               });
 
@@ -958,7 +958,7 @@ export const NiveisTab: React.FC = () => {
                                 onClick={() => {
                                   setPreview({
                                     isOpen: true,
-                                    html: template.convertedHtml,
+                                    html: template.contentHtml,
                                     fileName: template.fileName,
                                     folderId: folder.id,
                                     title: template.title,

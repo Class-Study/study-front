@@ -37,7 +37,7 @@ export const CreateExerciseModal: React.FC<CreateExerciseModalProps> = ({
   const [title, setTitle] = useState('');
   const [folderId, setFolderId] = useState('');
   const [file, setFile] = useState<File | null>(null);
-  const [convertedHtml, setConvertedHtml] = useState('');
+  const [contentHtml, setContentHtml] = useState('');
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [isConverting, setIsConverting] = useState(false);
@@ -45,8 +45,15 @@ export const CreateExerciseModal: React.FC<CreateExerciseModalProps> = ({
   const [error, setError] = useState('');
   const [isTitleDirty, setIsTitleDirty] = useState(false);
 
-  const hasPreview = useMemo(() => convertedHtml.trim().length > 0, [convertedHtml]);
+  const hasPreview = useMemo(() => contentHtml.trim().length > 0, [contentHtml]);
   const resolvedTitle = title.trim() || (file ? titleFromFilename(file.name) : '');
+
+  // Ensure contentHtml is cleared when the modal closes (per spec)
+  useEffect(() => {
+    if (!isOpen) {
+      setContentHtml('');
+    }
+  }, [isOpen]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -56,7 +63,7 @@ export const CreateExerciseModal: React.FC<CreateExerciseModalProps> = ({
     setTitle('');
     setFolderId(selectedFolderId ?? folders[0]?.id ?? '');
     setFile(null);
-    setConvertedHtml('');
+    setContentHtml('');
     setIsPreviewOpen(false);
     setIsDragging(false);
     setIsConverting(false);
@@ -80,13 +87,13 @@ export const CreateExerciseModal: React.FC<CreateExerciseModalProps> = ({
       const result = await mammoth.convertToHtml({ arrayBuffer });
 
       setFile(selectedFile);
-      setConvertedHtml(result.value);
+      setContentHtml(result.value);
       if (!isTitleDirty) {
         setTitle(titleFromFilename(selectedFile.name));
       }
     } catch {
       setError('Não foi possível processar o arquivo. Verifique se o .docx está válido.');
-      setConvertedHtml('');
+      setContentHtml('');
       setFile(null);
     } finally {
       setIsConverting(false);
@@ -107,7 +114,7 @@ export const CreateExerciseModal: React.FC<CreateExerciseModalProps> = ({
         folderId,
         title: resolvedTitle,
         type: 'EXERCISE',
-        contentHtml: convertedHtml,
+        contentHtml: contentHtml,
         originalFilename: file.name,
       });
       onClose();
@@ -289,7 +296,7 @@ export const CreateExerciseModal: React.FC<CreateExerciseModalProps> = ({
             </div>
 
             <div className={styles.previewPanel}>
-              <DocxPreviewEditor html={convertedHtml} editable={false} />
+              <DocxPreviewEditor html={contentHtml} editable={false} />
             </div>
           </>
         )}
