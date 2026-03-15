@@ -36,6 +36,23 @@ const getLevelTone = (code?: string): LevelTone => {
   return 'basic';
 };
 
+const getMeetPlatformLabel = (platform?: string): string => {
+  if (!platform) return 'Plataforma nao informada';
+
+  switch (platform) {
+    case 'GOOGLE_MEET':
+      return 'Google Meet';
+    case 'ZOOM':
+      return 'Zoom';
+    case 'TEAMS':
+      return 'Microsoft Teams';
+    case 'OTHER':
+      return 'Outro';
+    default:
+      return platform;
+  }
+};
+
 const FOLDER_ORDER = ['TO DO', 'IN PROGRESS', 'VOCABULARY', 'DONE'] as const;
 
 const normalizeFolderName = (name?: string): string => (name ?? '').trim().toUpperCase();
@@ -63,13 +80,18 @@ export const MyProfilePage: React.FC = () => {
     }
   }, [accountInactive, navigate]);
 
-  const levelCode = student?.levelCode ?? student?.levelProfileCode ?? 'basic';
-  const levelName = student?.levelName ?? student?.levelProfileName ?? stripLeadingOrder(student?.levelProfileId ?? 'Sem nivel');
+  const levelCode = student?.levelProfile?.code ?? student?.levelCode ?? student?.levelProfileCode ?? 'basic';
+  const levelName = student?.levelProfile?.name
+    ?? student?.levelName
+    ?? student?.levelProfileName
+    ?? stripLeadingOrder(student?.levelProfile?.id ?? student?.levelProfileId ?? 'Sem nivel');
   const levelTone = getLevelTone(levelCode);
+  const safeActivities = Array.isArray(activities) ? activities : [];
+  const safeNotes = Array.isArray(notes) ? notes : [];
 
   const exerciseActivities = useMemo(
-    () => activities.filter((activity) => activity.type === 'EXERCISE'),
-    [activities],
+    () => safeActivities.filter((activity) => activity.type === 'EXERCISE'),
+    [safeActivities],
   );
 
   const doneExercises = useMemo(
@@ -83,19 +105,19 @@ export const MyProfilePage: React.FC = () => {
   const currentMonth = new Date().getMonth();
   const currentYear = new Date().getFullYear();
   const classesThisMonth = useMemo(
-    () => activities.filter((activity) => {
+    () => safeActivities.filter((activity) => {
       if (activity.type !== 'WORKSPACE') return false;
       const date = new Date(activity.createdAt);
       return date.getMonth() === currentMonth && date.getFullYear() === currentYear;
     }).length,
-    [activities, currentMonth, currentYear],
+    [safeActivities, currentMonth, currentYear],
   );
 
   const classesPercent = clampPercent(classesThisMonth * 10);
   const overallPercent = exercisePercent;
 
   // Only PUBLIC notes are shown to the student
-  const publicNotes = useMemo(() => notes.filter((n) => n.type === 'PUBLIC'), [notes]);
+  const publicNotes = useMemo(() => safeNotes.filter((n) => n.type === 'PUBLIC'), [safeNotes]);
 
   const selectedActivity = useMemo(
     () => exerciseActivities.find((activity) => activity.id === selectedActivityId) ?? null,
@@ -177,7 +199,7 @@ export const MyProfilePage: React.FC = () => {
 
                   <div className={styles.heroDetails}>
                     <span>📅 {formatClassDays(student.classDays)} às {formatClassTime(student.classTime)}</span>
-                    <span>🖥️ {student.meetPlatform || 'Plataforma nao informada'}</span>
+                    <span>🖥️ {getMeetPlatformLabel(student.meetPlatform)}</span>
                     {student.meetLink && (
                       <a className={styles.meetLink} href={student.meetLink} target="_blank" rel="noreferrer">
                         Link da aula

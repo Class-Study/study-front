@@ -17,15 +17,26 @@ interface StudentWorkspaceResponse {
   }>;
 }
 
+type ListPayload<T> = T[] | { items?: T[]; data?: T[]; activities?: T[]; notes?: T[] };
+
+const extractList = <T>(payload: ListPayload<T>): T[] => {
+  if (Array.isArray(payload)) return payload;
+  if (Array.isArray(payload.items)) return payload.items;
+  if (Array.isArray(payload.data)) return payload.data;
+  if (Array.isArray(payload.activities)) return payload.activities;
+  if (Array.isArray(payload.notes)) return payload.notes;
+  return [];
+};
+
 const studentProfileService = {
   getNotes: async (studentId: string): Promise<StudentNote[]> => {
-    const { data } = await api.get<StudentNote[]>(`/students/${studentId}/notes`);
-    return data;
+    const { data } = await api.get<ListPayload<StudentNote>>(`/students/${studentId}/notes`);
+    return extractList(data);
   },
 
   getMyNotes: async (): Promise<StudentNote[]> => {
-    const { data } = await api.get<StudentNote[]>('/students/me/notes');
-    return data;
+    const { data } = await api.get<ListPayload<StudentNote>>('/students/me/notes');
+    return extractList(data);
   },
 
   createNote: async (
@@ -37,13 +48,13 @@ const studentProfileService = {
   },
 
   getActivities: async (studentId: string): Promise<StudentActivity[]> => {
-    const { data } = await api.get<StudentActivity[]>(`/students/${studentId}/activities`);
-    return data;
+    const { data } = await api.get<ListPayload<StudentActivity>>(`/students/${studentId}/activities`);
+    return extractList(data);
   },
 
   getMyActivities: async (): Promise<StudentActivity[]> => {
-    const { data } = await api.get<StudentActivity[]>('/students/me/activities');
-    return data;
+    const { data } = await api.get<ListPayload<StudentActivity>>('/students/me/activities');
+    return extractList(data);
   },
 
   getExerciseFolders: async (studentId: string): Promise<StudentExerciseFolder[]> => {

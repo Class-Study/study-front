@@ -11,8 +11,13 @@ export interface Student {
   phone?: string;
   avatarUrl?: string;
   status: StudentStatus;
-  teacherId: string;
+  teacherId?: string;
   levelProfileId?: string;
+  levelProfile?: {
+    id: string;
+    name: string;
+    code: string;
+  };
   classDays: ClassDay[];
   classTime: string;
   classDuration: number;

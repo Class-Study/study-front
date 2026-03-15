@@ -9,6 +9,13 @@ import {
 } from '@/types/student.types';
 import { PageResponse } from '@/types/api.types';
 
+const normalizeStudent = (student: Student): Student => ({
+  ...student,
+  levelProfileId: student.levelProfileId ?? student.levelProfile?.id,
+  levelProfileName: student.levelProfileName ?? student.levelProfile?.name,
+  levelProfileCode: student.levelProfileCode ?? student.levelProfile?.code,
+});
+
 const studentService = {
   listAll: async (): Promise<Student[]> => {
     const { data } = await api.get<ListStudentsResponse>('/students');
@@ -27,12 +34,12 @@ const studentService = {
 
   getById: async (id: string): Promise<Student> => {
     const { data } = await api.get<Student>(`/students/${id}`);
-    return data;
+    return normalizeStudent(data);
   },
 
   getMe: async (): Promise<Student> => {
     const { data } = await api.get<Student>('/students/me');
-    return data;
+    return normalizeStudent(data);
   },
 
   create: async (payload: CreateStudentRequest): Promise<void> => {
@@ -47,7 +54,7 @@ const studentService = {
       `/students/${id}`,
       payload,
     );
-    return data;
+    return normalizeStudent(data);
   },
 
   block: async (id: string): Promise<void> => {
