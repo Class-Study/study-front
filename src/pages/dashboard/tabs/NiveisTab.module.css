@@ -141,19 +141,6 @@
   border-color: var(--color-accent);
 }
 
-.folderFilesInput {
-  width: 60px;
-  text-align: center;
-  background: var(--color-bg-input);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  padding: 8px;
-  font-family: var(--font-sans);
-  font-size: 13px;
-  color: var(--color-text-primary);
-  outline: none;
-}
-
 .removeFolderBtn {
   width: 28px;
   height: 28px;

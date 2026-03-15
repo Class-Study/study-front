@@ -20,7 +20,6 @@ type ModalTab = 'activities' | 'edit';
 interface NewFolderRow {
   tempId: string;
   name: string;
-  initialFiles: number;
 }
 
 interface NewLevelForm {
@@ -59,9 +58,9 @@ const createTempId = (): string => {
 };
 
 const DEFAULT_FOLDERS = (): NewFolderRow[] => [
-  { tempId: createTempId(), name: '1 — TO DO', initialFiles: 3 },
-  { tempId: createTempId(), name: '2 — IN PROGRESS', initialFiles: 0 },
-  { tempId: createTempId(), name: '3 — DONE', initialFiles: 0 },
+  { tempId: createTempId(), name: '1 — TO DO' },
+  { tempId: createTempId(), name: '2 — IN PROGRESS' },
+  { tempId: createTempId(), name: '3 — DONE' },
 ];
 
 const createInitialForm = (): NewLevelForm => ({
@@ -116,7 +115,6 @@ const createEditForm = (level: LevelProfile): NewLevelForm => ({
   folders: (level.folders ?? []).map((folder) => ({
     tempId: folder.id,
     name: folder.name,
-    initialFiles: folder.initialFiles,
   })),
 });
 
@@ -204,8 +202,7 @@ export const NiveisTab: React.FC = () => {
 
   const updateFolder = (
     tempId: string,
-    field: keyof Omit<NewFolderRow, 'tempId'>,
-    value: string | number,
+    value: string,
   ): void => {
     setForm((prev) => ({
       ...prev,
@@ -213,7 +210,7 @@ export const NiveisTab: React.FC = () => {
         folder.tempId === tempId
           ? {
               ...folder,
-              [field]: value,
+              name: value,
             }
           : folder,
       ),
@@ -230,7 +227,6 @@ export const NiveisTab: React.FC = () => {
           {
             tempId: createTempId(),
             name: `${nextIndex} — NOVA PASTA`,
-            initialFiles: 0,
           },
         ],
       };
@@ -287,7 +283,6 @@ export const NiveisTab: React.FC = () => {
         folders: form.folders.map((folder, idx) => ({
           name: folder.name,
           position: idx + 1,
-          initialFiles: folder.initialFiles,
         })),
       };
 
@@ -521,8 +516,7 @@ export const NiveisTab: React.FC = () => {
 
   const updateEditFolder = (
     tempId: string,
-    field: keyof Omit<NewFolderRow, 'tempId'>,
-    value: string | number,
+    value: string,
   ): void => {
     setEditForm((prev) => ({
       ...prev,
@@ -530,7 +524,7 @@ export const NiveisTab: React.FC = () => {
         folder.tempId === tempId
           ? {
               ...folder,
-              [field]: value,
+              name: value,
             }
           : folder,
       ),
@@ -547,7 +541,6 @@ export const NiveisTab: React.FC = () => {
           {
             tempId: createTempId(),
             name: `${nextIndex} — NOVA PASTA`,
-            initialFiles: 0,
           },
         ],
       };
@@ -575,7 +568,6 @@ export const NiveisTab: React.FC = () => {
         folders: editForm.folders.map((folder, index) => ({
           name: folder.name,
           position: index + 1,
-          initialFiles: folder.initialFiles,
         })),
       };
 
@@ -699,14 +691,7 @@ export const NiveisTab: React.FC = () => {
                   className={styles.folderNameInput}
                   type="text"
                   value={folder.name}
-                  onChange={(event) => updateFolder(folder.tempId, 'name', event.target.value)}
-                />
-                <input
-                  className={styles.folderFilesInput}
-                  type="number"
-                  min={0}
-                  value={folder.initialFiles}
-                  onChange={(event) => updateFolder(folder.tempId, 'initialFiles', Number(event.target.value))}
+                  onChange={(event) => updateFolder(folder.tempId, event.target.value)}
                 />
                 <button
                   type="button"
@@ -788,12 +773,18 @@ export const NiveisTab: React.FC = () => {
               <div className={styles.divider} />
 
               <div className={styles.folderList}>
-                {folders.map((folder, index) => (
-                  <div key={folder.id} className={styles.folderListItem}>
-                    <span className={styles.folderListName}>{getFolderName(folder, index)}</span>
-                    <span className={styles.folderListCount}>{folder.initialFiles} arqs</span>
-                  </div>
-                ))}
+                {[...folders]
+                  .sort((a, b) => a.position - b.position)
+                  .map((folder, index) => {
+                    const templateCount = folder.templates?.length ?? 0;
+
+                    return (
+                      <div key={folder.id} className={styles.folderListItem}>
+                        <span className={styles.folderListName}>{getFolderName(folder, index)}</span>
+                        <span className={styles.folderListCount}>{templateCount > 0 ? `${templateCount} arqs` : '0 arqs'}</span>
+                      </div>
+                    );
+                  })}
               </div>
 
               <div className={styles.cardActions}>
@@ -1054,14 +1045,7 @@ export const NiveisTab: React.FC = () => {
                           className={styles.folderNameInput}
                           type="text"
                           value={folder.name}
-                          onChange={(event) => updateEditFolder(folder.tempId, 'name', event.target.value)}
-                        />
-                        <input
-                          className={styles.folderFilesInput}
-                          type="number"
-                          min={0}
-                          value={folder.initialFiles}
-                          onChange={(event) => updateEditFolder(folder.tempId, 'initialFiles', Number(event.target.value))}
+                          onChange={(event) => updateEditFolder(folder.tempId, event.target.value)}
                         />
                         <button
                           type="button"

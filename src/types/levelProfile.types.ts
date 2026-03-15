@@ -47,7 +47,6 @@ export interface CreateLevelProfileRequest {
   folders: {
     name: string;
     position: number;
-    initialFiles: number;
   }[];
   minScore?: number;
   maxScore?: number;
@@ -60,7 +59,6 @@ export interface UpdateLevelProfileRequest {
   folders?: {
     name: string;
     position: number;
-    initialFiles: number;
   }[];
 }
 
