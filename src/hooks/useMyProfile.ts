@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react';
-import meService from '@/services/api/me.service';
+import studentService from '@/services/api/student.service';
+import studentProfileService from '@/services/api/studentProfile.service';
 import { Student } from '@/types/student.types';
 import {
   StudentActivity,
@@ -16,7 +17,7 @@ interface UseMyProfileResult {
   stats: StudentStats | null;
   loading: boolean;
   error: string;
-  fetchAll: () => Promise<void>;
+  fetchAll: (studentId: string) => Promise<void>;
 }
 
 export const useMyProfile = (): UseMyProfileResult => {
@@ -28,16 +29,21 @@ export const useMyProfile = (): UseMyProfileResult => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const fetchAll = useCallback(async (): Promise<void> => {
+  const fetchAll = useCallback(async (studentId: string): Promise<void> => {
+    if (!studentId) {
+      setError('Aluno nao identificado. Faca login novamente.');
+      return;
+    }
+
     setLoading(true);
     setError('');
     try {
       const [profileData, notesData, activitiesData, foldersData, statsData] = await Promise.all([
-        meService.getProfile(),
-        meService.getNotes(),
-        meService.getActivities(),
-        meService.getFolders(),
-        meService.getStats(),
+        studentService.getById(studentId),
+        studentProfileService.getNotes(studentId),
+        studentProfileService.getActivities(studentId),
+        studentProfileService.getExerciseFolders(studentId),
+        studentProfileService.getStats(studentId),
       ]);
       setStudent(profileData);
       setNotes(notesData);

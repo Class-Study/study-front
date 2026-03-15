@@ -7,7 +7,7 @@ import { StudentProfilePage } from '@/pages/students/StudentProfilePage';
 import { BillingPage } from '@/pages/billing/BillingPage';
 import { WorkspacePage } from '@/pages/workspace/WorkspacePage';
 import { MyProfilePage } from '@/pages/me/MyProfilePage';
-import MyWorkspacePage from '@/pages/me/MyWorkspacePage';
+import { AccessDeniedPage } from '@/pages/errors/AccessDeniedPage';
 
 export const AppRoutes: React.FC = () => {
   return (
@@ -61,7 +61,7 @@ export const AppRoutes: React.FC = () => {
 
       {/* Student-only routes */}
       <Route
-        path="/me/profile"
+        path="/student/profile"
         element={
           <PrivateRoute requiredRoles={['STUDENT']}>
             <MyProfilePage />
@@ -70,13 +70,15 @@ export const AppRoutes: React.FC = () => {
       />
 
       <Route
-        path="/me/workspace"
+        path="/student/workspace"
         element={
           <PrivateRoute requiredRoles={['STUDENT']}>
-            <MyWorkspacePage />
+            <WorkspacePage />
           </PrivateRoute>
         }
       />
+
+      <Route path="/access-denied" element={<AccessDeniedPage />} />
 
       <Route path="/" element={<Navigate to="/dashboard" replace />} />
       <Route path="*" element={<Navigate to="/dashboard" replace />} />

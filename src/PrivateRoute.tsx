@@ -23,7 +23,7 @@ export const PrivateRoute: React.FC<PrivateRouteProps> = ({
   }
 
   if (requiredRoles && user && !requiredRoles.includes(user.role)) {
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to="/access-denied" replace />;
   }
 
   return <>{children}</>;

@@ -1,10 +1,11 @@
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Header } from '@/components/layout/Header/Header';
 import { useAuth } from '@/hooks/useAuth';
 import { useMyProfile } from '@/hooks/useMyProfile';
 import { useLevelProfiles } from '@/hooks/useLevelProfiles';
 import { ActivityType } from '@/types/studentProfile.types';
+import studentService from '@/services/api/student.service';
 import { formatClassDays, formatClassTime, formatShortDate } from '@/utils/classDay.utils';
 import styles from './MyProfilePage.module.css';
 
@@ -42,11 +43,55 @@ export const MyProfilePage: React.FC = () => {
   const { user } = useAuth();
   const { student, notes, activities, folders, stats, loading, error, fetchAll } = useMyProfile();
   const { fetchLevelProfiles, getProfileById } = useLevelProfiles();
+  const [newPublicNote, setNewPublicNote] = useState('');
+  const [noteSaving, setNoteSaving] = useState(false);
+  const [noteFeedback, setNoteFeedback] = useState<'success' | 'error' | null>(null);
+  const noteFeedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     void fetchLevelProfiles();
-    void fetchAll();
-  }, [fetchAll, fetchLevelProfiles]);
+    if (user?.id) {
+      void fetchAll(user.id);
+    }
+  }, [fetchAll, fetchLevelProfiles, user?.id]);
+
+  useEffect(() => {
+    return () => {
+      if (noteFeedbackTimerRef.current) {
+        clearTimeout(noteFeedbackTimerRef.current);
+      }
+    };
+  }, []);
+
+  const workspacePath = '/student/workspace';
+
+  const handleSavePublicNote = async (): Promise<void> => {
+    if (!user?.id || !newPublicNote.trim() || noteSaving) {
+      return;
+    }
+
+    if (noteFeedbackTimerRef.current) {
+      clearTimeout(noteFeedbackTimerRef.current);
+    }
+
+    setNoteSaving(true);
+    try {
+      await studentService.saveNote(user.id, {
+        type: 'PUBLIC',
+        content: newPublicNote.trim(),
+      });
+      setNewPublicNote('');
+      setNoteFeedback('success');
+      await fetchAll(user.id);
+    } catch {
+      setNoteFeedback('error');
+    } finally {
+      setNoteSaving(false);
+      noteFeedbackTimerRef.current = setTimeout(() => {
+        setNoteFeedback(null);
+      }, 3000);
+    }
+  };
 
   const profile = getProfileById(student?.levelProfileId);
   const levelCode = profile?.code ?? 'basic';
@@ -159,7 +204,7 @@ export const MyProfilePage: React.FC = () => {
                   <button
                     type="button"
                     className={`${styles.actionBtn} ${styles.actionBtnWorkspace}`}
-                    onClick={() => navigate('/me/workspace')}
+                    onClick={() => navigate(workspacePath)}
                   >
                     ⊞ Workspace
                   </button>
@@ -234,8 +279,8 @@ export const MyProfilePage: React.FC = () => {
                             role="button"
                             tabIndex={0}
                             className={styles.activityItem}
-                            onClick={() => navigate('/me/workspace')}
-                            onKeyDown={(e) => e.key === 'Enter' && navigate('/me/workspace')}
+                            onClick={() => navigate(workspacePath)}
+                            onKeyDown={(e) => e.key === 'Enter' && navigate(workspacePath)}
                           >
                             <span className={styles.activityDot} style={{ backgroundColor: getActivityColor(activity.type) }} />
                             <div className={styles.activityInfo}>
@@ -254,10 +299,36 @@ export const MyProfilePage: React.FC = () => {
           )}
         </main>
 
-        {/* Notes panel — PUBLIC only, read-only */}
+        {/* Notes panel — PUBLIC only */}
         <aside className={styles.notesPanel}>
           <h3 className={styles.panelTitle}>ORIENTAÇÕES DO PROFESSOR</h3>
           <p className={styles.panelSubtitle}>Notas públicas deixadas pelo seu professor.</p>
+
+          <div className={styles.noteForm}>
+            <textarea
+              className={styles.noteInput}
+              placeholder="Escreva uma nota pública para seu professor..."
+              value={newPublicNote}
+              onChange={(event) => setNewPublicNote(event.target.value)}
+              disabled={noteSaving}
+            />
+            {noteFeedback === 'success' && (
+              <span className={styles.feedbackSuccess}>Nota pública salva com sucesso!</span>
+            )}
+            {noteFeedback === 'error' && (
+              <span className={styles.feedbackError}>Erro ao salvar a nota. Tente novamente.</span>
+            )}
+            <button
+              type="button"
+              className={styles.noteSaveBtn}
+              onClick={() => {
+                void handleSavePublicNote();
+              }}
+              disabled={noteSaving || !newPublicNote.trim()}
+            >
+              {noteSaving ? 'Salvando...' : 'Salvar Nota Pública'}
+            </button>
+          </div>
 
           <div className={styles.historyList}>
             {publicNotes.length === 0 ? (

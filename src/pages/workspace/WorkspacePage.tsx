@@ -1,8 +1,9 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { Header } from '@/components/layout/Header/Header';
 import DocxPreviewEditor from '@/components/ui/DocxPreviewEditor/DocxPreviewEditor';
 import studentService from '@/services/api/student.service';
+import { useAuth } from '@/hooks/useAuth';
 import { useWorkspace } from '@/hooks/useWorkspace';
 import { WorkspaceSidebar } from './components/WorkspaceSidebar/WorkspaceSidebar';
 import { WorkspaceEditor } from './components/WorkspaceEditor/WorkspaceEditor';
@@ -27,19 +28,24 @@ const SIDEBAR_MAX_WIDTH = 450;
 const SIDEBAR_WIDTH_STORAGE_KEY = 'workspace.sidebar.width';
 
 export const WorkspacePage: React.FC = () => {
+  const navigate = useNavigate();
+  const { user } = useAuth();
   const { studentId } = useParams<{ studentId: string }>();
+  const isStudent = user?.role === 'STUDENT';
+  const targetStudentId = studentId ?? user?.id ?? '';
   const {
     workspaceActivities,
     exerciseFolders,
     loading,
     error,
+    accessDenied,
     saving,
     fetchWorkspace,
     saveContent,
     createActivity,
     createFolder,
     moveActivity,
-  } = useWorkspace(studentId ?? '');
+  } = useWorkspace(targetStudentId);
 
   const [activeActivity, setActiveActivity] = useState<WorkspaceActivity | null>(null);
   const [sidebarWidth, setSidebarWidth] = useState<number>(() => {
@@ -92,16 +98,27 @@ export const WorkspacePage: React.FC = () => {
   }, [activeActivity?.folderId, exerciseFolders]);
 
   useEffect(() => {
-    fetchWorkspace();
-  }, [fetchWorkspace, studentId]);
+    if (accessDenied) {
+      navigate('/access-denied', { replace: true });
+    }
+  }, [accessDenied, navigate]);
 
   useEffect(() => {
-    if (!studentId) return;
+    fetchWorkspace();
+  }, [fetchWorkspace, targetStudentId]);
 
-    studentService.getById(studentId)
+  useEffect(() => {
+    if (!targetStudentId) return;
+
+    if (isStudent) {
+      setStudentName(user?.name ?? 'Aluno');
+      return;
+    }
+
+    studentService.getById(targetStudentId)
       .then((student) => setStudentName(student.name))
       .catch(() => {});
-  }, [studentId]);
+  }, [isStudent, targetStudentId, user?.name]);
 
   useEffect(() => {
     if (!activeActivity && allActivities.length > 0) {
@@ -156,8 +173,11 @@ export const WorkspacePage: React.FC = () => {
   };
 
   const breadcrumbItems = [
-    { label: 'Dashboard', path: '/dashboard' },
-    { label: studentName || 'Aluno', path: `/dashboard/student/${studentId}` },
+    { label: isStudent ? 'Meu Perfil' : 'Dashboard', path: isStudent ? '/student/profile' : '/dashboard' },
+    {
+      label: studentName || 'Aluno',
+      path: isStudent ? '/student/profile' : `/dashboard/student/${targetStudentId}`,
+    },
     { label: 'Workspace' },
   ];
 
@@ -383,6 +403,7 @@ export const WorkspacePage: React.FC = () => {
           onCreateWorkspace={handleCreateWorkspace}
           onOpenUploadForFolder={handleOpenUploadForFolder}
           onMoveActivity={handleMoveActivity}
+          readOnly={isStudent}
         />
 
         <div className={styles.editorArea}>
@@ -452,14 +473,14 @@ export const WorkspacePage: React.FC = () => {
           <div className={styles.notesSection}>
             <WorkspaceNotes
               activityTitle={activeActivity?.title ?? ''}
-              studentId={studentId ?? ''}
+              studentId={targetStudentId}
             />
           </div>
         </div>
       </div>
 
       <UploadActivityModal
-        isOpen={uploadModalState.isOpen}
+        isOpen={!isStudent && uploadModalState.isOpen}
         folders={exerciseFolders}
         selectedFolderId={uploadModalState.folderId}
         onClose={() => setUploadModalState({ isOpen: false, folderId: null })}

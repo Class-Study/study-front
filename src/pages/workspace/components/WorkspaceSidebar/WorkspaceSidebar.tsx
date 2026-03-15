@@ -29,6 +29,7 @@ interface WorkspaceSidebarProps {
   onCreateWorkspace: () => void;
   onOpenUploadForFolder: (folderId: string) => void;
   onMoveActivity: (activityId: string, targetFolderId: string) => Promise<void>;
+  readOnly?: boolean;
 }
 
 interface PendingMove {
@@ -55,6 +56,7 @@ export const WorkspaceSidebar: React.FC<WorkspaceSidebarProps> = ({
   onCreateWorkspace,
   onOpenUploadForFolder,
   onMoveActivity,
+  readOnly = false,
 }) => {
   const activeFolderId = folders.find((f) =>
     f.activities.some((a) => a.id === activeActivityId),
@@ -98,6 +100,10 @@ export const WorkspaceSidebar: React.FC<WorkspaceSidebarProps> = ({
   const currentWidth = collapsed ? 0 : width;
 
   const handleDragEnd = (result: DropResult): void => {
+    if (readOnly) {
+      return;
+    }
+
     const destinationFolderId = result.destination?.droppableId;
 
     if (!destinationFolderId) {
@@ -164,27 +170,29 @@ export const WorkspaceSidebar: React.FC<WorkspaceSidebarProps> = ({
         {/* Workspaces section */}
         <div className={styles.sectionLabel}>Workspaces</div>
 
-        <button
-          type="button"
-          className={styles.addWorkspaceMinimal}
-          onClick={() => {
-            void onCreateWorkspace();
-          }}
-          title="Criar workspace em branco"
-        >
-          <span>+ Novo Workspace</span>
-        </button>
+        {!readOnly && (
+          <button
+            type="button"
+            className={styles.addWorkspaceMinimal}
+            onClick={() => {
+              void onCreateWorkspace();
+            }}
+            title="Criar workspace em branco"
+          >
+            <span>+ Novo Workspace</span>
+          </button>
+        )}
 
         <Droppable droppableId="workspace-pool">
           {(provided) => (
             <div ref={provided.innerRef} {...provided.droppableProps}>
               {workspaces.map((ws, index) => (
-                <Draggable key={ws.id} draggableId={ws.id} index={index}>
+                <Draggable key={ws.id} draggableId={ws.id} index={index} isDragDisabled={readOnly}>
                   {(dragProvided, dragSnapshot) => (
                     <div
                       ref={dragProvided.innerRef}
                       {...dragProvided.draggableProps}
-                      {...dragProvided.dragHandleProps}
+                      {...(readOnly ? {} : dragProvided.dragHandleProps)}
                       role="button"
                       tabIndex={0}
                       className={`${styles.activityItem} ${activeActivityId === ws.id ? styles.activityItemActive : ''} ${dragSnapshot.isDragging ? styles.activityDragging : ''}`}
@@ -232,12 +240,12 @@ export const WorkspaceSidebar: React.FC<WorkspaceSidebarProps> = ({
                     <div className={styles.emptyFolder}>Vazio</div>
                   ) : (
                     folder.activities.map((activity, index) => (
-                      <Draggable key={activity.id} draggableId={activity.id} index={index}>
+                      <Draggable key={activity.id} draggableId={activity.id} index={index} isDragDisabled={readOnly}>
                         {(dragProvided, dragSnapshot) => (
                           <div
                             ref={dragProvided.innerRef}
                             {...dragProvided.draggableProps}
-                            {...dragProvided.dragHandleProps}
+                            {...(readOnly ? {} : dragProvided.dragHandleProps)}
                             role="button"
                             tabIndex={0}
                             className={`${styles.activityItem} ${
@@ -255,13 +263,15 @@ export const WorkspaceSidebar: React.FC<WorkspaceSidebarProps> = ({
                   )}
                   {provided.placeholder}
 
-                  <button
-                    type="button"
-                    className={styles.newFileBtn}
-                    onClick={() => onOpenUploadForFolder(folder.id)}
-                  >
-                    + Novo Arquivo
-                  </button>
+                  {!readOnly && (
+                    <button
+                      type="button"
+                      className={styles.newFileBtn}
+                      onClick={() => onOpenUploadForFolder(folder.id)}
+                    >
+                      + Novo Arquivo
+                    </button>
+                  )}
                 </div>
               )}
             </div>
@@ -272,44 +282,46 @@ export const WorkspaceSidebar: React.FC<WorkspaceSidebarProps> = ({
       </div>
       </DragDropContext>
 
-      <div className={styles.footer}>
-        {newItemForm ? (
-          <div className={styles.createForm}>
-            <input
-              type="text"
-              className={styles.formInput}
-              placeholder="Nome da pasta"
-              value={newItemForm.title}
-              onChange={(event) => onChangeNewItemForm((prev) => prev ? {
-                ...prev,
-                title: event.target.value,
-              } : prev)}
-            />
+      {!readOnly && (
+        <div className={styles.footer}>
+          {newItemForm ? (
+            <div className={styles.createForm}>
+              <input
+                type="text"
+                className={styles.formInput}
+                placeholder="Nome da pasta"
+                value={newItemForm.title}
+                onChange={(event) => onChangeNewItemForm((prev) => prev ? {
+                  ...prev,
+                  title: event.target.value,
+                } : prev)}
+              />
 
-            <div className={styles.formActions}>
-              <button
-                type="button"
-                className={styles.formCancelBtn}
-                onClick={() => onChangeNewItemForm(null)}
-              >
-                Cancelar
-              </button>
+              <div className={styles.formActions}>
+                <button
+                  type="button"
+                  className={styles.formCancelBtn}
+                  onClick={() => onChangeNewItemForm(null)}
+                >
+                  Cancelar
+                </button>
 
-              <button
-                type="button"
-                className={styles.formPrimaryBtn}
-                onClick={onCreateFolder}
-              >
-                Criar pasta
-              </button>
+                <button
+                  type="button"
+                  className={styles.formPrimaryBtn}
+                  onClick={onCreateFolder}
+                >
+                  Criar pasta
+                </button>
+              </div>
             </div>
-          </div>
-        ) : (
-          <button type="button" className={styles.addBtn} onClick={openCreateForm}>
-            + Nova pasta
-          </button>
-        )}
-      </div>
+          ) : (
+            <button type="button" className={styles.addBtn} onClick={openCreateForm}>
+              + Nova pasta
+            </button>
+          )}
+        </div>
+      )}
 
       {!collapsed && (
         <div

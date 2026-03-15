@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import axios from 'axios';
 import workspaceService from '@/services/api/workspace.service';
 import activityService from '@/services/api/activity.service';
 import {
@@ -11,6 +12,7 @@ export const useWorkspace = (studentId: string) => {
   const [workspace, setWorkspace] = useState<WorkspaceData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [accessDenied, setAccessDenied] = useState(false);
   const [saving, setSaving] = useState(false);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
@@ -19,6 +21,7 @@ export const useWorkspace = (studentId: string) => {
 
     setLoading(true);
     setError(null);
+    setAccessDenied(false);
 
     try {
       const data = await workspaceService.getWorkspace(studentId);
@@ -26,8 +29,13 @@ export const useWorkspace = (studentId: string) => {
         ...data,
         folders: [...data.folders].sort((a, b) => a.position - b.position),
       });
-    } catch {
+    } catch (err) {
+      if (axios.isAxiosError(err) && err.response?.status === 403) {
+        setAccessDenied(true);
+        setError('Acesso negado a este workspace.');
+      } else {
       setError('Erro ao carregar workspace do aluno.');
+      }
     } finally {
       setLoading(false);
     }
@@ -221,6 +229,7 @@ export const useWorkspace = (studentId: string) => {
     exerciseFolders,
     loading,
     error,
+    accessDenied,
     saving,
     fetchWorkspace,
     saveContent,
