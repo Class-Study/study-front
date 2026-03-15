@@ -215,7 +215,7 @@ export const WorkspaceSidebar: React.FC<WorkspaceSidebarProps> = ({
           </div>
         ) : (
           <button type="button" className={styles.addBtn} onClick={openCreateForm}>
-            + Novo arquivo ou ws
+            + Nova pasta
           </button>
         )}
       </div>

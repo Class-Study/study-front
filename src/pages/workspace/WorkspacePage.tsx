@@ -56,7 +56,7 @@ export const WorkspacePage: React.FC = () => {
   const [studentName, setStudentName] = useState('');
   const [isEditingNewWorkspace, setIsEditingNewWorkspace] = useState(false);
   const [newWorkspaceTitle, setNewWorkspaceTitle] = useState(
-    `Aula de Conversacao - ${new Date().toLocaleDateString('pt-BR')}`,
+    `Novo Workspace - ${new Date().toLocaleDateString('pt-BR')}`,
   );
   const [newWorkspaceContent, setNewWorkspaceContent] = useState('<p></p>');
   const [workspaceDrafts, setWorkspaceDrafts] = useState<Record<string, {
@@ -174,7 +174,7 @@ export const WorkspacePage: React.FC = () => {
     setWorkspaceDraftFeedback(null);
 
     if (!newWorkspaceTitle.trim()) {
-      setNewWorkspaceTitle(`Aula de Conversacao - ${new Date().toLocaleDateString('pt-BR')}`);
+      setNewWorkspaceTitle(`Novo Workspace - ${new Date().toLocaleDateString('pt-BR')}`);
     }
   };
 
