@@ -18,6 +18,15 @@ interface StudentWorkspaceResponse {
   }>;
 }
 
+interface StudentActivitiesFolderPayload {
+  folders?: Array<{
+    id: string;
+    name: string;
+    position?: number;
+    activities?: StudentActivity[];
+  }>;
+}
+
 type ListPayload<T> = T[] | { items?: T[]; data?: T[]; activities?: T[]; notes?: T[] };
 
 type ActivitiesPayload =
@@ -57,6 +66,56 @@ const extractActivities = (payload: ActivitiesPayload): StudentActivity[] => {
   });
 };
 
+const extractActivityFolders = (
+  payload: ActivitiesPayload,
+): StudentWorkspaceResponse['folders'] => {
+  if ('folders' in payload && Array.isArray(payload.folders)) {
+    return [...payload.folders]
+      .sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
+      .map((folder) => ({
+        id: folder.id,
+        name: folder.name,
+        position: folder.position ?? 0,
+        activities: Array.isArray(folder.activities)
+          ? folder.activities.map((activity) => ({
+            ...activity,
+            folderId: activity.folderId ?? folder.id,
+            folderName: activity.folderName ?? folder.name,
+          }))
+          : [],
+      }));
+  }
+
+  const flatActivities = extractList(payload as ListPayload<StudentActivity>);
+  if (flatActivities.length === 0) {
+    return [];
+  }
+
+  const grouped = new Map<string, StudentWorkspaceResponse['folders'][number]>();
+
+  flatActivities.forEach((activity) => {
+    const folderId = activity.folderId ?? 'unknown-folder';
+    const folderName = activity.folderName ?? 'TO DO';
+
+    if (!grouped.has(folderId)) {
+      grouped.set(folderId, {
+        id: folderId,
+        name: folderName,
+        position: grouped.size + 1,
+        activities: [],
+      });
+    }
+
+    grouped.get(folderId)?.activities?.push({
+      ...activity,
+      folderId,
+      folderName,
+    });
+  });
+
+  return Array.from(grouped.values()).sort((a, b) => a.position - b.position);
+};
+
 const studentProfileService = {
   getNotes: async (studentId: string): Promise<StudentNote[]> => {
     const { data } = await api.get<ListPayload<StudentNote>>(`/students/${studentId}/notes`);
@@ -84,6 +143,11 @@ const studentProfileService = {
   getMyActivities: async (): Promise<StudentActivity[]> => {
     const { data } = await api.get<ActivitiesPayload>('/students/me/activities');
     return extractActivities(data);
+  },
+
+  getMyActivityFolders: async (): Promise<StudentWorkspaceResponse['folders']> => {
+    const { data } = await api.get<ActivitiesPayload & StudentActivitiesFolderPayload>('/students/me/activities');
+    return extractActivityFolders(data);
   },
 
   getExerciseFolders: async (studentId: string): Promise<StudentExerciseFolder[]> => {

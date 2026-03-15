@@ -30,6 +30,9 @@ interface WorkspaceSidebarProps {
   onOpenUploadForFolder: (folderId: string) => void;
   onMoveActivity: (activityId: string, targetFolderId: string) => Promise<void>;
   readOnly?: boolean;
+  allowCreate?: boolean;
+  allowMove?: boolean;
+  allowWorkspaceMove?: boolean;
 }
 
 interface PendingMove {
@@ -57,7 +60,13 @@ export const WorkspaceSidebar: React.FC<WorkspaceSidebarProps> = ({
   onOpenUploadForFolder,
   onMoveActivity,
   readOnly = false,
+  allowCreate,
+  allowMove,
+  allowWorkspaceMove = true,
 }) => {
+  const canCreate = allowCreate ?? !readOnly;
+  const canMove = allowMove ?? !readOnly;
+
   const activeFolderId = folders.find((f) =>
     f.activities.some((a) => a.id === activeActivityId),
   )?.id;
@@ -100,7 +109,11 @@ export const WorkspaceSidebar: React.FC<WorkspaceSidebarProps> = ({
   const currentWidth = collapsed ? 0 : width;
 
   const handleDragEnd = (result: DropResult): void => {
-    if (readOnly) {
+    if (!canMove) {
+      return;
+    }
+
+    if (!allowWorkspaceMove && result.source.droppableId === 'workspace-pool') {
       return;
     }
 
@@ -170,7 +183,7 @@ export const WorkspaceSidebar: React.FC<WorkspaceSidebarProps> = ({
         {/* Workspaces section */}
         <div className={styles.sectionLabel}>Workspaces</div>
 
-        {!readOnly && (
+        {canCreate && (
           <button
             type="button"
             className={styles.addWorkspaceMinimal}
@@ -187,12 +200,17 @@ export const WorkspaceSidebar: React.FC<WorkspaceSidebarProps> = ({
           {(provided) => (
             <div ref={provided.innerRef} {...provided.droppableProps}>
               {workspaces.map((ws, index) => (
-                <Draggable key={ws.id} draggableId={ws.id} index={index} isDragDisabled={readOnly}>
+                <Draggable
+                  key={ws.id}
+                  draggableId={ws.id}
+                  index={index}
+                  isDragDisabled={!canMove || !allowWorkspaceMove}
+                >
                   {(dragProvided, dragSnapshot) => (
                     <div
                       ref={dragProvided.innerRef}
                       {...dragProvided.draggableProps}
-                      {...(readOnly ? {} : dragProvided.dragHandleProps)}
+                      {...(!canMove || !allowWorkspaceMove ? {} : dragProvided.dragHandleProps)}
                       role="button"
                       tabIndex={0}
                       className={`${styles.activityItem} ${activeActivityId === ws.id ? styles.activityItemActive : ''} ${dragSnapshot.isDragging ? styles.activityDragging : ''}`}
@@ -240,12 +258,12 @@ export const WorkspaceSidebar: React.FC<WorkspaceSidebarProps> = ({
                     <div className={styles.emptyFolder}>Vazio</div>
                   ) : (
                     folder.activities.map((activity, index) => (
-                      <Draggable key={activity.id} draggableId={activity.id} index={index} isDragDisabled={readOnly}>
+                      <Draggable key={activity.id} draggableId={activity.id} index={index} isDragDisabled={!canMove}>
                         {(dragProvided, dragSnapshot) => (
                           <div
                             ref={dragProvided.innerRef}
                             {...dragProvided.draggableProps}
-                            {...(readOnly ? {} : dragProvided.dragHandleProps)}
+                            {...(!canMove ? {} : dragProvided.dragHandleProps)}
                             role="button"
                             tabIndex={0}
                             className={`${styles.activityItem} ${
@@ -263,7 +281,7 @@ export const WorkspaceSidebar: React.FC<WorkspaceSidebarProps> = ({
                   )}
                   {provided.placeholder}
 
-                  {!readOnly && (
+                  {canCreate && (
                     <button
                       type="button"
                       className={styles.newFileBtn}
@@ -282,7 +300,7 @@ export const WorkspaceSidebar: React.FC<WorkspaceSidebarProps> = ({
       </div>
       </DragDropContext>
 
-      {!readOnly && (
+      {canCreate && (
         <div className={styles.footer}>
           {newItemForm ? (
             <div className={styles.createForm}>

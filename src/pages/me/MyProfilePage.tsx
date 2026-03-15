@@ -53,6 +53,17 @@ const getMeetPlatformLabel = (platform?: string): string => {
   }
 };
 
+const resolveMeetingUrl = (meetLink?: string): string | null => {
+  const raw = (meetLink ?? '').trim();
+  if (!raw) return null;
+
+  if (/^https?:\/\//i.test(raw)) {
+    return raw;
+  }
+
+  return `https://${raw}`;
+};
+
 const FOLDER_ORDER = ['TO DO', 'IN PROGRESS', 'VOCABULARY', 'DONE'] as const;
 
 const normalizeFolderName = (name?: string): string => (name ?? '').trim().toUpperCase();
@@ -152,6 +163,7 @@ export const MyProfilePage: React.FC = () => {
   const levelTagClass = `${styles.levelTag} ${
     levelTone === 'basic' ? styles.levelTagBasic : levelTone === 'intermediate' ? styles.levelTagIntermediate : styles.levelTagAdvanced
   }`;
+  const meetingUrl = resolveMeetingUrl(student?.meetLink);
 
   const breadcrumbItems = [{ label: 'Meu Perfil' }];
 
@@ -200,12 +212,35 @@ export const MyProfilePage: React.FC = () => {
                   <div className={styles.heroDetails}>
                     <span>📅 {formatClassDays(student.classDays)} às {formatClassTime(student.classTime)}</span>
                     <span>🖥️ {getMeetPlatformLabel(student.meetPlatform)}</span>
-                    {student.meetLink && (
-                      <a className={styles.meetLink} href={student.meetLink} target="_blank" rel="noreferrer">
+                    {meetingUrl && (
+                      <a className={styles.meetLink} href={meetingUrl} target="_blank" rel="noreferrer">
                         Link da aula
                       </a>
                     )}
                   </div>
+                </div>
+
+                <div className={styles.heroActions}>
+                  <button
+                    type="button"
+                    className={`${styles.actionBtn} ${styles.actionBtnWorkspace}`}
+                    onClick={() => navigate('/me/workspace')}
+                  >
+                    ⊞ Workspace
+                  </button>
+
+                  <button
+                    type="button"
+                    className={`${styles.actionBtn} ${styles.actionBtnMeet}`}
+                    onClick={() => {
+                      if (meetingUrl) {
+                        window.open(meetingUrl, '_blank', 'noopener,noreferrer');
+                      }
+                    }}
+                    disabled={!meetingUrl}
+                  >
+                    🎥 Iniciar aula
+                  </button>
                 </div>
               </section>
 

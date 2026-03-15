@@ -61,6 +61,17 @@ const getLevelTone = (code?: string): LevelTone => {
   return 'basic';
 };
 
+const resolveMeetingUrl = (meetLink?: string): string | null => {
+  const raw = (meetLink ?? '').trim();
+  if (!raw) return null;
+
+  if (/^https?:\/\//i.test(raw)) {
+    return raw;
+  }
+
+  return `https://${raw}`;
+};
+
 export const StudentProfilePage: React.FC = () => {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
@@ -317,6 +328,7 @@ export const StudentProfilePage: React.FC = () => {
         ? styles.levelTagIntermediate
         : styles.levelTagAdvanced
   }`;
+  const meetingUrl = resolveMeetingUrl(student?.meetLink);
 
   return (
     <div className={styles.page}>
@@ -371,10 +383,10 @@ export const StudentProfilePage: React.FC = () => {
                       📅 {formatClassDays(student.classDays)} as {formatClassTime(student.classTime)}
                     </span>
                     <span>📄 {stats ? `${exerciseDone}/${exerciseTotal} exercicios` : '—'}</span>
-                    {student.meetLink && (
+                    {meetingUrl && (
                       <a
                         className={styles.meetLink}
-                        href={student.meetLink}
+                        href={meetingUrl}
                         target="_blank"
                         rel="noreferrer"
                       >
@@ -417,11 +429,11 @@ export const StudentProfilePage: React.FC = () => {
                     type="button"
                     className={`${styles.actionBtn} ${styles.actionBtnMeet}`}
                     onClick={() => {
-                      if (student.meetLink) {
-                        window.open(student.meetLink, '_blank', 'noopener,noreferrer');
+                      if (meetingUrl) {
+                        window.open(meetingUrl, '_blank', 'noopener,noreferrer');
                       }
                     }}
-                    disabled={!student.meetLink}
+                    disabled={!meetingUrl}
                   >
                     🎥 Entrar na aula
                   </button>
