@@ -15,6 +15,7 @@ export interface CreateLevelFolderTemplateRequest {
   type: 'EXERCISE' | 'WORKSPACE';
   originalFilename?: string;
   convertedHtml: string;
+  propagateToStudents: boolean;
 }
 
 export interface LevelFolder {

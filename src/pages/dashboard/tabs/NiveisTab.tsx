@@ -37,6 +37,7 @@ interface PendingTemplate {
   type: TemplateType;
   fileName: string;
   convertedHtml: string;
+  propagateToStudents: boolean;
 }
 
 interface PreviewState {
@@ -46,6 +47,7 @@ interface PreviewState {
   folderId: string;
   title: string;
   type: TemplateType;
+  propagateToStudents: boolean;
   mode: 'upload' | 'view';
 }
 
@@ -133,6 +135,9 @@ export const NiveisTab: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [saveSuccessMessage, setSaveSuccessMessage] = useState('');
+  const [isPropagateModalOpen, setIsPropagateModalOpen] = useState(false);
+  const [savingTemplate, setSavingTemplate] = useState(false);
   const [activeUploadFolder, setActiveUploadFolder] = useState<string | null>(null);
   const [isConverting, setIsConverting] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
@@ -143,6 +148,7 @@ export const NiveisTab: React.FC = () => {
     folderId: '',
     title: '',
     type: 'EXERCISE',
+    propagateToStudents: false,
     mode: 'upload',
   });
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -159,6 +165,19 @@ export const NiveisTab: React.FC = () => {
       setSelectedLevel(updated);
     }
   }, [levelProfiles, selectedLevel]);
+
+  useEffect(() => {
+    if (!isPropagateModalOpen) return;
+
+    const handleKeyDown = (event: KeyboardEvent): void => {
+      if (event.key === 'Escape' && !savingTemplate) {
+        setIsPropagateModalOpen(false);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isPropagateModalOpen, savingTemplate]);
 
   const existingCodes = useMemo(
     () => new Set(levelProfiles.map((profile) => profile.code.toLowerCase())),
@@ -332,6 +351,7 @@ export const NiveisTab: React.FC = () => {
         folderId,
         title: file.name.replace(/\.docx$/i, '').replace(/_/g, ' '),
         type: 'EXERCISE',
+        propagateToStudents: false,
         mode: 'upload',
       });
     } catch (err) {
@@ -342,8 +362,10 @@ export const NiveisTab: React.FC = () => {
     }
   };
 
-  const handleSaveToQueue = (): void => {
+  const handleSaveTemplate = async (propagate: boolean): Promise<void> => {
     if (!preview.title.trim()) return;
+
+    setSavingTemplate(true);
 
     const newTemplate: PendingTemplate = {
       tempId: createTempId(),
@@ -352,6 +374,7 @@ export const NiveisTab: React.FC = () => {
       type: preview.type,
       fileName: preview.fileName,
       convertedHtml: preview.html,
+      propagateToStudents: propagate,
     };
 
     setPendingTemplates((prev) => ({
@@ -366,9 +389,12 @@ export const NiveisTab: React.FC = () => {
       folderId: '',
       title: '',
       type: 'EXERCISE',
+      propagateToStudents: false,
       mode: 'upload',
     });
     setActiveUploadFolder(null);
+    setIsPropagateModalOpen(false);
+    setSavingTemplate(false);
   };
 
   const handleViewSavedTemplate = (
@@ -382,6 +408,7 @@ export const NiveisTab: React.FC = () => {
       folderId,
       title: template.title,
       type: template.type,
+      propagateToStudents: false,
       mode: 'view',
     });
   };
@@ -420,6 +447,7 @@ export const NiveisTab: React.FC = () => {
     try {
       const promises: Promise<void>[] = [];
       const savedTemplates: Array<{ folderId: string; template: LevelFolderTemplate }> = [];
+      let propagatedInBatch = false;
 
       pendingEntries.forEach(([folderId, templates]) => {
         templates.forEach((template) => {
@@ -429,8 +457,13 @@ export const NiveisTab: React.FC = () => {
               type: template.type,
               originalFilename: template.fileName,
               convertedHtml: template.convertedHtml,
+              propagateToStudents: template.propagateToStudents,
             })
             .then((saved) => {
+              if (template.propagateToStudents) {
+                propagatedInBatch = true;
+              }
+
               savedTemplates.push({
                 folderId,
                 template: {
@@ -470,6 +503,11 @@ export const NiveisTab: React.FC = () => {
 
       void fetchLevelProfiles();
 
+      setSaveSuccessMessage(
+        propagatedInBatch
+          ? '✓ Templates salvos e atribuídos aos alunos atuais deste nível.'
+          : '✓ Templates salvos com sucesso',
+      );
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
     } catch {
@@ -585,6 +623,9 @@ export const NiveisTab: React.FC = () => {
   const selectedFolderIds = new Set((selectedLevel?.folders ?? []).map((folder) => folder.id));
   const selectedPendingEntries = Object.entries(pendingTemplates).filter(([folderId]) => selectedFolderIds.has(folderId));
   const hasPendingTemplates = selectedPendingEntries.some(([, list]) => list.length > 0);
+  const hasPendingPropagation = selectedPendingEntries.some(([, list]) =>
+    list.some((template) => template.propagateToStudents),
+  );
   const totalPending = selectedPendingEntries.reduce((acc, [, list]) => acc + list.length, 0);
 
   const modalTitle = selectedLevel ? (
@@ -609,7 +650,11 @@ export const NiveisTab: React.FC = () => {
           }}
           disabled={saving}
         >
-          {saving ? 'Salvando...' : `Salvar tudo (${totalPending})`}
+          {saving
+            ? hasPendingPropagation
+              ? 'Salvando e atribuindo...'
+              : 'Salvando...'
+            : `Salvar tudo (${totalPending})`}
         </button>
       )}
     </div>
@@ -831,7 +876,7 @@ export const NiveisTab: React.FC = () => {
           {managementTab === 'activities' && (
             <div className={styles.managementBody}>
               {saveSuccess && (
-                <div className={styles.successBanner}>✓ Templates salvos com sucesso</div>
+                <div className={styles.successBanner}>{saveSuccessMessage}</div>
               )}
 
               {saveError && (
@@ -918,6 +963,7 @@ export const NiveisTab: React.FC = () => {
                                     folderId: folder.id,
                                     title: template.title,
                                     type: template.type,
+                                    propagateToStudents: template.propagateToStudents,
                                     mode: 'view',
                                   });
                                 }}
@@ -1159,10 +1205,10 @@ export const NiveisTab: React.FC = () => {
             <button
               type="button"
               className={styles.submitBtn}
-              onClick={handleSaveToQueue}
-              disabled={!preview.title.trim()}
+              onClick={() => setIsPropagateModalOpen(true)}
+              disabled={!preview.title.trim() || savingTemplate}
             >
-              Salvar template
+              {savingTemplate ? 'Salvando...' : 'Salvar template'}
             </button>
           </div>
         )}
@@ -1180,6 +1226,67 @@ export const NiveisTab: React.FC = () => {
         )}
       </div>
     </Modal>
+
+    {isPropagateModalOpen && (
+      <div
+        className={styles.propagateModalOverlay}
+        role="presentation"
+        onClick={() => {
+          if (!savingTemplate) {
+            setIsPropagateModalOpen(false);
+          }
+        }}
+      >
+        <div
+          className={styles.propagateModalCard}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="propagateModalTitle"
+          onClick={(event) => event.stopPropagation()}
+        >
+          <h3 id="propagateModalTitle" className={styles.propagateModalTitle}>
+            Deseja atribuir esta nova atividade a todos os alunos atuais deste nível?
+          </h3>
+
+          <p className={styles.propagateModalText}>
+            Você pode salvar apenas no nível (válido para novos alunos) ou propagar também para os workspaces dos alunos já matriculados.
+          </p>
+
+          <div className={styles.propagateModalActions}>
+            <button
+              type="button"
+              className={styles.propagateModalCancelBtn}
+              onClick={() => setIsPropagateModalOpen(false)}
+              disabled={savingTemplate}
+            >
+              Cancelar
+            </button>
+
+            <button
+              type="button"
+              className={styles.propagateModalSecondaryBtn}
+              onClick={() => {
+                void handleSaveTemplate(false);
+              }}
+              disabled={savingTemplate}
+            >
+              Apenas no Nível
+            </button>
+
+            <button
+              type="button"
+              className={styles.propagateModalPrimaryBtn}
+              onClick={() => {
+                void handleSaveTemplate(true);
+              }}
+              disabled={savingTemplate}
+            >
+              {savingTemplate ? 'Salvando...' : 'Atribuir a Todos'}
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
     </>
   );
 };
