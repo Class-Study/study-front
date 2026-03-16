@@ -1,37 +1,40 @@
 import api from './client';
-import { BillingMonth, BillingRecord } from '@/types/billing.types';
+import {
+  BillingEntry,
+  BillingPageResponse,
+  BillingStatus,
+} from '@/types/billing.types';
 
 const billingService = {
-  getMonthBilling: async (
+  getStudentMonthBilling: async (
+    studentId: string,
     referenceMonth: string,
-  ): Promise<BillingMonth> => {
-    const { data } = await api.get<BillingMonth>(
-      `/billing/month/${referenceMonth}`,
+  ): Promise<BillingEntry> => {
+    const { data } = await api.get<BillingEntry>(
+      `/billing/${studentId}/month/${referenceMonth}`,
     );
     return data;
   },
 
-  listAllRecords: async (): Promise<BillingRecord[]> => {
-    const { data } = await api.get<BillingRecord[]>('/billing/records');
+  getStudentBillings: async (
+    studentId: string,
+    params?: { status?: BillingStatus; page?: number; size?: number },
+  ): Promise<BillingPageResponse> => {
+    const { data } = await api.get<BillingPageResponse>(`/billing/${studentId}`, {
+      params,
+    });
     return data;
   },
 
-  getRecordsByStudent: async (studentId: string): Promise<BillingRecord[]> => {
-    const { data } = await api.get<BillingRecord[]>(
-      `/billing/student/${studentId}`,
+  payEntry: async (
+    billingId: string,
+    payload?: { paidAt?: string; notes?: string },
+  ): Promise<Pick<BillingEntry, 'id' | 'status' | 'paidAt'>> => {
+    const { data } = await api.post<Pick<BillingEntry, 'id' | 'status' | 'paidAt'>>(
+      `/billing/${billingId}/pay`,
+      payload ?? {},
     );
     return data;
-  },
-
-  markAsPaid: async (recordId: string): Promise<BillingRecord> => {
-    const { data } = await api.patch<BillingRecord>(
-      `/billing/records/${recordId}/paid`,
-    );
-    return data;
-  },
-
-  sendNotification: async (recordId: string): Promise<void> => {
-    await api.post(`/billing/records/${recordId}/notify`);
   },
 };
 

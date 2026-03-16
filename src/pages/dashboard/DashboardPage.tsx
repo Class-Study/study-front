@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { CreditCard, PlusSquare, Search } from 'lucide-react';
+import { PlusSquare, Search } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Header } from '@/components/layout/Header/Header';
 import { useStudents } from '@/hooks/useStudents';
@@ -7,6 +7,7 @@ import { useLevelProfiles } from '@/hooks/useLevelProfiles';
 import { Student, ClassDay } from '@/types/student.types';
 import { formatClassDays, formatClassTime, DAY_FILTER_OPTIONS } from '@/utils/classDay.utils';
 import { NiveisTab } from '@/pages/dashboard/tabs/NiveisTab';
+import { BillingTab } from '@/pages/dashboard/tabs/BillingTab';
 import styles from './DashboardPage.module.css';
 
 type TabType = 'alunos' | 'cobranca' | 'niveis';
@@ -331,11 +332,7 @@ export const DashboardPage: React.FC = () => {
           )}
 
           {activeTab === 'cobranca' && (
-            <div className={styles.placeholder}>
-              <CreditCard size={28} className={styles.placeholderIcon} />
-              <h2>Cobrança</h2>
-              <p>Funcionalidade em desenvolvimento</p>
-            </div>
+            <BillingTab />
           )}
 
           {activeTab === 'niveis' && (
