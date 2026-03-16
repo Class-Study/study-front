@@ -5,6 +5,26 @@ import { useBilling } from '@/hooks/useBilling';
 import { BillingEntry, BillingStatus } from '@/types/billing.types';
 import styles from '@/pages/billing/BillingPage.module.css';
 
+const WEEKDAY_TO_JS: Record<string, number> = {
+  SUNDAY: 0,
+  MONDAY: 1,
+  TUESDAY: 2,
+  WEDNESDAY: 3,
+  THURSDAY: 4,
+  FRIDAY: 5,
+  SATURDAY: 6,
+};
+
+const WEEKDAY_LABEL_PT: Record<string, string> = {
+  SUNDAY: 'Domingo',
+  MONDAY: 'Segunda-feira',
+  TUESDAY: 'Terça-feira',
+  WEDNESDAY: 'Quarta-feira',
+  THURSDAY: 'Quinta-feira',
+  FRIDAY: 'Sexta-feira',
+  SATURDAY: 'Sábado',
+};
+
 function fmt(value: number): string {
   return value.toLocaleString('pt-BR', {
     minimumFractionDigits: 2,
@@ -20,6 +40,34 @@ function fmtDate(iso?: string): string {
     month: '2-digit',
     year: 'numeric',
   });
+}
+
+function getClassDatesForMonth(monthIso: string, weekDays: string[]): Date[] {
+  const [yearText, monthText] = monthIso.split('-');
+  const year = Number(yearText);
+  const month = Number(monthText);
+
+  if (!year || !month) return [];
+
+  const targetDays = new Set(
+    weekDays
+      .map((day) => WEEKDAY_TO_JS[day])
+      .filter((value): value is number => typeof value === 'number'),
+  );
+
+  if (targetDays.size === 0) return [];
+
+  const lastDay = new Date(year, month, 0).getDate();
+  const result: Date[] = [];
+
+  for (let day = 1; day <= lastDay; day += 1) {
+    const date = new Date(year, month - 1, day);
+    if (targetDays.has(date.getDay())) {
+      result.push(date);
+    }
+  }
+
+  return result;
 }
 
 function statusVariant(status: BillingStatus): 'paid' | 'pending' | 'late' {
@@ -52,6 +100,86 @@ interface HistoryModalProps {
   entries: BillingEntry[];
   loading: boolean;
 }
+
+interface ClassReportModalProps {
+  open: boolean;
+  onClose: () => void;
+  entry: BillingEntry | null;
+  monthIso: string;
+}
+
+
+
+const ClassReportModal: React.FC<ClassReportModalProps> = ({
+  open,
+  onClose,
+  entry,
+  monthIso,
+}) => {
+  if (!entry) return null;
+
+  const classWeekDays = entry.classWeekDays ?? [];
+  let classDates = getClassDatesForMonth(monthIso, classWeekDays);
+  const weekdayLabels = classWeekDays.map((day) => WEEKDAY_LABEL_PT[day] ?? day);
+
+  // Considerar startDate do aluno
+  if (entry.startDate) {
+    const start = new Date(entry.startDate);
+    classDates = classDates.filter((d) => d >= start);
+  }
+
+  return (
+    <Modal isOpen={open} onClose={onClose} title={`Relatório - ${entry.studentName ?? 'Aluno'}`} size="md">
+      <div className={styles.historyBody}>
+        <div className={styles.reportMeta}>
+          <p><strong>Mês:</strong> {monthIso}</p>
+          <p><strong>Dias da semana:</strong> {weekdayLabels.length > 0 ? weekdayLabels.join(', ') : 'Não informado'}</p>
+          <p><strong>Aulas previstas:</strong> {entry.totalClasses ?? classDates.length}</p>
+          <p><strong>Semanas no mês:</strong> {entry.weeksInMonth ?? '-'}</p>
+        </div>
+
+        {/* Valores ocupando largura total, visual destacado */}
+        <div className={styles.reportValueRow}>
+          <div className={styles.reportValueBox}>
+            <span>Valor mensal</span>
+            <div>R$ {fmt(entry.totalAmountCalculated ?? entry.amount)}</div>
+          </div>
+          <div className={styles.reportValueBox}>
+            <span>Valor por aula</span>
+            <div>R$ {fmt(entry.hourlyRate ?? entry.amountAtBillingTime ?? entry.amount)}</div>
+          </div>
+        </div>
+
+        <p className={styles.reportListTitle}>Datas de aula no mês</p>
+        {classDates.length === 0 ? (
+          <p className={styles.historyEmpty}>Sem datas calculadas para os dias informados.</p>
+        ) : (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
+            {classDates.map((date) => (
+              <span
+                key={date.toISOString()}
+                style={{
+                  background: 'var(--color-accent-hover)',
+                  color: 'var(--color-text-inverse)',
+                  borderRadius: 16,
+                  padding: '6px 16px',
+                  fontWeight: 600,
+                  fontSize: 15,
+                  marginBottom: 4,
+                  boxShadow: '0 1px 4px #0001',
+                  letterSpacing: 0.2,
+                  display: 'inline-block'
+                }}
+              >
+                {date.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit' })}
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
+    </Modal>
+  );
+};
 
 const HistoryModal: React.FC<HistoryModalProps> = ({
   open,
@@ -109,8 +237,12 @@ export const BillingTab: React.FC = () => {
     loading,
     error,
     paying,
+    notifying,
+    updatingRateStudentId,
     fetchBilling,
     payEntry,
+    updateStudentRate,
+    notifyPending,
     fetchStudentHistory,
     studentHistory,
     historyLoading,
@@ -125,6 +257,17 @@ export const BillingTab: React.FC = () => {
     id: string;
     name: string;
   } | null>(null);
+  const [reportEntry, setReportEntry] = useState<BillingEntry | null>(null);
+
+  const handleUpdateRate = async (studentId: string, currentAmount: number): Promise<void> => {
+    const raw = window.prompt('Novo valor da mensalidade (R$):', currentAmount.toFixed(2));
+    if (!raw) return;
+
+    const parsed = Number(raw.replace(',', '.'));
+    if (Number.isNaN(parsed) || parsed <= 0) return;
+
+    await updateStudentRate(studentId, parsed, selectedMonth);
+  };
 
   // Called when tab mounts and whenever month changes
   useEffect(() => {
@@ -218,6 +361,14 @@ export const BillingTab: React.FC = () => {
                     : 'Pagos'}
             </button>
           ))}
+          <button
+            type="button"
+            className={styles.notifyBtn}
+            disabled={notifying}
+            onClick={() => notifyPending(selectedMonth)}
+          >
+            {notifying ? 'Notificando...' : 'Notificar pendentes'}
+          </button>
         </div>
       </div>
 
@@ -226,7 +377,7 @@ export const BillingTab: React.FC = () => {
       <div className={styles.card}>
         <div className={styles.tableHeader}>
           <span>Aluno</span>
-          <span>Vencimento</span>
+          <span>Referência</span>
           <span>Valor</span>
           <span>Status</span>
           <span>Acao</span>
@@ -288,10 +439,24 @@ export const BillingTab: React.FC = () => {
               <div
                 className={`${styles.colDue} ${entry.status === 'OVERDUE' ? styles.overdueDate : ''}`}
               >
-                {fmtDate(entry.dueDate)}
+                {entry.referenceMonth}
               </div>
 
-              <div className={styles.colAmount}>R$ {fmt(entry.amount)}</div>
+              <div className={styles.colAmount}>
+                <button
+                  type="button"
+                  className={styles.amountBtn}
+                  disabled={updatingRateStudentId === entry.studentId}
+                  onClick={() => handleUpdateRate(entry.studentId, entry.amount)}
+                >
+                  {updatingRateStudentId === entry.studentId
+                    ? 'Atualizando...'
+                    : `R$ ${fmt(entry.totalAmountCalculated ?? entry.amount)}`}
+                </button>
+                <p className={styles.amountMeta}>Aulas: {entry.totalClasses ?? '-'}</p>
+                <p className={styles.amountMeta}>Valor aula: R$ {fmt(entry.hourlyRate ?? entry.amountAtBillingTime ?? entry.amount)}</p>
+                <p className={styles.amountMetaStrong}>Total calculado: R$ {fmt(entry.totalAmountCalculated ?? entry.amount)}</p>
+              </div>
 
               <div className={styles.colStatus}>
                 <Badge variant={statusVariant(entry.status)}>
@@ -300,18 +465,27 @@ export const BillingTab: React.FC = () => {
               </div>
 
               <div className={styles.colAction}>
-                {entry.status === 'PAID' ? (
-                  <span className={styles.paidInfo}>Pago em {fmtDate(entry.paidAt)}</span>
-                ) : (
+                <div className={styles.actionStack}>
                   <button
                     type="button"
-                    className={styles.payBtn}
-                    disabled={paying === entry.id}
-                    onClick={() => payEntry(entry.id)}
+                    className={styles.reportBtn}
+                    onClick={() => setReportEntry(entry)}
                   >
-                    {paying === entry.id ? 'Registrando...' : 'Dar baixa'}
+                    Relatório
                   </button>
-                )}
+                  {entry.status === 'PAID' ? (
+                    <span className={styles.paidInfo}>Pago em {fmtDate(entry.paidAt)}</span>
+                  ) : (
+                    <button
+                      type="button"
+                      className={styles.payBtn}
+                      disabled={paying === entry.id}
+                      onClick={() => payEntry(entry.id)}
+                    >
+                      {paying === entry.id ? 'Registrando...' : 'Dar baixa'}
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           ))}
@@ -323,6 +497,13 @@ export const BillingTab: React.FC = () => {
         studentName={historyStudent?.name ?? 'Aluno'}
         entries={studentHistory?.entries ?? []}
         loading={historyLoading}
+      />
+
+      <ClassReportModal
+        open={!!reportEntry}
+        onClose={() => setReportEntry(null)}
+        entry={reportEntry}
+        monthIso={selectedMonth}
       />
     </section>
   );

@@ -9,13 +9,20 @@ export interface BillingEntry {
   amount: number;
   amountAtBillingTime?: number;
   status: BillingStatus;
-  dueDate: string;
+  dueDate?: string;
   paidAt?: string;
   notifiedAt?: string;
   notifyCount?: number;
   notes?: string;
   createdAt?: string;
   referenceMonth: string;
+  daysOverdue?: number | null;
+  hourlyRate?: number;
+  classWeekDays?: string[];
+  weeksInMonth?: number;
+  totalClasses?: number;
+  totalAmountCalculated?: number;
+  startDate?: string; // Data de início do aluno
 }
 
 export interface BillingStats {
@@ -33,6 +40,21 @@ export interface BillingResponse {
   entries: BillingEntry[];
 }
 
+export interface BillingMonthResponse {
+  stats?: BillingStats;
+  entries?: BillingEntry[];
+  content?: BillingEntry[];
+  totalReceived?: number;
+  totalPending?: number;
+  totalLate?: number;
+  totalExpected?: number;
+  paidCount?: number;
+  pendingCount?: number;
+  lateCount?: number;
+  referenceMonth?: string;
+  records?: BillingEntry[];
+}
+
 export interface BillingPageResponse {
   content: BillingEntry[];
   totalElements: number;
@@ -45,6 +67,18 @@ export interface StudentPaymentHistory {
   studentId: string;
   studentName: string;
   entries: BillingEntry[];
+}
+
+export interface MarkBillingAsPaidPayload {
+  paidAt?: string;
+  notes?: string;
+}
+
+export interface MarkBillingAsPaidResponse {
+  id: string;
+  status: BillingStatus;
+  paidAt?: string;
+  updatedAt?: string;
 }
 
 // Legacy aliases kept for backward compatibility with old hook/service if referenced elsewhere

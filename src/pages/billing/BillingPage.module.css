@@ -1,3 +1,37 @@
+
+.reportValueRow {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.reportValueBox {
+  flex: 1;
+  background: var(--color-bg-card);
+  color: var(--color-text-primary);
+  border-radius: 8px;
+  padding: 18px 0 14px 0;
+  text-align: center;
+  box-shadow: 0 2px 8px #0001;
+  border: 1.5px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.reportValueBox span {
+  font-size: 0.85rem;
+  opacity: 0.85;
+  margin-bottom: 4px;
+}
+
+.reportValueBox div {
+  font-size: 1.35rem;
+  font-weight: 700;
+  margin-top: 2px;
+  letter-spacing: 0.5px;
+}
 .container {
   display: flex;
   min-height: 100vh;
@@ -6,8 +40,8 @@
 .content {
   flex: 1;
   margin-left: 250px;
-  padding: 30px;
-  background: var(--color-background);
+  padding: 24px 32px 32px;
+  background: var(--color-bg-page);
   min-height: 100vh;
 }
 
@@ -15,101 +49,250 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-bottom: 30px;
-  background: var(--color-surface);
-  padding: 16px;
-  border-radius: var(--border-radius-md);
+  margin-bottom: 18px;
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
   box-shadow: var(--shadow-sm);
 }
 
 .monthSelector label {
+  font-size: 0.8125rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
   font-weight: 600;
-  color: var(--color-text);
 }
 
 .monthInput {
-  padding: 8px 12px;
+  padding: 8px 10px;
   border: 1px solid var(--color-border);
-  border-radius: var(--border-radius-md);
-  font-family: inherit;
-  font-size: 0.9375rem;
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-input);
+  color: var(--color-text-primary);
+  font-family: var(--font-sans);
+  font-size: 0.875rem;
 }
 
-.summaryGrid {
+.monthInput:focus {
+  outline: none;
+  border-color: var(--color-accent);
+}
+
+:root[data-theme="dark"] .monthInput {
+  color-scheme: dark;
+}
+
+:root[data-theme="dark"] .monthInput::-webkit-calendar-picker-indicator {
+  filter: brightness(0) invert(1);
+  opacity: 1;
+}
+
+.statsGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 20px;
-  margin-bottom: 30px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+  margin-bottom: 18px;
 }
 
-.summaryCard {
-  background: var(--color-surface);
-  border-radius: var(--border-radius-lg);
-  padding: 20px;
-  box-shadow: var(--shadow-sm);
-  border-left: 4px solid var(--color-primary);
+.statCard {
+  background: var(--color-bg-card);
+  border-radius: var(--radius-lg);
+  padding: 22px;
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-md);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
-.summaryLabel {
+.statCard:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
+}
+
+.statCardTotal {
+  background: linear-gradient(
+    135deg,
+    var(--color-accent) 0%,
+    var(--color-accent-hover) 100%
+  );
+  color: var(--color-text-inverse);
+  border-color: transparent;
+}
+
+.statCardPaid {
+  border-left: 3px solid var(--color-success);
+}
+
+.statCardPending {
+  border-left: 3px solid var(--color-gold);
+}
+
+.statCardOverdue {
+  border-left: 3px solid var(--color-danger);
+}
+
+.statLabel {
   margin: 0;
-  font-size: 0.75rem;
+  font-size: 0.6875rem;
   text-transform: uppercase;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  color: inherit;
+  opacity: 0.85;
+}
+
+.statValue {
+  margin: 8px 0 6px;
+  font-family: var(--font-serif);
+  font-size: 2rem;
   font-weight: 600;
-  color: var(--color-text-muted);
+  color: var(--color-text-primary);
 }
 
-.summaryValue {
-  margin: 8px 0;
-  font-size: 1.75rem;
-  font-weight: 700;
-  color: var(--color-primary);
+.statCardTotal .statValue {
+  color: var(--color-text-inverse);
 }
 
-.summaryCount {
+.statValue.paid {
+  color: var(--color-success);
+}
+
+.statValue.pending {
+  color: var(--color-gold);
+}
+
+.statValue.overdue {
+  color: var(--color-danger);
+}
+
+.statSub {
   margin: 0;
-  font-size: 0.75rem;
-  color: var(--color-text-muted);
+  font-size: 0.8125rem;
+  color: inherit;
+  opacity: 0.8;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.searchInput {
+  flex: 1;
+  min-width: 220px;
+  max-width: 360px;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-size: 0.875rem;
+  font-family: var(--font-sans);
+  background: var(--color-bg-input);
+  color: var(--color-text-primary);
+}
+
+.searchInput:focus {
+  outline: none;
+  border-color: var(--color-accent);
+}
+
+.searchInput::placeholder {
+  color: var(--color-text-tertiary);
+}
+
+.filterGroup {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.filterBtn {
+  padding: 7px 14px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+
+.filterBtn:hover {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+.filterBtnActive {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  color: var(--color-text-inverse);
+}
+
+.notifyBtn {
+  padding: 7px 14px;
+  border: 1px solid var(--color-accent);
+  border-radius: var(--radius-md);
+  background: var(--color-accent);
+  color: var(--color-text-inverse);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+
+.notifyBtn:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+.notifyBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.errorBanner {
+  padding: 12px 16px;
+  background: color-mix(in srgb, var(--color-danger) 10%, transparent);
+  color: var(--color-danger);
+  border: 1px solid color-mix(in srgb, var(--color-danger) 35%, transparent);
+  border-radius: var(--radius-md);
+  margin-bottom: 16px;
+  font-size: 0.875rem;
 }
 
 .card {
-  background: var(--color-surface);
-  border-radius: var(--border-radius-lg);
-  padding: 20px;
-  box-shadow: var(--shadow-sm);
-}
-
-.card h2 {
-  margin: 0 0 20px 0;
-  font-size: 1.25rem;
-  font-weight: 700;
-  color: var(--color-text);
-}
-
-.table {
+  background: var(--color-bg-card);
+  border-radius: var(--radius-lg);
   border: 1px solid var(--color-border);
-  border-radius: var(--border-radius-md);
   overflow: hidden;
+  box-shadow: var(--shadow-sm);
 }
 
 .tableHeader {
   display: grid;
-  grid-template-columns: 2fr 1fr 1fr 1fr;
-  gap: 16px;
-  padding: 16px 20px;
-  background: var(--color-background);
+  grid-template-columns: 2.5fr 1fr 1fr 1fr 1.2fr;
+  gap: 12px;
+  padding: 13px 20px;
+  background: var(--color-bg-input);
+  font-size: 0.8125rem;
   font-weight: 600;
-  font-size: 0.875rem;
-  color: var(--color-text-muted);
+  color: var(--color-text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
   border-bottom: 1px solid var(--color-border);
 }
 
 .tableRow {
   display: grid;
-  grid-template-columns: 2fr 1fr 1fr 1fr;
-  gap: 16px;
-  padding: 16px 20px;
-  border-bottom: 1px solid var(--color-border);
+  grid-template-columns: 2.5fr 1fr 1fr 1fr 1.2fr;
+  gap: 12px;
+  padding: 14px 20px;
   align-items: center;
+  border-bottom: 1px solid var(--color-border);
+  transition: background 0.12s;
 }
 
 .tableRow:last-child {
@@ -117,39 +300,345 @@
 }
 
 .tableRow:hover {
-  background: var(--color-background);
+  background: var(--color-bg-input);
 }
 
-.colStudent,
-.colAmount,
-.colStatus,
-.colNotify {
-  font-size: 0.9375rem;
+.colStudent {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
 }
 
-.colName {
-  margin: 0;
+.avatarBtn {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  overflow: hidden;
+  background: transparent;
+}
+
+.avatar {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+}
+
+.avatarInitials {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--color-accent);
+  color: var(--color-text-inverse);
+  font-size: 0.875rem;
+  font-weight: 700;
+}
+
+.studentNameBtn {
+  background: none;
+  border: none;
+  padding: 0;
   font-weight: 600;
-  color: var(--color-text);
+  font-size: 0.9375rem;
+  color: var(--color-text-primary);
+  cursor: pointer;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.colLevel {
-  margin: 4px 0 0 0;
+.studentNameBtn:hover {
+  color: var(--color-accent);
+  text-decoration: underline;
+}
+
+.colDue {
+  font-size: 0.9rem;
+  color: var(--color-text-secondary);
+}
+
+.overdueDate {
+  color: var(--color-danger);
+  font-weight: 600;
+}
+
+.colAmount {
+  font-size: 0.9rem;
+  color: var(--color-text-primary);
+  font-weight: 500;
+}
+
+.amountBtn {
+  border: 1px dashed var(--color-border);
+  background: transparent;
+  color: var(--color-text-primary);
+  border-radius: var(--radius-sm);
+  padding: 4px 8px;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+.amountBtn:hover:not(:disabled) {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+.amountBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.amountMeta {
+  margin: 4px 0 0;
   font-size: 0.75rem;
-  color: var(--color-text-muted);
+  color: var(--color-text-tertiary);
 }
 
-.loading,
-.error,
-.empty {
-  padding: 40px;
+.amountMetaStrong {
+  margin: 4px 0 0;
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+  font-weight: 600;
+}
+
+.colStatus {
+  font-size: 0.9rem;
+}
+
+.colAction {
+  font-size: 0.875rem;
+}
+
+.actionStack {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: flex-start;
+}
+
+.reportBtn {
+  padding: 6px 12px;
+  background: transparent;
+  color: var(--color-accent);
+  border: 1px solid var(--color-accent);
+  border-radius: var(--radius-md);
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.reportBtn:hover {
+  background: color-mix(in srgb, var(--color-accent) 10%, transparent);
+}
+
+.payBtn {
+  padding: 7px 14px;
+  background: var(--color-accent);
+  color: var(--color-text-inverse);
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s;
+  white-space: nowrap;
+}
+
+.payBtn:hover:not(:disabled) {
+  opacity: 0.85;
+}
+
+.payBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.paidInfo {
+  font-size: 0.8125rem;
+  color: var(--color-success);
+  font-weight: 500;
+}
+
+.emptyState {
+  padding: 60px 20px;
   text-align: center;
-  border-radius: var(--border-radius-lg);
-  background: var(--color-surface);
-  color: var(--color-text-muted);
 }
 
-.error {
-  color: var(--color-error);
-  background: #ffebee;
+.emptyText {
+  color: var(--color-text-secondary);
+  font-size: 0.9375rem;
+  margin: 0;
+}
+
+.historyBody {
+  min-height: 100px;
+}
+
+.historyEmpty {
+  text-align: center;
+  color: var(--color-text-secondary);
+  padding: 32px 0;
+  margin: 0;
+}
+
+.historyTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.historyTable th {
+  text-align: left;
+  padding: 10px 12px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--color-text-tertiary);
+  border-bottom: 2px solid var(--color-border);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.historyTable td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--color-border);
+  color: var(--color-text-primary);
+}
+
+.historyTable tr:last-child td {
+  border-bottom: none;
+}
+
+.reportMeta {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 16px;
+  margin-bottom: 14px;
+  color: var(--color-text-secondary);
+  font-size: 0.875rem;
+}
+
+.reportMeta p {
+  margin: 0;
+}
+
+.reportValueGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.reportBox {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 10px;
+  background: var(--color-bg-input);
+}
+
+.reportBox span {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--color-text-tertiary);
+  margin-bottom: 4px;
+}
+
+.reportBox strong {
+  font-size: 0.9375rem;
+  color: var(--color-text-primary);
+}
+
+.reportListTitle {
+  font-size: 0.8125rem;
+  color: var(--color-text-secondary);
+  margin: 8px 0;
+  font-weight: 600;
+}
+
+.reportList {
+  margin: 0;
+  padding-left: 18px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px 12px;
+  color: var(--color-text-primary);
+  font-size: 0.875rem;
+}
+
+@media (max-width: 1200px) {
+  .statsGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .tableHeader,
+  .tableRow {
+    grid-template-columns: 2.2fr 1fr 1fr 1fr 1fr;
+  }
+}
+
+@media (max-width: 860px) {
+  .content {
+    margin-left: 0;
+    padding: 16px;
+  }
+
+  .statsGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .searchInput {
+    max-width: none;
+  }
+
+  .tableHeader {
+    display: none;
+  }
+
+  .tableRow {
+    grid-template-columns: 1fr;
+    gap: 8px;
+    align-items: flex-start;
+  }
+
+  .colAction {
+    width: 100%;
+  }
+
+  .actionStack {
+    width: 100%;
+  }
+
+  .reportBtn {
+    width: 100%;
+  }
+
+  .payBtn {
+    width: 100%;
+  }
+
+  .reportMeta {
+    grid-template-columns: 1fr;
+  }
+
+  .reportValueGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .reportList {
+    grid-template-columns: 1fr;
+  }
 }
