@@ -114,7 +114,7 @@ export const DashboardPage: React.FC = () => {
             className={`${styles.tab} ${activeTab === 'cobranca' ? styles.active : ''}`}
             onClick={() => setActiveTab('cobranca')}
           >
-            💳 Cobrança
+            💳 Financeiro
           </button>
           <button
             className={`${styles.tab} ${activeTab === 'niveis' ? styles.active : ''}`}
@@ -146,7 +146,7 @@ export const DashboardPage: React.FC = () => {
             className={`${styles.tab} ${activeTab === 'cobranca' ? styles.active : ''}`}
             onClick={() => setActiveTab('cobranca')}
           >
-            💳 Cobrança
+            💳 Financeiro
           </button>
           <button
             className={`${styles.tab} ${activeTab === 'niveis' ? styles.active : ''}`}
@@ -178,7 +178,7 @@ export const DashboardPage: React.FC = () => {
           className={`${styles.tab} ${activeTab === 'cobranca' ? styles.active : ''}`}
           onClick={() => setActiveTab('cobranca')}
         >
-          💳 Cobrança
+          💳 Financeiro
         </button>
         <button
           className={`${styles.tab} ${activeTab === 'niveis' ? styles.active : ''}`}

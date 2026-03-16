@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import InputMask from 'react-input-mask';
+import Swal from 'sweetalert2';
 import { useNavigate } from 'react-router-dom';
 import { Header } from '@/components/layout/Header/Header';
 import { useLevelProfiles } from '@/hooks/useLevelProfiles';
@@ -110,7 +112,9 @@ export const CreateStudentPage: React.FC = () => {
       newErrors.startDate = 'Data de início é obrigatória';
     }
 
-    if (!form.classRate || parseInt(form.classRate) <= 0) {
+    // Validação de valor de aula (aceita apenas números e vírgula/ponto)
+    const rate = parseFloat(form.classRate.replace(/\./g, '').replace(',', '.'));
+    if (!form.classRate || isNaN(rate) || rate <= 0) {
       newErrors.classRate = 'Valor/aula deve ser maior que 0';
     }
 
@@ -122,21 +126,44 @@ export const CreateStudentPage: React.FC = () => {
       newErrors.classTime = 'Horário é obrigatório';
     }
 
+    // Validação de telefone (mínimo 10 dígitos)
+    const phoneDigits = form.phone.replace(/\D/g, '');
+    if (!form.phone || phoneDigits.length < 10) {
+      newErrors.phone = 'Telefone inválido';
+    }
+
     if (!form.levelProfileId) {
       newErrors.levelProfileId = 'Selecione um nível';
     }
 
     setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    if (Object.keys(newErrors).length > 0) {
+      Swal.fire({
+        toast: true,
+        position: 'top-end',
+        icon: 'error',
+        title: 'Por favor, corrija os campos destacados.',
+        showConfirmButton: false,
+        timer: 3500,
+        timerProgressBar: true,
+      });
+      return false;
+    }
+    return true;
   };
 
   // Handle input changes
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.currentTarget;
-    setForm((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
+    // Para classRate, só permite números, vírgula e ponto
+    if (name === 'classRate') {
+      const clean = value.replace(/[^\d.,]/g, '');
+      setForm((prev) => ({ ...prev, [name]: clean }));
+    } else if (name === 'phone') {
+      setForm((prev) => ({ ...prev, [name]: value }));
+    } else {
+      setForm((prev) => ({ ...prev, [name]: value }));
+    }
     // Clear error for this field
     if (errors[name]) {
       setErrors((prev) => ({
@@ -283,14 +310,17 @@ export const CreateStudentPage: React.FC = () => {
 
               <div className={styles.field}>
                 <label className={styles.label}>WhatsApp</label>
-                <input
+                <InputMask
+                  mask="(99) 99999-9999"
+                  maskChar={null}
                   type="tel"
                   name="phone"
                   value={form.phone}
                   onChange={handleInputChange}
                   placeholder="(11) 99999-9999"
-                  className={styles.input}
+                  className={styles.input + (errors.phone ? ' ' + styles.error : '')}
                 />
+                {errors.phone && <div className={styles.error}>{errors.phone}</div>}
               </div>
             </div>
 
@@ -311,14 +341,16 @@ export const CreateStudentPage: React.FC = () => {
 
               <div className={styles.field}>
                 <label className={styles.label}>Valor/aula (R$)</label>
-                <input
-                  type="number"
+                <InputMask
+                  mask="99999,99"
+                  maskChar={null}
+                  type="text"
                   name="classRate"
                   value={form.classRate}
                   onChange={handleInputChange}
-                  placeholder="150"
-                  min="0"
-                  className={styles.input}
+                  placeholder="150,00"
+                  className={styles.input + (errors.classRate ? ' ' + styles.error : '')}
+                  inputMode="decimal"
                 />
                 {errors.classRate && (
                   <div className={styles.error}>{errors.classRate}</div>

@@ -75,16 +75,37 @@
   font-size: 0.875rem;
 }
 
-.monthInput:focus {
+
+/* Estilo global para todos os inputs de data e hora */
+input[type="date"],
+input[type="time"],
+input[type="month"] {
+  padding: 8px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-input);
+  color: var(--color-text-primary);
+  font-family: var(--font-sans);
+  font-size: 0.875rem;
+  transition: border-color 0.15s;
+}
+
+input[type="date"]:focus,
+input[type="time"]:focus,
+input[type="month"]:focus {
   outline: none;
   border-color: var(--color-accent);
 }
 
-:root[data-theme="dark"] .monthInput {
+:root[data-theme="dark"] input[type="date"],
+:root[data-theme="dark"] input[type="time"],
+:root[data-theme="dark"] input[type="month"] {
   color-scheme: dark;
 }
 
-:root[data-theme="dark"] .monthInput::-webkit-calendar-picker-indicator {
+:root[data-theme="dark"] input[type="date"]::-webkit-calendar-picker-indicator,
+:root[data-theme="dark"] input[type="time"]::-webkit-calendar-picker-indicator,
+:root[data-theme="dark"] input[type="month"]::-webkit-calendar-picker-indicator {
   filter: brightness(0) invert(1);
   opacity: 1;
 }
@@ -222,14 +243,12 @@
 }
 
 .filterBtn:hover {
-  border-color: var(--color-accent);
+  border-color: var(--color-accent-hover);
   color: var(--color-accent);
 }
 
 .filterBtnActive {
-  background: var(--color-accent);
   border-color: var(--color-accent);
-  color: var(--color-text-inverse);
 }
 
 .notifyBtn {
@@ -265,10 +284,12 @@
 
 .card {
   background: var(--color-bg-card);
-  border-radius: var(--radius-lg);
+  border-radius: 5px;
   border: 1px solid var(--color-border);
   overflow: hidden;
   box-shadow: var(--shadow-sm);
+  max-height: 22rem;
+  overflow-y: scroll;
 }
 
 .tableHeader {
@@ -283,6 +304,12 @@
   text-transform: uppercase;
   letter-spacing: 0.08em;
   border-bottom: 1px solid var(--color-border);
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+.tableRow:first-of-type {
+  margin-top: 0;
 }
 
 .tableRow {

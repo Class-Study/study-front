@@ -1,11 +1,11 @@
-import { useCallback, useState } from 'react';
-import billingService from '@/services/api/billing.service';
+import { useCallback, useState } from "react";
+import billingService from "@/services/api/billing.service";
 import {
   BillingEntry,
   BillingStats,
   BillingStatus,
   StudentPaymentHistory,
-} from '@/types/billing.types';
+} from "@/types/billing.types";
 
 interface UseBillingReturn {
   entries: BillingEntry[];
@@ -16,8 +16,12 @@ interface UseBillingReturn {
   notifying: boolean;
   updatingRateStudentId: string | null;
   fetchBilling: (referenceMonth: string) => Promise<void>;
-  payEntry: (billingId: string) => Promise<void>;
-  updateStudentRate: (studentId: string, amount: number, referenceMonth: string) => Promise<void>;
+  payEntry: (billingId: string, referenceMonth: string) => Promise<void>;
+  updateStudentRate: (
+    studentId: string,
+    amount: number,
+    referenceMonth: string,
+  ) => Promise<void>;
   notifyPending: (referenceMonth: string) => Promise<void>;
   fetchStudentHistory: (studentId: string) => Promise<void>;
   studentHistory: StudentPaymentHistory | null;
@@ -25,19 +29,20 @@ interface UseBillingReturn {
 }
 
 const normalizeStatus = (entry: BillingEntry): BillingStatus => {
-  if (entry.status === 'PAID') return 'PAID';
-  if (entry.status === 'OVERDUE') return 'OVERDUE';
-  if (!entry.dueDate) return entry.status === 'PENDING' ? 'PENDING' : 'PENDING';
+  if (entry.status === "PAID") return "PAID";
+  if (entry.status === "OVERDUE") return "OVERDUE";
+  if (!entry.dueDate) return entry.status === "PENDING" ? "PENDING" : "PENDING";
   const today = new Date();
   const due = new Date(entry.dueDate);
-  if (Number.isNaN(due.getTime())) return entry.status === 'PENDING' ? 'PENDING' : 'PENDING';
-  return due < today ? 'OVERDUE' : 'PENDING';
+  if (Number.isNaN(due.getTime()))
+    return entry.status === "PENDING" ? "PENDING" : "PENDING";
+  return due < today ? "OVERDUE" : "PENDING";
 };
 
 const buildStats = (entries: BillingEntry[]): BillingStats => {
-  const paidEntries = entries.filter((e) => e.status === 'PAID');
-  const pendingEntries = entries.filter((e) => e.status === 'PENDING');
-  const overdueEntries = entries.filter((e) => e.status === 'OVERDUE');
+  const paidEntries = entries.filter((e) => e.status === "PAID");
+  const pendingEntries = entries.filter((e) => e.status === "PENDING");
+  const overdueEntries = entries.filter((e) => e.status === "OVERDUE");
 
   const totalReceived = paidEntries.reduce((sum, e) => sum + e.amount, 0);
   const totalPending = pendingEntries.reduce((sum, e) => sum + e.amount, 0);
@@ -61,11 +66,12 @@ export const useBilling = (): UseBillingReturn => {
   const [error, setError] = useState<string | null>(null);
   const [paying, setPaying] = useState<string | null>(null);
   const [notifying, setNotifying] = useState(false);
-  const [updatingRateStudentId, setUpdatingRateStudentId] = useState<string | null>(null);
+  const [updatingRateStudentId, setUpdatingRateStudentId] = useState<
+    string | null
+  >(null);
   const [historyLoading, setHistoryLoading] = useState(false);
-  const [studentHistory, setStudentHistory] = useState<StudentPaymentHistory | null>(
-    null,
-  );
+  const [studentHistory, setStudentHistory] =
+    useState<StudentPaymentHistory | null>(null);
 
   const fetchBilling = useCallback(async (referenceMonth: string) => {
     setLoading(true);
@@ -80,7 +86,7 @@ export const useBilling = (): UseBillingReturn => {
       setEntries(foundEntries);
       setStats(data.stats ?? buildStats(foundEntries));
     } catch {
-      setError('Erro ao carregar dados de cobrança');
+      setError("Erro ao carregar dados de cobrança");
       setEntries([]);
       setStats(buildStats([]));
     } finally {
@@ -89,79 +95,93 @@ export const useBilling = (): UseBillingReturn => {
   }, []);
 
   const payEntry = useCallback(
-    async (billingId: string) => {
-      const original = entries.find((entry) => entry.id === billingId);
-      if (!original || original.status === 'PAID') return;
+    async (billingId: string, referenceMonth: string) => {
+      setPaying(billingId);
 
       const optimisticPaidAt = new Date().toISOString();
-      const optimisticEntries = entries.map((entry) =>
-        entry.id === billingId
-          ? { ...entry, status: 'PAID' as const, paidAt: optimisticPaidAt }
-          : entry,
-      );
 
-      setEntries(optimisticEntries);
-      setStats(buildStats(optimisticEntries));
-      setPaying(billingId);
+      let previousEntries: BillingEntry[] = [];
+
+      setEntries((prev) => {
+        previousEntries = prev;
+
+        const original = prev.find((entry) => entry.id === billingId);
+        if (!original || original.status === "PAID") return prev;
+
+        const optimisticEntries = prev.map((entry) =>
+          entry.id === billingId
+            ? { ...entry, status: "PAID" as const, paidAt: optimisticPaidAt }
+            : entry,
+        );
+
+        setStats(buildStats(optimisticEntries));
+        return optimisticEntries;
+      });
 
       try {
         const result = await billingService.payEntry(billingId, {
           paidAt: optimisticPaidAt,
-          notes: 'Pagamento recebido',
+          notes: "Pagamento recebido",
         });
 
-        const syncedEntries = optimisticEntries.map((entry) =>
-          entry.id === billingId
-            ? {
-                ...entry,
-                status: result.status,
-                paidAt: result.paidAt ?? optimisticPaidAt,
-              }
-            : entry,
-        );
+        setEntries((prev) => {
+          const syncedEntries = prev.map((entry) =>
+            entry.id === billingId
+              ? {
+                  ...entry,
+                  status: result.status,
+                  paidAt: result.paidAt ?? optimisticPaidAt,
+                }
+              : entry,
+          );
 
-        setEntries(syncedEntries);
-        setStats(buildStats(syncedEntries));
+          setStats(buildStats(syncedEntries));
+          return syncedEntries;
+        });
+        // Atualiza os valores com dados do backend
+        await fetchBilling(referenceMonth);
       } catch {
-        setEntries(entries);
-        setStats(buildStats(entries));
-        setError('Erro ao registrar pagamento. Tente novamente.');
+        setEntries(previousEntries);
+        setStats(buildStats(previousEntries));
+        setError("Erro ao registrar pagamento. Tente novamente.");
       } finally {
         setPaying(null);
       }
     },
-    [entries],
+    [fetchBilling],
   );
 
-  const updateStudentRate = useCallback(async (
-    studentId: string,
-    amount: number,
-    referenceMonth: string,
-  ) => {
-    setUpdatingRateStudentId(studentId);
-    setError(null);
-    try {
-      await billingService.updateStudentRate(studentId, amount);
-      await fetchBilling(referenceMonth);
-    } catch {
-      setError('Erro ao atualizar mensalidade do aluno.');
-    } finally {
-      setUpdatingRateStudentId(null);
-    }
-  }, [fetchBilling]);
+  const updateStudentRate = useCallback(
+    async (studentId: string, amount: number, referenceMonth: string) => {
+      setUpdatingRateStudentId(studentId);
+      setError(null);
+      try {
+        await billingService.updateStudentRate(studentId, amount);
+        await fetchBilling(referenceMonth);
+      } catch {
+        setError("Erro ao atualizar mensalidade do aluno.");
+      } finally {
+        setUpdatingRateStudentId(null);
+      }
+    },
+    [fetchBilling],
+  );
 
-  const notifyPending = useCallback(async (referenceMonth: string) => {
-    setNotifying(true);
-    setError(null);
-    try {
-      await billingService.notifyPending();
-      await fetchBilling(referenceMonth);
-    } catch {
-      setError('Erro ao notificar cobranças pendentes.');
-    } finally {
-      setNotifying(false);
-    }
-  }, [fetchBilling]);
+  const notifyPending = useCallback(
+    async (referenceMonth: string) => {
+      setNotifying(true);
+      setError(null);
+      try {
+        await billingService.notifyPending();
+        await fetchBilling(referenceMonth);
+      } catch {
+        setError("Erro ao notificar cobranças pendentes.");
+      } finally {
+        setNotifying(false);
+      }
+    },
+    [fetchBilling],
+  );
 
   const fetchStudentHistory = useCallback(async (studentId: string) => {
     setHistoryLoading(true);
@@ -177,7 +197,7 @@ export const useBilling = (): UseBillingReturn => {
         status: normalizeStatus(entry),
       }));
 
-      const studentName = items[0]?.studentName ?? 'Aluno';
+      const studentName = items[0]?.studentName ?? "Aluno";
 
       setStudentHistory({
         studentId,
@@ -185,7 +205,7 @@ export const useBilling = (): UseBillingReturn => {
         entries: items,
       });
     } catch {
-      setStudentHistory({ studentId, studentName: 'Aluno', entries: [] });
+      setStudentHistory({ studentId, studentName: "Aluno", entries: [] });
     } finally {
       setHistoryLoading(false);
     }

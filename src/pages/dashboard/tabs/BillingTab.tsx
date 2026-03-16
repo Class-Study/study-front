@@ -280,7 +280,8 @@ export const BillingTab: React.FC = () => {
   }, [fetchStudentHistory, historyStudent]);
 
   const filteredEntries = useMemo(() => {
-    return entries.filter((entry) => {
+    // Primeiro filtra
+    const filtered = entries.filter((entry) => {
       if (
         search &&
         !(entry.studentName ?? '').toLowerCase().includes(search.toLowerCase())
@@ -291,6 +292,11 @@ export const BillingTab: React.FC = () => {
         return false;
       }
       return true;
+    });
+    // Depois ordena: OVERDUE > PENDING > PAID
+    return filtered.sort((a, b) => {
+      const order = { OVERDUE: 0, PENDING: 1, PAID: 2 };
+      return (order[a.status] ?? 99) - (order[b.status] ?? 99);
     });
   }, [entries, filterStatus, search]);
 
@@ -380,7 +386,7 @@ export const BillingTab: React.FC = () => {
           <span>Referência</span>
           <span>Valor</span>
           <span>Status</span>
-          <span>Acao</span>
+          <span>Acão</span>
         </div>
 
         {loading && (
@@ -443,16 +449,7 @@ export const BillingTab: React.FC = () => {
               </div>
 
               <div className={styles.colAmount}>
-                <button
-                  type="button"
-                  className={styles.amountBtn}
-                  disabled={updatingRateStudentId === entry.studentId}
-                  onClick={() => handleUpdateRate(entry.studentId, entry.amount)}
-                >
-                  {updatingRateStudentId === entry.studentId
-                    ? 'Atualizando...'
-                    : `R$ ${fmt(entry.totalAmountCalculated ?? entry.amount)}`}
-                </button>
+                <span className={styles.amountMain}>R$ R$ ${fmt(entry.totalAmountCalculated ?? entry.amount)}</span>
                 <p className={styles.amountMeta}>Aulas: {entry.totalClasses ?? '-'}</p>
                 <p className={styles.amountMeta}>Valor aula: R$ {fmt(entry.hourlyRate ?? entry.amountAtBillingTime ?? entry.amount)}</p>
                 <p className={styles.amountMetaStrong}>Total calculado: R$ {fmt(entry.totalAmountCalculated ?? entry.amount)}</p>
@@ -480,7 +477,7 @@ export const BillingTab: React.FC = () => {
                       type="button"
                       className={styles.payBtn}
                       disabled={paying === entry.id}
-                      onClick={() => payEntry(entry.id)}
+                      onClick={() => payEntry(entry.id, selectedMonth)}
                     >
                       {paying === entry.id ? 'Registrando...' : 'Dar baixa'}
                     </button>
