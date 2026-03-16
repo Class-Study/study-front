@@ -32,6 +32,8 @@ export const StudentWorkspacePage: React.FC = () => {
     workspace,
     studentId,
     studentName,
+    teacherName,
+    teacherOnline,
     loading,
     error,
     accessDenied,
@@ -314,6 +316,20 @@ export const StudentWorkspacePage: React.FC = () => {
         </div>
 
         <div className={`${styles.rightPanel} ${chatVisible ? '' : styles.rightPanelHidden}`}>
+          <div className={styles.teacherPresenceSection}>
+            <span className={styles.teacherPresenceLabel}>Professor</span>
+            <div className={styles.teacherPresenceCard}>
+              <span
+                className={`${styles.teacherPresenceDot} ${teacherOnline ? styles.teacherPresenceDotOnline : styles.teacherPresenceDotOffline}`}
+                aria-hidden="true"
+              />
+              <div className={styles.teacherPresenceInfo}>
+                <span className={styles.teacherPresenceName}>{teacherName}</span>
+                <span className={styles.teacherPresenceStatus}>{teacherOnline ? 'Online agora' : 'Offline'}</span>
+              </div>
+            </div>
+          </div>
+
           <div className={styles.chatSection}>
             <WorkspaceChat
               activityTitle={activeActivity?.title ?? ''}

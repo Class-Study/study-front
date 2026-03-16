@@ -31,11 +31,13 @@ export interface Student {
   teacherName?: string;
   teacherEmail?: string;
   teacherPhone?: string;
+  teacherOnline?: boolean;
   teacher?: {
     id?: string;
     name?: string;
     email?: string;
     phone?: string;
+    isOnline?: boolean;
   };
   startDate: string;
   createdAt: string;

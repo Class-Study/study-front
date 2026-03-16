@@ -29,11 +29,21 @@ export const useMyWorkspace = () => {
   const [workspace, setWorkspace] = useState<WorkspaceData | null>(null);
   const [studentName, setStudentName] = useState('');
   const [studentId, setStudentId] = useState('');
+  const [teacherName, setTeacherName] = useState('Professor');
+  const [teacherOnline, setTeacherOnline] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [accessDenied, setAccessDenied] = useState(false);
   const [saving, setSaving] = useState(false);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+
+  const updateTeacherInfo = useCallback((me: Awaited<ReturnType<typeof studentService.getMe>>) => {
+    const resolvedTeacherName = me.teacher?.name ?? me.teacherName ?? 'Professor';
+    const resolvedTeacherOnline = me.teacher?.isOnline ?? me.teacherOnline ?? false;
+
+    setTeacherName(resolvedTeacherName);
+    setTeacherOnline(resolvedTeacherOnline);
+  }, []);
 
   const fetchWorkspace = useCallback(async () => {
     setLoading(true);
@@ -48,6 +58,7 @@ export const useMyWorkspace = () => {
 
       setStudentId(me.id);
       setStudentName(me.name);
+      updateTeacherInfo(me);
 
       setWorkspace({
         studentId: me.id,
@@ -72,7 +83,16 @@ export const useMyWorkspace = () => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [updateTeacherInfo]);
+
+  const refreshTeacherPresence = useCallback(async (): Promise<void> => {
+    try {
+      const me = await studentService.getMe();
+      updateTeacherInfo(me);
+    } catch {
+      // Keep the last known presence state if refresh fails.
+    }
+  }, [updateTeacherInfo]);
 
   useEffect(() => {
     return () => {
@@ -81,6 +101,16 @@ export const useMyWorkspace = () => {
       }
     };
   }, []);
+
+  useEffect(() => {
+    const intervalId = setInterval(() => {
+      void refreshTeacherPresence();
+    }, 30000);
+
+    return () => {
+      clearInterval(intervalId);
+    };
+  }, [refreshTeacherPresence]);
 
   const saveContent = useCallback((activityId: string, html: string) => {
     if (saveTimeoutRef.current) {
@@ -203,6 +233,8 @@ export const useMyWorkspace = () => {
     workspace,
     studentId,
     studentName,
+    teacherName,
+    teacherOnline,
     workspaceActivities,
     exerciseFolders,
     loading,

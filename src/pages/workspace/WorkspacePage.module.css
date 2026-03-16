@@ -99,6 +99,71 @@
   overflow: hidden;
 }
 
+.teacherPresenceSection {
+  padding: 12px;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-bg-card);
+}
+
+.teacherPresenceLabel {
+  display: block;
+  font-family: var(--font-sans);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-text-tertiary);
+  margin-bottom: 8px;
+}
+
+.teacherPresenceCard {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-page);
+}
+
+.teacherPresenceDot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+
+.teacherPresenceDotOnline {
+  background: var(--color-success);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-success) 25%, transparent);
+}
+
+.teacherPresenceDotOffline {
+  background: var(--color-text-tertiary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-text-tertiary) 25%, transparent);
+}
+
+.teacherPresenceInfo {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.teacherPresenceName {
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.teacherPresenceStatus {
+  font-family: var(--font-sans);
+  font-size: 12px;
+  color: var(--color-text-secondary);
+}
+
 .notesSection {
   height: 40vh;
   flex-shrink: 0;
