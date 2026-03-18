@@ -2,6 +2,8 @@ import React, { useEffect, useRef } from "react";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Typography from "@tiptap/extension-typography";
+import Collaboration from "@tiptap/extension-collaboration";
+import * as Y from "yjs";
 import { WorkspaceActivity } from "@/types/workspace.types";
 import styles from "./WorkspaceEditor.module.css";
 
@@ -15,16 +17,9 @@ interface WorkspaceEditorProps {
   editable: boolean;
   presence?: PresenceUser[];
   currentUserName?: string;
-  onContentChange?: (
-    html: string,
-    operation?: {
-      type: "insert" | "delete";
-      position: number;
-      text?: string;
-      length?: number;
-      docVersion: number;
-    },
-  ) => void;
+  currentUserColor?: string;
+  ydoc?: Y.Doc; // doc Yjs compartilhado
+  onContentChange?: (html: string) => void;
   onCursorChange?: (cursor: {
     activityId: string;
     from: number;
@@ -39,97 +34,44 @@ export const WorkspaceEditor: React.FC<WorkspaceEditorProps> = ({
   editable,
   presence = [],
   currentUserName = "Aluno",
+  currentUserColor = "#F59E0B",
+  ydoc,
   onContentChange,
   onCursorChange,
   headerStatus,
 }) => {
-  const docVersionRef = useRef(0);
-
-  const editor = useEditor({
-    extensions: [StarterKit, Typography],
-    content: activity?.convertedHtml ?? "",
-    editable,
-    onUpdate: ({ editor: currentEditor, transaction }) => {
-      if (!activity?.id) return;
-
-      const html = currentEditor.getHTML();
-      const operations: Array<{
-        type: "insert" | "delete";
-        position: number;
-        text?: string;
-        length?: number;
-        docVersion: number;
-      }> = [];
-
-      transaction.steps.forEach((step) => {
-        const stepJson = step.toJSON();
-
-        if (stepJson.stepType === "replace") {
-          const from: number = stepJson.from;
-          const to: number = stepJson.to;
-
-          const extractText = (nodes: any[]): string =>
-            nodes
-              ?.flatMap((node) => {
-                if (node.type === "text") return node.text ?? "";
-                if (node.content) return extractText(node.content);
-                return "";
-              })
-              .join("") ?? "";
-
-          const insertedText = extractText(stepJson.slice?.content ?? []);
-
-          if (to > from) {
-            operations.push({
-              type: "delete",
-              position: from,
-              length: to - from,
-              docVersion: docVersionRef.current,
-            });
-          }
-
-          if (insertedText.length > 0) {
-            operations.push({
-              type: "insert",
-              position: from,
-              text: insertedText,
-              docVersion: docVersionRef.current,
-            });
-          }
-        }
-      });
-
-      docVersionRef.current += 1;
-      onContentChange?.(
-        html,
-        operations.length > 0 ? operations[0] : undefined,
-      );
+  const editor = useEditor(
+    {
+      extensions: [
+        StarterKit.configure({ history: false } as any),
+        Typography,
+        ...(ydoc
+          ? [
+              Collaboration.configure({
+                document: ydoc,
+                field: "content",
+              }),
+            ]
+          : []),
+      ],
+      editable,
     },
-    onSelectionUpdate: ({ editor: currentEditor }) => {
-      if (!activity?.id) return;
-      const { from, to } = currentEditor.state.selection;
-      onCursorChange?.({
-        activityId: activity.id,
-        from,
-        to,
-        userName: currentUserName,
-      });
-    },
-  });
-
-  useEffect(() => {
-    if (editor && activity) {
-      editor.commands.setContent(activity.convertedHtml);
-      docVersionRef.current = 0;
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activity?.id]);
+    [ydoc],
+  );
 
   useEffect(() => {
     if (editor) {
       editor.setEditable(editable);
     }
   }, [editor, editable]);
+
+  // Quando não tem Yjs (fallback), carrega o HTML diretamente
+  useEffect(() => {
+    if (!editor || ydoc) return;
+    if (activity?.convertedHtml) {
+      editor.commands.setContent(activity.convertedHtml);
+    }
+  }, [activity?.id]);
 
   if (!activity) {
     return (

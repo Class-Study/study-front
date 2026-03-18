@@ -5,6 +5,7 @@ import { Header } from "@/components/layout/Header/Header";
 import DocxPreviewEditor from "@/components/ui/DocxPreviewEditor/DocxPreviewEditor";
 import { useAuth } from "@/hooks/useAuth";
 import { useMyWorkspace } from "@/hooks/useMyWorkspace";
+import { useYjsCollaboration } from "@/hooks/useYjsCollaboration";
 import { WorkspaceSidebar } from "./components/WorkspaceSidebar/WorkspaceSidebar";
 import { WorkspaceEditor } from "./components/WorkspaceEditor/WorkspaceEditor";
 import { WorkspaceChat } from "./components/WorkspaceChat/WorkspaceChat";
@@ -32,16 +33,6 @@ const SIDEBAR_MIN_WIDTH = 200;
 const SIDEBAR_MAX_WIDTH = 450;
 const SIDEBAR_WIDTH_STORAGE_KEY = "workspace.student.sidebar.width";
 
-// ─── Tipos das props do Inner ────────────────────────────────────────────────
-
-interface WSOperation {
-  type: "insert" | "delete";
-  position: number;
-  text?: string;
-  length?: number;
-  docVersion: number;
-}
-
 interface StudentWorkspacePageInnerProps {
   userId: string;
   studentId: string;
@@ -59,8 +50,6 @@ interface StudentWorkspacePageInnerProps {
   ) => Promise<boolean>;
 }
 
-// ─── Camada 3: lógica de interação + JSX ─────────────────────────────────────
-
 const StudentWorkspacePageInner: React.FC<StudentWorkspacePageInnerProps> = ({
   userId,
   studentId,
@@ -71,9 +60,10 @@ const StudentWorkspacePageInner: React.FC<StudentWorkspacePageInnerProps> = ({
   workspace,
   workspaceActivities,
   exerciseFolders,
+  saveContent,
   moveActivity,
 }) => {
-  const { sendWSMessage } = useWS();
+  const { ws, sendWSMessage } = useWS();
 
   const [activeActivity, setActiveActivity] =
     useState<WorkspaceActivity | null>(null);
@@ -103,6 +93,67 @@ const StudentWorkspacePageInner: React.FC<StudentWorkspacePageInnerProps> = ({
     [workspace],
   );
 
+  // ─── Yjs collaboration ───────────────────────────────────────────────────
+  const { ydoc, applyRemoteUpdate } = useYjsCollaboration({
+    activityId: activeActivity?.id ?? "",
+    initialHtml: activeActivity?.convertedHtml,
+    onUpdate: (update) => {
+      if (!activeActivity?.id || activeActivity.type !== "EXERCISE") return;
+      const base64 = btoa(
+        Array.from(update)
+          .map((b) => String.fromCharCode(b))
+          .join(""),
+      );
+      if (ydoc.getText("content").length === 0) {
+        sendWSMessage({
+          type: "yjs-update",
+          update: base64,
+          userId,
+          workspaceId: studentId,
+          activityId: activeActivity.id,
+        });
+      }
+    },
+  });
+
+  // Recebe updates remotos do professor (se houver edição futura) ou eco
+  useEffect(() => {
+    if (!ws) return;
+
+    const handleMessage = (event: MessageEvent) => {
+      let message;
+      try {
+        message = JSON.parse(event.data);
+      } catch {
+        return;
+      }
+      if (
+        message.type === "yjs-update" &&
+        message.activityId === activeActivity?.id
+      ) {
+        applyRemoteUpdate(message.update);
+      }
+    };
+
+    ws.addEventListener("message", handleMessage);
+    return () => ws.removeEventListener("message", handleMessage);
+  }, [ws, applyRemoteUpdate]);
+
+  // ─── Sincroniza estado inicial quando atividade muda ────────────────────
+  useEffect(() => {
+    if (!activeActivity || activeActivity.type !== "EXERCISE") return;
+    if (!ws || ws.readyState !== WebSocket.OPEN) return;
+
+    sendWSMessage({
+      type: "sync",
+      html: activeActivity.convertedHtml,
+      userId,
+      workspaceId: studentId,
+      activityId: activeActivity.id,
+    });
+  }, [activeActivity?.id, ws]);
+
+  // ─── Sincroniza activeActivity com atualizações do workspace ────────────
   useEffect(() => {
     if (!activeActivity && allActivities.length > 0) {
       setActiveActivity(allActivities[0]);
@@ -172,9 +223,7 @@ const StudentWorkspacePageInner: React.FC<StudentWorkspacePageInnerProps> = ({
     targetFolderId: string,
   ): Promise<void> => {
     const moved = await moveActivity(activityId, targetFolderId);
-    if (!moved) {
-      alert("Nao foi possivel mover a atividade. Tente novamente.");
-    }
+    if (!moved) alert("Nao foi possivel mover a atividade. Tente novamente.");
   };
 
   const stopResizing = (): void => {
@@ -306,16 +355,12 @@ const StudentWorkspacePageInner: React.FC<StudentWorkspacePageInnerProps> = ({
                   editable={true}
                   onChange={(html) => {
                     setNewWorkspaceContent(html);
-                    // DocxPreviewEditor não expõe operações de diff,
-                    // então enviamos apenas o html completo para workspaces novos
                     sendWSMessage({
-                      type: "insert",
-                      position: 0,
-                      text: html,
+                      type: "sync",
+                      html,
                       userId,
                       workspaceId: studentId,
                       activityId: "new",
-                      docVersion: 0,
                     });
                   }}
                 />
@@ -326,26 +371,10 @@ const StudentWorkspacePageInner: React.FC<StudentWorkspacePageInnerProps> = ({
               activity={activeActivity}
               editable={activeActivity?.type === "EXERCISE"}
               currentUserName={studentName}
-              onCursorChange={(cursor) => {
-                sendWSMessage({
-                  type: "cursor",
-                  ...cursor,
-                  userId,
-                  workspaceId: studentId,
-                });
-              }}
-              onContentChange={(html, operation) => {
-                if (
-                  activeActivity?.id &&
-                  activeActivity.type === "EXERCISE" &&
-                  operation
-                ) {
-                  sendWSMessage({
-                    ...operation, // { type, position, text?, length?, docVersion }
-                    userId,
-                    workspaceId: studentId,
-                    activityId: activeActivity.id,
-                  });
+              ydoc={activeActivity?.type === "EXERCISE" ? ydoc : undefined}
+              onContentChange={(html) => {
+                if (activeActivity?.id && activeActivity.type === "EXERCISE") {
+                  saveContent(activeActivity.id, html);
                 }
               }}
               headerStatus={
@@ -451,7 +480,6 @@ const StudentWorkspacePageContent: React.FC = () => {
     );
   }
 
-  // Só chega aqui quando workspace e studentId estão disponíveis
   if (!workspace || !studentId || !user?.id) {
     return null;
   }
