@@ -3,6 +3,9 @@ import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Typography from "@tiptap/extension-typography";
 import Collaboration from "@tiptap/extension-collaboration";
+import { Extension } from "@tiptap/core";
+import { Plugin, PluginKey } from "prosemirror-state";
+import { Decoration, DecorationSet } from "prosemirror-view";
 import * as Y from "yjs";
 import { WorkspaceActivity } from "@/types/workspace.types";
 import styles from "./WorkspaceEditor.module.css";
@@ -17,15 +20,14 @@ interface WorkspaceEditorProps {
   editable: boolean;
   presence?: PresenceUser[];
   currentUserName?: string;
-  currentUserColor?: string;
-  ydoc?: Y.Doc; // doc Yjs compartilhado
-  onContentChange?: (html: string) => void;
+  ydoc?: Y.Doc;
   onCursorChange?: (cursor: {
     activityId: string;
     from: number;
     to: number;
     userName: string;
   }) => void;
+  remoteCursor?: { from: number; to: number; userName: string } | null;
   headerStatus?: React.ReactNode;
 }
 
@@ -34,17 +36,58 @@ export const WorkspaceEditor: React.FC<WorkspaceEditorProps> = ({
   editable,
   presence = [],
   currentUserName = "Aluno",
-  currentUserColor = "#F59E0B",
   ydoc,
-  onContentChange,
   onCursorChange,
+  remoteCursor,
   headerStatus,
 }) => {
+  const remoteCursorRef = useRef(remoteCursor);
+  remoteCursorRef.current = remoteCursor;
+
+  const RemoteCursorExtension = useRef(
+    Extension.create({
+      name: "remoteCursor",
+      addProseMirrorPlugins() {
+        return [
+          new Plugin({
+            key: new PluginKey("remoteCursor"),
+            props: {
+              decorations(state) {
+                const cursor = remoteCursorRef.current;
+                if (!cursor) return DecorationSet.empty;
+                const { from, to, userName } = cursor;
+                const size = state.doc.content.size;
+                const safeFrom = Math.min(Math.max(from, 0), size);
+                const safeTo = Math.min(Math.max(to, 0), size);
+                const widget = Decoration.widget(safeFrom, () => {
+                  const el = document.createElement("span");
+                  el.className = styles.remoteCursor;
+                  el.setAttribute("data-name", userName);
+                  return el;
+                });
+                const decos: Decoration[] = [widget];
+                if (safeTo > safeFrom) {
+                  decos.push(
+                    Decoration.inline(safeFrom, safeTo, {
+                      class: styles.remoteCursorSelection,
+                    }),
+                  );
+                }
+                return DecorationSet.create(state.doc, decos);
+              },
+            },
+          }),
+        ];
+      },
+    }),
+  ).current;
+
   const editor = useEditor(
     {
       extensions: [
         StarterKit.configure({ history: false } as any),
         Typography,
+        RemoteCursorExtension,
         ...(ydoc
           ? [
               Collaboration.configure({
@@ -55,6 +98,17 @@ export const WorkspaceEditor: React.FC<WorkspaceEditorProps> = ({
           : []),
       ],
       editable,
+      onTransaction: ({ editor }) => {
+          console.log("onTransaction fired", { editable, onCursorChange: !!onCursorChange, activityId: activity?.id });
+        if (!editable || !onCursorChange || !activity?.id) return;
+        const { from, to } = editor.state.selection;
+        onCursorChange({
+          activityId: activity.id,
+          from,
+          to,
+          userName: currentUserName,
+        });
+      },
     },
     [ydoc],
   );
@@ -65,13 +119,19 @@ export const WorkspaceEditor: React.FC<WorkspaceEditorProps> = ({
     }
   }, [editor, editable]);
 
-  // Quando não tem Yjs (fallback), carrega o HTML diretamente
   useEffect(() => {
     if (!editor || ydoc) return;
     if (activity?.convertedHtml) {
       editor.commands.setContent(activity.convertedHtml);
     }
   }, [activity?.id]);
+
+  useEffect(() => {
+    if (!editor) return;
+    editor.view.dispatch(
+      editor.state.tr.setMeta("remoteCursorUpdate", remoteCursor),
+    );
+  }, [editor, remoteCursor]);
 
   if (!activity) {
     return (

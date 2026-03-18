@@ -213,3 +213,28 @@
   font-size: 11px;
   color: var(--color-text-tertiary);
 }
+
+
+.remoteCursor {
+  position: relative;
+  border-left: 2px solid #3B8BD4;
+  margin-left: -1px;
+}
+
+.remoteCursor::after {
+  content: attr(data-name);
+  position: absolute;
+  top: -20px;
+  left: -1px;
+  background: #3B8BD4;
+  color: white;
+  font-size: 11px;
+  padding: 1px 5px;
+  border-radius: 3px;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.remoteCursorSelection {
+  background: rgba(59, 139, 212, 0.2);
+}

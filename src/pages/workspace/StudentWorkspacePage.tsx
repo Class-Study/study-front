@@ -15,6 +15,7 @@ import {
   WorkspaceData,
   WorkspaceFolder,
 } from "@/types/workspace.types";
+import * as Y from "yjs";
 import styles from "./WorkspacePage.module.css";
 
 const MOCK_CHAT: ChatMessage[] = [
@@ -104,7 +105,7 @@ const StudentWorkspacePageInner: React.FC<StudentWorkspacePageInnerProps> = ({
           .map((b) => String.fromCharCode(b))
           .join(""),
       );
-      if (ydoc.getText("content").length === 0) {
+      if (ydoc.getXmlFragment("content").length === 0) {
         sendWSMessage({
           type: "yjs-update",
           update: base64,
@@ -140,13 +141,21 @@ const StudentWorkspacePageInner: React.FC<StudentWorkspacePageInnerProps> = ({
   }, [ws, applyRemoteUpdate]);
 
   // ─── Sincroniza estado inicial quando atividade muda ────────────────────
+  // StudentWorkspacePage.tsx
   useEffect(() => {
     if (!activeActivity || activeActivity.type !== "EXERCISE") return;
     if (!ws || ws.readyState !== WebSocket.OPEN) return;
 
+    const fullUpdate = Y.encodeStateAsUpdate(ydoc);
+    const base64 = btoa(
+      Array.from(fullUpdate)
+        .map((b) => String.fromCharCode(b))
+        .join(""),
+    );
+
     sendWSMessage({
-      type: "sync",
-      html: activeActivity.convertedHtml,
+      type: "yjs-full-sync",
+      update: base64,
       userId,
       workspaceId: studentId,
       activityId: activeActivity.id,
@@ -370,12 +379,17 @@ const StudentWorkspacePageInner: React.FC<StudentWorkspacePageInnerProps> = ({
             <WorkspaceEditor
               activity={activeActivity}
               editable={activeActivity?.type === "EXERCISE"}
-              currentUserName={studentName}
               ydoc={activeActivity?.type === "EXERCISE" ? ydoc : undefined}
-              onContentChange={(html) => {
-                if (activeActivity?.id && activeActivity.type === "EXERCISE") {
-                  saveContent(activeActivity.id, html);
-                }
+              onCursorChange={({ activityId, from, to, userName }) => {
+                sendWSMessage({
+                  type: "cursor",
+                  activityId,
+                  from,
+                  to,
+                  userName: userName || "Aluno",
+                  userId,
+                  workspaceId: studentId,
+                });
               }}
               headerStatus={
                 saving ? (

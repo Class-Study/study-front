@@ -44,6 +44,12 @@ const SIDEBAR_MAX_WIDTH = 450;
 const SIDEBAR_WIDTH_STORAGE_KEY = "workspace.sidebar.width";
 
 const WorkspacePageContent: React.FC = () => {
+  const [remoteCursor, setRemoteCursor] = useState<{
+    from: number;
+    to: number;
+    userName: string;
+  } | null>(null);
+  const [ydocKey, setYdocKey] = useState(0); // ← força re-mount do editor após full sync
   const navigate = useNavigate();
   const { user } = useAuth();
   const { studentId } = useParams<{ studentId: string }>();
@@ -80,13 +86,17 @@ const WorkspacePageContent: React.FC = () => {
   const [newWorkspaceTitle, setNewWorkspaceTitle] = useState(
     `Novo Workspace - ${new Date().toLocaleDateString("pt-BR")}`,
   );
-  const [newWorkspaceContent, setNewWorkspaceContent] = useState("<p></p>");
+  const [newWorkspaceContent, setNewWorkspaceContent] =
+    useState<string>("<p></p>");
+
   const [workspaceDrafts, setWorkspaceDrafts] = useState<
     Record<string, { title: string; convertedHtml: string }>
   >({});
+
   const [workspaceDraftFeedback, setWorkspaceDraftFeedback] = useState<
     string | null
   >(null);
+
   const [newItemForm, setNewItemForm] = useState<{ title: string } | null>(
     null,
   );
@@ -112,13 +122,17 @@ const WorkspacePageContent: React.FC = () => {
     onUpdate: () => {},
   });
 
-  console.log("HTML vindo:", activeActivity?.convertedHtml);
-
   useEffect(() => {
     if (!ws) return;
 
     const handleMessage = (event: MessageEvent) => {
       const message = JSON.parse(event.data);
+
+      if (message.type === "yjs-full-sync" && message.update) {
+        applyRemoteUpdate(message.update, true); // ← reseta ydoc com estado do aluno
+        setYdocKey((k) => k + 1); // ← força re-mount do WorkspaceEditor
+        return;
+      }
 
       if (message.type === "yjs-update" && message.update) {
         applyRemoteUpdate(message.update);
@@ -126,14 +140,20 @@ const WorkspacePageContent: React.FC = () => {
       }
 
       if (message.type === "cursor") {
-        console.log("[WS] Cursor do aluno:", message);
+        if (message.activityId === activeActivity?.id) {
+          setRemoteCursor({
+            from: message.from,
+            to: message.to,
+            userName: message.userName,
+          });
+        }
         return;
       }
     };
 
     ws.addEventListener("message", handleMessage);
     return () => ws.removeEventListener("message", handleMessage);
-  }, [ws, applyRemoteUpdate]);
+  }, [ws, applyRemoteUpdate, activeActivity?.id]);
 
   useEffect(() => {
     if (accessDenied) {
@@ -476,11 +496,12 @@ const WorkspacePageContent: React.FC = () => {
             </div>
           ) : (
             <WorkspaceEditor
+              key={ydocKey} // ← força re-mount quando ydoc é substituído
               activity={activeActivity}
               editable={false}
               presence={MOCK_PRESENCE}
               ydoc={activeActivity?.type === "EXERCISE" ? ydoc : undefined}
-              onContentChange={undefined} // ← professor não salva
+              remoteCursor={remoteCursor}
               headerStatus={
                 saving ? (
                   <span className={styles.savingIndicator}>Salvando...</span>
