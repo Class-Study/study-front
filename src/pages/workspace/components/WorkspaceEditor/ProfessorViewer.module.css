@@ -1,0 +1,78 @@
+.wrapper {
+  position: relative;
+  flex: 1;
+  overflow-y: auto;
+  font-family: var(--font-sans);
+  font-size: 15px;
+  line-height: 1.9;
+  color: var(--color-text-primary);
+}
+
+.content {
+  padding: 28px 44px;
+  min-height: 100%;
+}
+
+.content p {
+  margin: 0 0 10px;
+  color: var(--color-text-secondary);
+  line-height: 1.85;
+}
+
+.content strong { color: var(--color-text-primary); }
+.content em { color: var(--color-text-tertiary); }
+
+.content ol,
+.content ul {
+  padding-left: 20px;
+  margin-bottom: 10px;
+}
+
+.content li {
+  margin-bottom: 4px;
+  color: var(--color-text-secondary);
+  line-height: 1.7;
+}
+
+/* ───────────── CURSOR ───────────── */
+
+.cursor {
+  position: absolute;
+  pointer-events: none;
+  transition: top 0.08s linear, left 0.08s linear;
+}
+
+/* PAUZINHO (pisca) */
+.cursorBar {
+  width: 1.5px;
+  height: 1.2em;
+  background: #22c55e;
+
+  animation: cursorBlink 1s steps(1) infinite;
+}
+
+/* NOME (fixo) */
+.cursor::after {
+  content: attr(data-name);
+  position: absolute;
+  top: -22px;
+  left: 0;
+
+  background: #22c55e;
+  color: white;
+  font-size: 11px;
+
+  padding: 2px 6px;
+  border-radius: 4px;
+  white-space: nowrap;
+
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+}
+
+/* animação blink real */
+@keyframes cursorBlink {
+  0% { opacity: 1; }
+  49% { opacity: 1; }
+  50% { opacity: 0; }
+  100% { opacity: 0; }
+}

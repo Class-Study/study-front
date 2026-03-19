@@ -11,13 +11,15 @@ const WS_URL = "ws://localhost:8080/api/v1/ws";
 interface WSContextValue {
   ws: WebSocket | null;
   sendWSMessage: (msg: any) => void;
-  onOpen: (callback: () => void) => void; // ← novo: registra callback de conexão
+  onOpen: (callback: () => void) => void;
+  onReconnect: (callback: () => void) => void;
 }
 
 const WSContext = createContext<WSContextValue>({
   ws: null,
   sendWSMessage: () => {},
   onOpen: () => {},
+  onReconnect: () => {},
 });
 
 export const WSProvider: React.FC<{
@@ -28,6 +30,8 @@ export const WSProvider: React.FC<{
   const [ws, setWs] = useState<WebSocket | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const onOpenCallbackRef = useRef<(() => void) | null>(null);
+  const onReconnectCallbackRef = useRef<(() => void) | null>(null);
+  const isFirstConnectionRef = useRef(true);
 
   const createSocket = (uid: string, wsId: string) => {
     const socket = new window.WebSocket(
@@ -40,6 +44,11 @@ export const WSProvider: React.FC<{
       setWs(socket);
       // Dispara o callback de onOpen se estiver registrado
       onOpenCallbackRef.current?.();
+      // Só dispara onReconnect se não for a primeira conexão
+      if (!isFirstConnectionRef.current) {
+        onReconnectCallbackRef.current?.();
+      }
+      isFirstConnectionRef.current = false;
     };
 
     socket.onclose = () => {
@@ -78,6 +87,7 @@ export const WSProvider: React.FC<{
     }
   };
 
+
   // Registra um callback que será chamado quando o WS abrir (ou imediatamente se já estiver aberto)
   const onOpen = (callback: () => void) => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
@@ -87,8 +97,13 @@ export const WSProvider: React.FC<{
     }
   };
 
+  // Registra callback para reconexão (chamado toda vez que reconectar)
+  const onReconnect = (callback: () => void) => {
+    onReconnectCallbackRef.current = callback;
+  };
+
   return (
-    <WSContext.Provider value={{ ws, sendWSMessage, onOpen }}>
+    <WSContext.Provider value={{ ws, sendWSMessage, onOpen, onReconnect }}>
       {children}
     </WSContext.Provider>
   );

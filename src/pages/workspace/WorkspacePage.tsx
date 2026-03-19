@@ -5,10 +5,11 @@ import DocxPreviewEditor from "@/components/ui/DocxPreviewEditor/DocxPreviewEdit
 import studentService from "@/services/api/student.service";
 import { useAuth } from "@/hooks/useAuth";
 import { useWorkspace } from "@/hooks/useWorkspace";
-import { useYjsCollaboration } from "@/hooks/useYjsCollaboration";
+import { useSnapshot } from "@/hooks/useSnapshot";
 import { useWS, WSProvider } from "@/contexts/WSContext";
 import { WorkspaceSidebar } from "./components/WorkspaceSidebar/WorkspaceSidebar";
 import { WorkspaceEditor } from "./components/WorkspaceEditor/WorkspaceEditor";
+import { ProfessorViewer } from "./components/WorkspaceEditor/ProfessorViewer";
 import { WorkspaceChat } from "./components/WorkspaceChat/WorkspaceChat";
 import { WorkspaceNotes } from "./components/WorkspaceNotes/WorkspaceNotes";
 import { UploadActivityModal } from "./components/UploadActivityModal/UploadActivityModal";
@@ -39,23 +40,19 @@ const MOCK_PRESENCE = [
   { name: "Aluna online", color: "--color-blue" },
 ];
 
+
 const SIDEBAR_MIN_WIDTH = 200;
 const SIDEBAR_MAX_WIDTH = 450;
 const SIDEBAR_WIDTH_STORAGE_KEY = "workspace.sidebar.width";
 
 const WorkspacePageContent: React.FC = () => {
-  const [remoteCursor, setRemoteCursor] = useState<{
-    from: number;
-    to: number;
-    userName: string;
-  } | null>(null);
-  const [ydocKey, setYdocKey] = useState(0); // ← força re-mount do editor após full sync
   const navigate = useNavigate();
   const { user } = useAuth();
   const { studentId } = useParams<{ studentId: string }>();
   const { ws } = useWS();
   const isStudent = user?.role === "STUDENT";
   const targetStudentId = studentId ?? user?.id ?? "";
+
   const {
     workspaceActivities,
     exerciseFolders,
@@ -71,6 +68,11 @@ const WorkspacePageContent: React.FC = () => {
 
   const [activeActivity, setActiveActivity] =
     useState<WorkspaceActivity | null>(null);
+  const [remoteCursor, setRemoteCursor] = useState<{
+    from: number;
+    to: number;
+    userName: string;
+  } | null>(null);
   const [sidebarWidth, setSidebarWidth] = useState<number>(() => {
     if (typeof window === "undefined") return 240;
     const raw = window.localStorage.getItem(SIDEBAR_WIDTH_STORAGE_KEY);
@@ -88,15 +90,12 @@ const WorkspacePageContent: React.FC = () => {
   );
   const [newWorkspaceContent, setNewWorkspaceContent] =
     useState<string>("<p></p>");
-
   const [workspaceDrafts, setWorkspaceDrafts] = useState<
     Record<string, { title: string; convertedHtml: string }>
   >({});
-
   const [workspaceDraftFeedback, setWorkspaceDraftFeedback] = useState<
     string | null
   >(null);
-
   const [newItemForm, setNewItemForm] = useState<{ title: string } | null>(
     null,
   );
@@ -115,32 +114,33 @@ const WorkspacePageContent: React.FC = () => {
     [exerciseFolders, workspaceActivities],
   );
 
-  // ─── Yjs collaboration — professor só recebe, não envia ─────────────────
-  const { ydoc, applyRemoteUpdate } = useYjsCollaboration({
+  // ─── Snapshot — professor só recebe, não envia ───────────────────────────
+  const { html, applyRemoteSnapshot } = useSnapshot({
     activityId: activeActivity?.id ?? "",
     initialHtml: activeActivity?.convertedHtml,
-    onUpdate: () => {},
+    onSnapshot: () => {},
   });
 
   useEffect(() => {
     if (!ws) return;
 
     const handleMessage = (event: MessageEvent) => {
-      const message = JSON.parse(event.data);
-
-      if (message.type === "yjs-full-sync" && message.update) {
-        applyRemoteUpdate(message.update, true); // ← reseta ydoc com estado do aluno
-        setYdocKey((k) => k + 1); // ← força re-mount do WorkspaceEditor
+      let message;
+      try {
+        message = JSON.parse(event.data);
+      } catch {
         return;
       }
 
-      if (message.type === "yjs-update" && message.update) {
-        applyRemoteUpdate(message.update);
+      if (message.type === "snapshot" && message.snapshot) {
+        applyRemoteSnapshot(message.snapshot);
         return;
       }
 
       if (message.type === "cursor") {
+        console.log("[WS] cursor recebido:", message);
         if (message.activityId === activeActivity?.id) {
+          console.log("[WS] setando remoteCursor");
           setRemoteCursor({
             from: message.from,
             to: message.to,
@@ -153,7 +153,7 @@ const WorkspacePageContent: React.FC = () => {
 
     ws.addEventListener("message", handleMessage);
     return () => ws.removeEventListener("message", handleMessage);
-  }, [ws, applyRemoteUpdate, activeActivity?.id]);
+  }, [ws, applyRemoteSnapshot, activeActivity?.id]);
 
   useEffect(() => {
     if (accessDenied) {
@@ -495,19 +495,7 @@ const WorkspacePageContent: React.FC = () => {
               </div>
             </div>
           ) : (
-            <WorkspaceEditor
-              key={ydocKey} // ← força re-mount quando ydoc é substituído
-              activity={activeActivity}
-              editable={false}
-              presence={MOCK_PRESENCE}
-              ydoc={activeActivity?.type === "EXERCISE" ? ydoc : undefined}
-              remoteCursor={remoteCursor}
-              headerStatus={
-                saving ? (
-                  <span className={styles.savingIndicator}>Salvando...</span>
-                ) : null
-              }
-            />
+            <ProfessorViewer html={html} remoteCursor={remoteCursor} />
           )}
         </div>
 

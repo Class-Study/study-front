@@ -2,11 +2,9 @@ import React, { useEffect, useRef } from "react";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Typography from "@tiptap/extension-typography";
-import Collaboration from "@tiptap/extension-collaboration";
 import { Extension } from "@tiptap/core";
 import { Plugin, PluginKey } from "prosemirror-state";
 import { Decoration, DecorationSet } from "prosemirror-view";
-import * as Y from "yjs";
 import { WorkspaceActivity } from "@/types/workspace.types";
 import styles from "./WorkspaceEditor.module.css";
 
@@ -18,15 +16,11 @@ interface PresenceUser {
 interface WorkspaceEditorProps {
   activity: WorkspaceActivity | null;
   editable: boolean;
+  html?: string;
   presence?: PresenceUser[];
   currentUserName?: string;
-  ydoc?: Y.Doc;
-  onCursorChange?: (cursor: {
-    activityId: string;
-    from: number;
-    to: number;
-    userName: string;
-  }) => void;
+  onContentChange?: (html: string) => void;
+  onCursorChange?: (from: number, to: number) => void;
   remoteCursor?: { from: number; to: number; userName: string } | null;
   headerStatus?: React.ReactNode;
 }
@@ -34,13 +28,15 @@ interface WorkspaceEditorProps {
 export const WorkspaceEditor: React.FC<WorkspaceEditorProps> = ({
   activity,
   editable,
+  html,
   presence = [],
-  currentUserName = "Aluno",
-  ydoc,
+  onContentChange,
   onCursorChange,
   remoteCursor,
   headerStatus,
 }) => {
+  const cursorDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastActivityIdRef = useRef<string | null>(null);
   const remoteCursorRef = useRef(remoteCursor);
   remoteCursorRef.current = remoteCursor;
 
@@ -82,50 +78,65 @@ export const WorkspaceEditor: React.FC<WorkspaceEditorProps> = ({
     }),
   ).current;
 
-  const editor = useEditor(
-    {
-      extensions: [
-        StarterKit.configure({ history: false } as any),
-        Typography,
-        RemoteCursorExtension,
-        ...(ydoc
-          ? [
-              Collaboration.configure({
-                document: ydoc,
-                field: "content",
-              }),
-            ]
-          : []),
-      ],
-      editable,
-      onTransaction: ({ editor }) => {
-          console.log("onTransaction fired", { editable, onCursorChange: !!onCursorChange, activityId: activity?.id });
-        if (!editable || !onCursorChange || !activity?.id) return;
-        const { from, to } = editor.state.selection;
-        onCursorChange({
-          activityId: activity.id,
-          from,
-          to,
-          userName: currentUserName,
-        });
-      },
+  const editor = useEditor({
+    extensions: [StarterKit, Typography, RemoteCursorExtension],
+    editable,
+    content: html ?? activity?.convertedHtml ?? "",
+    onUpdate: ({ editor }) => {
+      onContentChange?.(editor.getHTML());
+      const { from, to } = editor.state.selection;
+
+      // Converte posição ProseMirror para offset de texto plano
+      const textOffset = editor.state.doc.textBetween(0, from, "").length;
+      onCursorChange?.(textOffset, textOffset);
     },
-    [ydoc],
-  );
+    onSelectionUpdate: ({ editor, transaction }) => {
+      if (!editable) return;
+      const isPointerSelection = transaction.getMeta("pointer");
+      if (!isPointerSelection) return;
+
+      const { from } = editor.state.selection;
+      const textOffset = editor.state.doc.textBetween(0, from, "").length;
+
+      if (cursorDebounceRef.current) clearTimeout(cursorDebounceRef.current);
+      cursorDebounceRef.current = setTimeout(() => {
+        onCursorChange?.(textOffset, textOffset);
+      }, 100);
+    },
+  });
 
   useEffect(() => {
-    if (editor) {
-      editor.setEditable(editable);
-    }
+    if (editor) editor.setEditable(editable);
   }, [editor, editable]);
 
   useEffect(() => {
-    if (!editor || ydoc) return;
-    if (activity?.convertedHtml) {
-      editor.commands.setContent(activity.convertedHtml);
-    }
-  }, [activity?.id]);
+    if (!editor) return;
+    const content = html ?? activity?.convertedHtml;
+    if (!content) return;
 
+    const isActivityChange = activity?.id !== lastActivityIdRef.current;
+    lastActivityIdRef.current = activity?.id ?? null;
+
+    if (isActivityChange || !editable) {
+      if (editor.getHTML() === content) return;
+
+      queueMicrotask(() => {
+        // Preserva a seleção atual antes do setContent
+        const { from, to } = editor.state.selection;
+        const docSize = editor.state.doc.content.size;
+
+        editor.commands.setContent(content);
+
+        // Restaura a seleção após o setContent se as posições ainda forem válidas
+        const newDocSize = editor.state.doc.content.size;
+        if (from <= newDocSize && to <= newDocSize) {
+          editor.commands.setTextSelection({ from, to });
+        }
+      });
+    }
+  }, [html, activity?.id, editable]);
+
+  // Força re-render das decorações quando cursor remoto muda
   useEffect(() => {
     if (!editor) return;
     editor.view.dispatch(

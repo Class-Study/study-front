@@ -5,7 +5,7 @@ import { Header } from "@/components/layout/Header/Header";
 import DocxPreviewEditor from "@/components/ui/DocxPreviewEditor/DocxPreviewEditor";
 import { useAuth } from "@/hooks/useAuth";
 import { useMyWorkspace } from "@/hooks/useMyWorkspace";
-import { useYjsCollaboration } from "@/hooks/useYjsCollaboration";
+import { useSnapshot } from "@/hooks/useSnapshot";
 import { WorkspaceSidebar } from "./components/WorkspaceSidebar/WorkspaceSidebar";
 import { WorkspaceEditor } from "./components/WorkspaceEditor/WorkspaceEditor";
 import { WorkspaceChat } from "./components/WorkspaceChat/WorkspaceChat";
@@ -15,7 +15,6 @@ import {
   WorkspaceData,
   WorkspaceFolder,
 } from "@/types/workspace.types";
-import * as Y from "yjs";
 import styles from "./WorkspacePage.module.css";
 
 const MOCK_CHAT: ChatMessage[] = [
@@ -64,7 +63,7 @@ const StudentWorkspacePageInner: React.FC<StudentWorkspacePageInnerProps> = ({
   saveContent,
   moveActivity,
 }) => {
-  const { ws, sendWSMessage } = useWS();
+  const { ws, sendWSMessage, onReconnect } = useWS();
 
   const [activeActivity, setActiveActivity] =
     useState<WorkspaceActivity | null>(null);
@@ -94,75 +93,49 @@ const StudentWorkspacePageInner: React.FC<StudentWorkspacePageInnerProps> = ({
     [workspace],
   );
 
-  // ─── Yjs collaboration ───────────────────────────────────────────────────
-  const { ydoc, applyRemoteUpdate } = useYjsCollaboration({
+  // ─── Snapshot collaboration ───────────────────────────────────────────────
+  const { html, ready, notifyChange } = useSnapshot({
     activityId: activeActivity?.id ?? "",
     initialHtml: activeActivity?.convertedHtml,
-    onUpdate: (update) => {
+    onSnapshot: (base64) => {
       if (!activeActivity?.id || activeActivity.type !== "EXERCISE") return;
-      const base64 = btoa(
-        Array.from(update)
-          .map((b) => String.fromCharCode(b))
-          .join(""),
-      );
-      if (ydoc.getXmlFragment("content").length === 0) {
-        sendWSMessage({
-          type: "yjs-update",
-          update: base64,
-          userId,
-          workspaceId: studentId,
-          activityId: activeActivity.id,
-        });
-      }
+      sendWSMessage({
+        type: "snapshot",
+        snapshot: base64,
+        userId,
+        workspaceId: studentId,
+        activityId: activeActivity.id,
+      });
     },
   });
 
-  // Recebe updates remotos do professor (se houver edição futura) ou eco
-  useEffect(() => {
-    if (!ws) return;
+  // ─── Envia snapshot ao conectar e ao reconectar ───────────────────────────
+  const htmlRef = useRef(html);
+  htmlRef.current = html;
 
-    const handleMessage = (event: MessageEvent) => {
-      let message;
-      try {
-        message = JSON.parse(event.data);
-      } catch {
-        return;
-      }
-      if (
-        message.type === "yjs-update" &&
-        message.activityId === activeActivity?.id
-      ) {
-        applyRemoteUpdate(message.update);
-      }
+  useEffect(() => {
+    if (!ready || !onReconnect) return;
+    if (!activeActivity || activeActivity.type !== "EXERCISE") return;
+
+    const sendSnapshot = async () => {
+      if (!ws || ws.readyState !== WebSocket.OPEN) return;
+      if (!htmlRef.current) return;
+      const { compressSnapshot } = await import("@/utils/snapshot");
+      const base64 = await compressSnapshot(htmlRef.current);
+      sendWSMessage({
+        type: "snapshot",
+        snapshot: base64,
+        userId,
+        workspaceId: studentId,
+        activityId: activeActivity.id,
+      });
     };
 
-    ws.addEventListener("message", handleMessage);
-    return () => ws.removeEventListener("message", handleMessage);
-  }, [ws, applyRemoteUpdate]);
+    sendSnapshot();
+    onReconnect(sendSnapshot);
+  }, [ready, activeActivity?.id, ws]);
 
-  // ─── Sincroniza estado inicial quando atividade muda ────────────────────
-  // StudentWorkspacePage.tsx
-  useEffect(() => {
-    if (!activeActivity || activeActivity.type !== "EXERCISE") return;
-    if (!ws || ws.readyState !== WebSocket.OPEN) return;
-
-    const fullUpdate = Y.encodeStateAsUpdate(ydoc);
-    const base64 = btoa(
-      Array.from(fullUpdate)
-        .map((b) => String.fromCharCode(b))
-        .join(""),
-    );
-
-    sendWSMessage({
-      type: "yjs-full-sync",
-      update: base64,
-      userId,
-      workspaceId: studentId,
-      activityId: activeActivity.id,
-    });
-  }, [activeActivity?.id, ws]);
-
-  // ─── Sincroniza activeActivity com atualizações do workspace ────────────
+  // ─── Sincroniza activeActivity com atualizações do workspace ─────────────
   useEffect(() => {
     if (!activeActivity && allActivities.length > 0) {
       setActiveActivity(allActivities[0]);
@@ -362,16 +335,7 @@ const StudentWorkspacePageInner: React.FC<StudentWorkspacePageInnerProps> = ({
                 <DocxPreviewEditor
                   html={newWorkspaceContent}
                   editable={true}
-                  onChange={(html) => {
-                    setNewWorkspaceContent(html);
-                    sendWSMessage({
-                      type: "sync",
-                      html,
-                      userId,
-                      workspaceId: studentId,
-                      activityId: "new",
-                    });
-                  }}
+                  onChange={(html) => setNewWorkspaceContent(html)}
                 />
               </div>
             </div>
@@ -379,14 +343,16 @@ const StudentWorkspacePageInner: React.FC<StudentWorkspacePageInnerProps> = ({
             <WorkspaceEditor
               activity={activeActivity}
               editable={activeActivity?.type === "EXERCISE"}
-              ydoc={activeActivity?.type === "EXERCISE" ? ydoc : undefined}
-              onCursorChange={({ activityId, from, to, userName }) => {
+              html={html}
+              onContentChange={notifyChange}
+              onCursorChange={(from, to) => {
+                if (!activeActivity?.id) return;
                 sendWSMessage({
                   type: "cursor",
-                  activityId,
+                  activityId: activeActivity.id,
                   from,
                   to,
-                  userName: userName || "Aluno",
+                  userName: studentName || "Aluno",
                   userId,
                   workspaceId: studentId,
                 });
@@ -467,9 +433,7 @@ const StudentWorkspacePageContent: React.FC = () => {
   ];
 
   useEffect(() => {
-    if (accessDenied) {
-      navigate("/account-inactive", { replace: true });
-    }
+    if (accessDenied) navigate("/account-inactive", { replace: true });
   }, [accessDenied, navigate]);
 
   useEffect(() => {
@@ -494,9 +458,7 @@ const StudentWorkspacePageContent: React.FC = () => {
     );
   }
 
-  if (!workspace || !studentId || !user?.id) {
-    return null;
-  }
+  if (!workspace || !studentId || !user?.id) return null;
 
   return (
     <WSProvider userId={user.id} workspaceId={studentId}>
@@ -517,10 +479,6 @@ const StudentWorkspacePageContent: React.FC = () => {
   );
 };
 
-// ─── Camada 1: raiz da página ─────────────────────────────────────────────────
-
-const StudentWorkspacePage: React.FC = () => {
-  return <StudentWorkspacePageContent />;
-};
+const StudentWorkspacePage: React.FC = () => <StudentWorkspacePageContent />;
 
 export default StudentWorkspacePage;
