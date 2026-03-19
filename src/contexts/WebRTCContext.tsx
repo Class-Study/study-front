@@ -1,0 +1,275 @@
+// src/contexts/WebRTCContext.tsx
+import React, { createContext, useContext, useEffect, useRef } from "react";
+import { useWS } from "./WSContext";
+
+interface WebRTCContextValue {
+  send: (data: any) => void;
+}
+
+const WebRTCContext = createContext<WebRTCContextValue>({ send: () => {} });
+
+export const WebRTCProvider: React.FC<{
+  children: React.ReactNode;
+  workspaceId: string;
+  role: "student" | "teacher";
+  onData: (data: any) => void;
+}> = ({ children, workspaceId, role, onData }) => {
+  const { wsRef, sendWSMessage } = useWS();
+
+  const pcRef = useRef<RTCPeerConnection | null>(null);
+  const channelRef = useRef<RTCDataChannel | null>(null);
+  const onDataRef = useRef(onData);
+  const initializedRef = useRef(false);
+  const queueRef = useRef<any[]>([]);
+
+  useEffect(() => {
+    onDataRef.current = onData;
+  }, [onData]);
+
+  useEffect(() => {
+    if (initializedRef.current) return;
+
+    const tryInit = () => {
+      const wss = wsRef?.current;
+      if (!wss || wss.readyState !== WebSocket.OPEN) {
+        setTimeout(tryInit, 200);
+        return;
+      }
+
+      if (initializedRef.current) return;
+      initializedRef.current = true;
+
+      console.log(`[WebRTC] inicializando como ${role} | workspace: ${workspaceId}`);
+
+      // ─── Cria RTCPeerConnection ───────────────────────────────────────────
+      const createPeer = () => {
+        if (pcRef.current) {
+          pcRef.current.close();
+          pcRef.current = null;
+          channelRef.current = null;
+        }
+
+        const pc = new RTCPeerConnection({
+          iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
+        });
+        pcRef.current = pc;
+
+        pc.onconnectionstatechange = () =>
+          console.log(`[WebRTC] connectionState → ${pc.connectionState}`);
+        pc.oniceconnectionstatechange = () =>
+          console.log(`[WebRTC] iceConnectionState → ${pc.iceConnectionState}`);
+
+        // Aluno cria canal
+        if (role === "student") {
+          const channel = pc.createDataChannel("collab");
+          channelRef.current = channel;
+
+          channel.onopen = () => {
+            console.log("[WebRTC] ✅ canal aberto (student)");
+            if (queueRef.current.length > 0) {
+              console.log(`[WebRTC] descarregando fila: ${queueRef.current.length} msgs`);
+              queueRef.current.forEach((msg) => channel.send(JSON.stringify(msg)));
+              queueRef.current = [];
+            }
+          };
+          channel.onclose = () => console.log("[WebRTC] canal fechado (student)");
+          channel.onerror = (e) => console.error("[WebRTC] erro canal:", e);
+          channel.onmessage = (e) => {
+            try { onDataRef.current(JSON.parse(e.data)); } catch {}
+          };
+        }
+
+        // Professor recebe canal
+        pc.ondatachannel = (e) => {
+          console.log("[WebRTC] ✅ canal recebido (teacher)");
+          const ch = e.channel;
+          channelRef.current = ch;
+          ch.onopen = () => console.log("[WebRTC] ✅ canal aberto (teacher)");
+          ch.onclose = () => console.log("[WebRTC] canal fechado (teacher)");
+          ch.onerror = (err) => console.error("[WebRTC] erro canal (teacher):", err);
+          ch.onmessage = (ev) => {
+            try { onDataRef.current(JSON.parse(ev.data)); } catch {}
+          };
+        };
+
+        pc.onicecandidate = (e) => {
+          if (e.candidate) {
+            sendWSMessage?.({
+              type: "webrtc-signal",
+              workspaceId,
+              data: { candidate: e.candidate },
+            });
+          }
+        };
+
+        return pc;
+      };
+
+      // ─── Cria offer (aluno) ───────────────────────────────────────────────
+      const createOffer = (pc: RTCPeerConnection) => {
+        console.log("[WebRTC] criando offer...");
+        pc.createOffer()
+          .then((offer) => pc.setLocalDescription(offer))
+          .then(() => {
+            console.log("[WebRTC] enviando offer");
+            sendWSMessage?.({
+              type: "webrtc-signal",
+              workspaceId,
+              data: { sdp: pc.localDescription },
+            });
+          })
+          .catch((e) => console.error("[WebRTC] erro offer:", e));
+      };
+
+      // ─── Handler de sinais WS ─────────────────────────────────────────────
+      const handler = async (event: MessageEvent) => {
+        try {
+          const msg = JSON.parse(event.data);
+
+          // ✅ Professor avisou que está pronto → aluno recria peer e envia offer
+          if (
+            msg.type === "webrtc-ready" &&
+            msg.workspaceId === workspaceId &&
+            msg.role === "teacher" &&
+            role === "student"
+          ) {
+            console.log("[WebRTC] teacher pronto → recriando peer e enviando offer...");
+            const pc = createPeer();
+            createOffer(pc);
+            return;
+          }
+
+          // ✅ Aluno avisou que reconectou → professor recria peer e reenvia ready
+          if (
+            msg.type === "webrtc-student-ready" &&
+            msg.workspaceId === workspaceId &&
+            msg.role === "student" &&
+            role === "teacher"
+          ) {
+            console.log("[WebRTC] aluno reconectou → recriando peer e reenviando ready...");
+            createPeer();
+            sendWSMessage?.({
+              type: "webrtc-ready",
+              workspaceId,
+              role: "teacher",
+            });
+            return;
+          }
+
+          if (msg.type !== "webrtc-signal" || msg.workspaceId !== workspaceId) return;
+
+          console.log(`[WebRTC] sinal recebido: ${msg.data.sdp?.type ?? "candidate"}`);
+
+          const pc = pcRef.current;
+          if (!pc) return;
+
+          if (msg.data.sdp) {
+            // ✅ Se professor recebe offer mas peer não está no estado correto,
+            // recria o peer antes de processar
+            if (msg.data.sdp.type === "offer" && role === "teacher" && pc.signalingState !== "stable") {
+              console.log("[WebRTC] offer inesperada → recriando peer...");
+              const newPc = createPeer();
+              await newPc.setRemoteDescription(new RTCSessionDescription(msg.data.sdp));
+              const answer = await newPc.createAnswer();
+              await newPc.setLocalDescription(answer);
+              sendWSMessage?.({
+                type: "webrtc-signal",
+                workspaceId,
+                data: { sdp: newPc.localDescription },
+              });
+              return;
+            }
+
+            await pc.setRemoteDescription(new RTCSessionDescription(msg.data.sdp));
+
+            if (msg.data.sdp.type === "offer") {
+              const answer = await pc.createAnswer();
+              await pc.setLocalDescription(answer);
+              sendWSMessage?.({
+                type: "webrtc-signal",
+                workspaceId,
+                data: { sdp: pc.localDescription },
+              });
+            }
+          }
+
+          if (msg.data.candidate) {
+            await pc.addIceCandidate(new RTCIceCandidate(msg.data.candidate));
+          }
+        } catch (e) {
+          console.error("[WebRTC] erro no handler:", e);
+        }
+      };
+
+      const ws = wsRef.current!;
+      ws.addEventListener("message", handler);
+
+      // ─── Inicialização por role ───────────────────────────────────────────
+      if (role === "teacher") {
+        console.log("[WebRTC] professor avisando que está pronto...");
+        sendWSMessage?.({
+          type: "webrtc-ready",
+          workspaceId,
+          role: "teacher",
+        });
+        createPeer();
+      }
+
+      if (role === "student") {
+        // ✅ Avisa o professor que o aluno está pronto/reconectou
+        console.log("[WebRTC] aluno avisando que está pronto...");
+        sendWSMessage?.({
+          type: "webrtc-student-ready",
+          workspaceId,
+          role: "student",
+        });
+
+        const pc = createPeer();
+
+        // Fallback: se não receber webrtc-ready do professor em 3s, envia offer mesmo assim
+        setTimeout(() => {
+          if (pc.signalingState === "stable" && !pc.localDescription) {
+            console.log("[WebRTC] fallback: offer sem ready do teacher...");
+            createOffer(pc);
+          }
+        }, 3000);
+      }
+
+      return () => {
+        console.log(`[WebRTC] destruindo peer (${role})`);
+        ws.removeEventListener("message", handler);
+        channelRef.current?.close();
+        pcRef.current?.close();
+        pcRef.current = null;
+        channelRef.current = null;
+        initializedRef.current = false;
+        queueRef.current = [];
+      };
+    };
+
+    tryInit();
+  }, []);
+
+  const send = (data: any) => {
+    const ch = channelRef.current;
+    if (ch?.readyState === "open") {
+      ch.send(JSON.stringify(data));
+    } else if (ch?.readyState === "connecting") {
+      if (data.type === "cursor" || data.type === "scroll") {
+        const idx = queueRef.current.findIndex((m) => m.type === data.type);
+        if (idx !== -1) queueRef.current[idx] = data;
+        else queueRef.current.push(data);
+      } else {
+        queueRef.current.push(data);
+      }
+    }
+  };
+
+  return (
+    <WebRTCContext.Provider value={{ send }}>
+      {children}
+    </WebRTCContext.Provider>
+  );
+};
+
+export const useWebRTC = () => useContext(WebRTCContext);

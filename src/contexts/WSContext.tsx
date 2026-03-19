@@ -3,20 +3,19 @@ import React, {
   useContext,
   useEffect,
   useRef,
-  useState,
 } from "react";
 
 const WS_URL = "ws://localhost:8080/api/v1/ws";
 
 interface WSContextValue {
-  ws: WebSocket | null;
+  wsRef: React.MutableRefObject<WebSocket | null>; // ✅ ref estável, sem re-render
   sendWSMessage: (msg: any) => void;
   onOpen: (callback: () => void) => void;
   onReconnect: (callback: () => void) => void;
 }
 
 const WSContext = createContext<WSContextValue>({
-  ws: null,
+  wsRef: { current: null },
   sendWSMessage: () => {},
   onOpen: () => {},
   onReconnect: () => {},
@@ -27,7 +26,6 @@ export const WSProvider: React.FC<{
   userId?: string;
   workspaceId?: string;
 }> = ({ children, userId, workspaceId }) => {
-  const [ws, setWs] = useState<WebSocket | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const onOpenCallbackRef = useRef<(() => void) | null>(null);
   const onReconnectCallbackRef = useRef<(() => void) | null>(null);
@@ -41,10 +39,10 @@ export const WSProvider: React.FC<{
 
     socket.onopen = () => {
       socket.send(JSON.stringify({ type: "join", userId: uid, workspaceId: wsId }));
-      setWs(socket);
-      // Dispara o callback de onOpen se estiver registrado
+      
+      // ✅ Sem setWs — sem re-render, sem reinicialização do WebRTC
       onOpenCallbackRef.current?.();
-      // Só dispara onReconnect se não for a primeira conexão
+
       if (!isFirstConnectionRef.current) {
         onReconnectCallbackRef.current?.();
       }
@@ -53,8 +51,6 @@ export const WSProvider: React.FC<{
 
     socket.onclose = () => {
       wsRef.current = null;
-      setWs(null);
-
       setTimeout(() => {
         if (wsRef.current === null) {
           createSocket(uid, wsId);
@@ -75,35 +71,28 @@ export const WSProvider: React.FC<{
     ) return;
 
     createSocket(userId, workspaceId);
-
-    return () => {
-      // Não fecha no cleanup — deixa o socket vivo entre re-renders
-    };
   }, [userId, workspaceId]);
 
   const sendWSMessage = (msg: any) => {
-    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify(msg));
     }
   };
 
-
-  // Registra um callback que será chamado quando o WS abrir (ou imediatamente se já estiver aberto)
   const onOpen = (callback: () => void) => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
-      callback(); // já está aberto, dispara imediatamente
+      callback();
     } else {
       onOpenCallbackRef.current = callback;
     }
   };
 
-  // Registra callback para reconexão (chamado toda vez que reconectar)
   const onReconnect = (callback: () => void) => {
     onReconnectCallbackRef.current = callback;
   };
 
   return (
-    <WSContext.Provider value={{ ws, sendWSMessage, onOpen, onReconnect }}>
+    <WSContext.Provider value={{ wsRef, sendWSMessage, onOpen, onReconnect }}>
       {children}
     </WSContext.Provider>
   );

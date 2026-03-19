@@ -23,13 +23,13 @@ export interface WorkspaceData {
 
 export interface ChatMessage {
   id: string;
+  activityId: string;   // ← precisa estar aqui
   authorId: string;
   authorName: string;
   content: string;
   sentAt: string;
   isOwn: boolean;
 }
-
 export interface CreateActivityRequest {
   title: string;
   type: ActivityType;

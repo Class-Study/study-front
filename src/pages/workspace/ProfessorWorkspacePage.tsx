@@ -1,4 +1,10 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Header } from "@/components/layout/Header/Header";
 import DocxPreviewEditor from "@/components/ui/DocxPreviewEditor/DocxPreviewEditor";
@@ -6,50 +12,85 @@ import studentService from "@/services/api/student.service";
 import { useAuth } from "@/hooks/useAuth";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useSnapshot } from "@/hooks/useSnapshot";
+import { useChatMessages } from "@/hooks/useChatMessages";
 import { useWS, WSProvider } from "@/contexts/WSContext";
+import { WebRTCProvider, useWebRTC } from "@/contexts/WebRTCContext";
 import { WorkspaceSidebar } from "./components/WorkspaceSidebar/WorkspaceSidebar";
-import { WorkspaceEditor } from "./components/WorkspaceEditor/WorkspaceEditor";
 import { ProfessorViewer } from "./components/WorkspaceEditor/ProfessorViewer";
 import { WorkspaceChat } from "./components/WorkspaceChat/WorkspaceChat";
 import { WorkspaceNotes } from "./components/WorkspaceNotes/WorkspaceNotes";
 import { UploadActivityModal } from "./components/UploadActivityModal/UploadActivityModal";
-import { ChatMessage, WorkspaceActivity } from "@/types/workspace.types";
+import { WorkspaceActivity, ChatMessage } from "@/types/workspace.types";
 import styles from "./WorkspacePage.module.css";
-
-const MOCK_CHAT: ChatMessage[] = [
-  {
-    id: "1",
-    authorId: "teacher",
-    authorName: "Professora Ana",
-    content: "Olá! Vamos começar. Escreva o que lembra do Past Simple 👋",
-    sentAt: "10:30",
-    isOwn: false,
-  },
-  {
-    id: "2",
-    authorId: "student",
-    authorName: "Você",
-    content: "Oi professora! Verbos regulares recebem -ed 😊",
-    sentAt: "10:31",
-    isOwn: true,
-  },
-];
-
-const MOCK_PRESENCE = [
-  { name: "Você (Professora)", color: "--color-accent" },
-  { name: "Aluna online", color: "--color-blue" },
-];
-
 
 const SIDEBAR_MIN_WIDTH = 200;
 const SIDEBAR_MAX_WIDTH = 450;
 const SIDEBAR_WIDTH_STORAGE_KEY = "workspace.sidebar.width";
 
-const WorkspacePageContent: React.FC = () => {
+// ─── ChatBridge — estado de chat vive aqui, dentro do WebRTCProvider ─────────
+
+const ProfessorChatBridge: React.FC<{
+  activityId: string | null;
+  user: { id: string; name: string; email: string; role: any };
+  messagesRef: React.MutableRefObject<ChatMessage[]>;
+  sendMessageRef: React.MutableRefObject<(content: string) => void>;
+  addIncomingRef: React.MutableRefObject<((data: any) => void) | null>;
+  onMessagesChange: () => void;
+}> = ({
+  activityId,
+  user,
+  messagesRef,
+  sendMessageRef,
+  addIncomingRef,
+  onMessagesChange,
+}) => {
+  const { send } = useWebRTC();
+
+  const { messages, sendMessage, addIncomingMessage } = useChatMessages({
+    activityId,
+    user,
+    send,
+  });
+
+  const prevLengthRef = useRef(-1);
+
+  useEffect(() => {
+    console.log("[Bridge] messages mudou, length:", messages.length);
+    messagesRef.current = messages;
+    onMessagesChange();
+  }, [messages]);
+  useEffect(() => {
+    sendMessageRef.current = sendMessage;
+  }, [sendMessage]);
+
+  useEffect(() => {
+    addIncomingRef.current = addIncomingMessage;
+  }, [addIncomingMessage]);
+
+  return null;
+};
+
+// ─── Camada interna — sem hooks de WebRTC ────────────────────────────────────
+
+const ProfessorWorkspacePageContent: React.FC<{
+  rtcHtml: string;
+  rtcCursor: { from: number; to: number; userName?: string } | null;
+  rtcScroll: number | null;
+  onActivityChange: (activityId: string | null) => void;
+  chatMessages: ChatMessage[];
+  chatSendMessage: (content: string) => void;
+}> = ({
+  rtcHtml,
+  rtcCursor,
+  rtcScroll,
+  onActivityChange,
+  chatMessages,
+  chatSendMessage,
+}) => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { studentId } = useParams<{ studentId: string }>();
-  const { ws } = useWS();
+  const { wsRef } = useWS();
   const isStudent = user?.role === "STUDENT";
   const targetStudentId = studentId ?? user?.id ?? "";
 
@@ -59,7 +100,6 @@ const WorkspacePageContent: React.FC = () => {
     loading,
     error,
     accessDenied,
-    saving,
     fetchWorkspace,
     createActivity,
     createFolder,
@@ -68,11 +108,7 @@ const WorkspacePageContent: React.FC = () => {
 
   const [activeActivity, setActiveActivity] =
     useState<WorkspaceActivity | null>(null);
-  const [remoteCursor, setRemoteCursor] = useState<{
-    from: number;
-    to: number;
-    userName: string;
-  } | null>(null);
+  const [studentName, setStudentName] = useState("");
   const [sidebarWidth, setSidebarWidth] = useState<number>(() => {
     if (typeof window === "undefined") return 240;
     const raw = window.localStorage.getItem(SIDEBAR_WIDTH_STORAGE_KEY);
@@ -82,8 +118,6 @@ const WorkspacePageContent: React.FC = () => {
   });
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [chatVisible, setChatVisible] = useState(true);
-  const [messages, setMessages] = useState<ChatMessage[]>(MOCK_CHAT);
-  const [studentName, setStudentName] = useState("");
   const [isEditingNewWorkspace, setIsEditingNewWorkspace] = useState(false);
   const [newWorkspaceTitle, setNewWorkspaceTitle] = useState(
     `Novo Workspace - ${new Date().toLocaleDateString("pt-BR")}`,
@@ -114,16 +148,14 @@ const WorkspacePageContent: React.FC = () => {
     [exerciseFolders, workspaceActivities],
   );
 
-  // ─── Snapshot — professor só recebe, não envia ───────────────────────────
-  const { html, applyRemoteSnapshot } = useSnapshot({
+  const { html: snapshotHtml, applyRemoteSnapshot } = useSnapshot({
     activityId: activeActivity?.id ?? "",
     initialHtml: activeActivity?.convertedHtml,
     onSnapshot: () => {},
   });
 
   useEffect(() => {
-    if (!ws) return;
-
+    if (!wsRef.current) return;
     const handleMessage = (event: MessageEvent) => {
       let message;
       try {
@@ -131,29 +163,13 @@ const WorkspacePageContent: React.FC = () => {
       } catch {
         return;
       }
-
       if (message.type === "snapshot" && message.snapshot) {
         applyRemoteSnapshot(message.snapshot);
-        return;
-      }
-
-      if (message.type === "cursor") {
-        console.log("[WS] cursor recebido:", message);
-        if (message.activityId === activeActivity?.id) {
-          console.log("[WS] setando remoteCursor");
-          setRemoteCursor({
-            from: message.from,
-            to: message.to,
-            userName: message.userName,
-          });
-        }
-        return;
       }
     };
-
-    ws.addEventListener("message", handleMessage);
-    return () => ws.removeEventListener("message", handleMessage);
-  }, [ws, applyRemoteSnapshot, activeActivity?.id]);
+    wsRef.current.addEventListener("message", handleMessage);
+    return () => wsRef.current?.removeEventListener("message", handleMessage);
+  }, [wsRef, applyRemoteSnapshot]);
 
   useEffect(() => {
     if (accessDenied) {
@@ -181,18 +197,16 @@ const WorkspacePageContent: React.FC = () => {
 
   useEffect(() => {
     if (!activeActivity && allActivities.length > 0) {
-      setActiveActivity(workspaceActivities[0] ?? allActivities[0]);
+      const first = workspaceActivities[0] ?? allActivities[0];
+      setActiveActivity(first);
+      onActivityChange(first.id);
     }
   }, [activeActivity, allActivities, workspaceActivities]);
 
   useEffect(() => {
     if (!activeActivity) return;
-    const updatedActivity = allActivities.find(
-      (a) => a.id === activeActivity.id,
-    );
-    if (updatedActivity && updatedActivity !== activeActivity) {
-      setActiveActivity(updatedActivity);
-    }
+    const updated = allActivities.find((a) => a.id === activeActivity.id);
+    if (updated && updated !== activeActivity) setActiveActivity(updated);
   }, [activeActivity, allActivities]);
 
   useEffect(() => {
@@ -216,21 +230,6 @@ const WorkspacePageContent: React.FC = () => {
       String(sidebarWidth),
     );
   }, [sidebarWidth]);
-
-  const handleSendMessage = (content: string): void => {
-    const newMsg: ChatMessage = {
-      id: crypto.randomUUID(),
-      authorId: "teacher",
-      authorName: "Professor",
-      content,
-      sentAt: new Date().toLocaleTimeString("pt-BR", {
-        hour: "2-digit",
-        minute: "2-digit",
-      }),
-      isOwn: true,
-    };
-    setMessages((prev) => [...prev, newMsg]);
-  };
 
   const breadcrumbItems = [
     {
@@ -282,12 +281,14 @@ const WorkspacePageContent: React.FC = () => {
     );
     if (!activity) throw new Error("Falha ao criar atividade");
     setActiveActivity(activity);
+    onActivityChange(activity.id);
   };
 
   const handleSelectActivity = (activity: WorkspaceActivity): void => {
     setIsEditingNewWorkspace(false);
     setWorkspaceDraftFeedback(null);
     setActiveActivity(activity);
+    onActivityChange(activity.id);
   };
 
   const handleMoveActivity = async (
@@ -298,10 +299,8 @@ const WorkspacePageContent: React.FC = () => {
     if (!moved) alert("Nao foi possivel mover a atividade. Tente novamente.");
   };
 
-  const handleWorkspaceDraftSave = (): void => {
+  const handleWorkspaceDraftSave = (): void =>
     setWorkspaceDraftFeedback("Rascunho salvo localmente.");
-  };
-
   const handleCloseWorkspaceDraft = (): void => {
     setIsEditingNewWorkspace(false);
     setWorkspaceDraftFeedback(null);
@@ -391,6 +390,8 @@ const WorkspacePageContent: React.FC = () => {
     };
   }, []);
 
+  const viewerHtml = rtcHtml || snapshotHtml || "";
+
   if (loading) {
     return (
       <div className={styles.page}>
@@ -479,13 +480,11 @@ const WorkspacePageContent: React.FC = () => {
                   </button>
                 </div>
               </div>
-
               {workspaceDraftFeedback && (
                 <span className={styles.workspaceFeedback}>
                   {workspaceDraftFeedback}
                 </span>
               )}
-
               <div className={styles.workspaceEditorBody}>
                 <DocxPreviewEditor
                   html={workspaceContent}
@@ -495,7 +494,14 @@ const WorkspacePageContent: React.FC = () => {
               </div>
             </div>
           ) : (
-            <ProfessorViewer html={html} remoteCursor={remoteCursor} />
+            activeActivity && (
+              <ProfessorViewer
+                html={viewerHtml}
+                cursor={rtcCursor}
+                scroll={rtcScroll}
+                studentName={studentName}
+              />
+            )
           )}
         </div>
 
@@ -505,8 +511,8 @@ const WorkspacePageContent: React.FC = () => {
           <div className={styles.chatSection}>
             <WorkspaceChat
               activityTitle={activeActivity?.title ?? ""}
-              messages={messages}
-              onSendMessage={handleSendMessage}
+              messages={chatMessages}
+              onSendMessage={chatSendMessage}
             />
           </div>
           <div className={styles.notesSection}>
@@ -529,19 +535,120 @@ const WorkspacePageContent: React.FC = () => {
   );
 };
 
-const WorkspacePage: React.FC = () => {
+// ─── Camada externa ───────────────────────────────────────────────────────────
+
+const ProfessorWorkspacePage: React.FC = () => {
   const { user } = useAuth();
   const { studentId } = useParams<{ studentId: string }>();
   const targetStudentId = studentId ?? user?.id ?? "";
 
+  const [rtcHtml, setRtcHtml] = useState("");
+  const [rtcCursor, setRtcCursor] = useState<{
+    from: number;
+    to: number;
+    userName?: string;
+  } | null>(null);
+  const [rtcScroll, setRtcScroll] = useState<number | null>(null);
+  const [activeActivityId, setActiveActivityId] = useState<string | null>(null);
+
+  // ✅ Chat via refs + estado separado para forçar re-render com nova referência
+  const messagesRef = useRef<ChatMessage[]>([]);
+  const sendMessageRef = useRef<(content: string) => void>(() => {});
+  const addIncomingRef = useRef<((data: any) => void) | null>(null);
+
+  // ✅ chatMessages é um estado real — nova referência a cada update
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+
+  const handleData = useCallback((data: any) => {
+    if (data.type === "html") setRtcHtml(data.html);
+    if (data.type === "cursor") setRtcCursor(data);
+    if (data.type === "scroll") setRtcScroll(data.top);
+    if (data.type === "chat") addIncomingRef.current?.(data);
+  }, []);
+
+  const activeActivityIdRef = useRef<string | null>(null);
+
+  const handleActivityChange = useCallback((activityId: string | null) => {
+    if (activityId === activeActivityIdRef.current) {
+      return;
+    }
+    activeActivityIdRef.current = activityId;
+    setActiveActivityId(activityId);
+    setRtcHtml("");
+    setRtcCursor(null);
+    setRtcScroll(null);
+    messagesRef.current = [];
+    setChatMessages([]);
+  }, []);
+
+  const handleMessagesChange = useCallback(() => {
+    console.log(
+      "[Pai] onMessagesChange chamado, messagesRef.current.length:",
+      messagesRef.current.length,
+    );
+    setChatMessages([...messagesRef.current]);
+  }, []);
+
+  const workspaceId = activeActivityId
+    ? `${activeActivityId}-${targetStudentId}`
+    : null;
+
   if (!user?.id || !targetStudentId) return null;
+
+  const userForChat = useMemo(
+    () => ({
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+    }),
+    [user.id, user.name, user.email, user.role],
+  );
+
+  const chatSendMessage = useCallback((content: string) => {
+    sendMessageRef.current(content);
+  }, []);
 
   return (
     <WSProvider userId={user.id} workspaceId={targetStudentId}>
-      <WorkspacePageContent />
+      {workspaceId ? (
+        <WebRTCProvider
+          key={workspaceId}
+          workspaceId={workspaceId}
+          role="teacher"
+          onData={handleData}
+        >
+          <ProfessorChatBridge
+            activityId={activeActivityId}
+            user={userForChat}
+            messagesRef={messagesRef}
+            sendMessageRef={sendMessageRef}
+            addIncomingRef={addIncomingRef}
+            // ✅ Cria nova referência de array ao notificar — React detecta a mudança
+            onMessagesChange={handleMessagesChange}
+          />
+          <ProfessorWorkspacePageContent
+            rtcHtml={rtcHtml}
+            rtcCursor={rtcCursor}
+            rtcScroll={rtcScroll}
+            onActivityChange={handleActivityChange}
+            chatMessages={chatMessages}
+            chatSendMessage={chatSendMessage}
+          />
+        </WebRTCProvider>
+      ) : (
+        <ProfessorWorkspacePageContent
+          rtcHtml=""
+          rtcCursor={null}
+          rtcScroll={null}
+          onActivityChange={handleActivityChange}
+          chatMessages={chatMessages}
+          chatSendMessage={chatSendMessage}
+        />
+      )}
     </WSProvider>
   );
 };
 
-export { WorkspacePage };
-export default WorkspacePage;
+export { ProfessorWorkspacePage };
+export default ProfessorWorkspacePage;

@@ -19,8 +19,12 @@
   line-height: 1.85;
 }
 
-.content strong { color: var(--color-text-primary); }
-.content em { color: var(--color-text-tertiary); }
+.content strong {
+  color: var(--color-text-primary);
+}
+.content em {
+  color: var(--color-text-tertiary);
+}
 
 .content ol,
 .content ul {
@@ -39,14 +43,16 @@
 .cursor {
   position: absolute;
   pointer-events: none;
-  transition: top 0.08s linear, left 0.08s linear;
+  top: 0; /* ✅ ancora no topo */
+  left: 0; /* ✅ ancora na esquerda */
+  transition: transform 0.08s linear; /* ✅ era top/left, agora transform */
 }
 
 /* PAUZINHO (pisca) */
 .cursorBar {
-  width: 1.5px;
-  height: 1.2em;
-  background: #22c55e;
+  width: 1px;
+  height: 1.3em;
+  background: #00ff5e;
 
   animation: cursorBlink 1s steps(1) infinite;
 }
@@ -71,8 +77,16 @@
 
 /* animação blink real */
 @keyframes cursorBlink {
-  0% { opacity: 1; }
-  49% { opacity: 1; }
-  50% { opacity: 0; }
-  100% { opacity: 0; }
+  0% {
+    opacity: 1;
+  }
+  49% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 0;
+  }
 }

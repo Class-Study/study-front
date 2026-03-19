@@ -6,6 +6,7 @@ import { Extension } from "@tiptap/core";
 import { Plugin, PluginKey } from "prosemirror-state";
 import { Decoration, DecorationSet } from "prosemirror-view";
 import { WorkspaceActivity } from "@/types/workspace.types";
+import { useWebRTC } from "@/contexts/WebRTCContext";
 import styles from "./WorkspaceEditor.module.css";
 
 interface PresenceUser {
@@ -15,6 +16,7 @@ interface PresenceUser {
 
 interface WorkspaceEditorProps {
   activity: WorkspaceActivity | null;
+  studentId: string;
   editable: boolean;
   html?: string;
   presence?: PresenceUser[];
@@ -27,6 +29,7 @@ interface WorkspaceEditorProps {
 
 export const WorkspaceEditor: React.FC<WorkspaceEditorProps> = ({
   activity,
+  studentId,
   editable,
   html,
   presence = [],
@@ -35,7 +38,11 @@ export const WorkspaceEditor: React.FC<WorkspaceEditorProps> = ({
   remoteCursor,
   headerStatus,
 }) => {
+  const { send } = useWebRTC(); // ✅ pega do WebRTCProvider acima
+
   const cursorDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const scrollDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const editorScrollRef = useRef<HTMLDivElement | null>(null);
   const lastActivityIdRef = useRef<string | null>(null);
   const remoteCursorRef = useRef(remoteCursor);
   remoteCursorRef.current = remoteCursor;
@@ -82,14 +89,23 @@ export const WorkspaceEditor: React.FC<WorkspaceEditorProps> = ({
     extensions: [StarterKit, Typography, RemoteCursorExtension],
     editable,
     content: html ?? activity?.convertedHtml ?? "",
-    onUpdate: ({ editor }) => {
-      onContentChange?.(editor.getHTML());
-      const { from, to } = editor.state.selection;
 
-      // Converte posição ProseMirror para offset de texto plano
+    onUpdate: ({ editor }) => {
+      const newHtml = editor.getHTML();
+      onContentChange?.(newHtml);
+
+      // ✅ Envia HTML em tempo real via WebRTC
+      send({ type: "html", html: newHtml });
+
+      const { from } = editor.state.selection;
       const textOffset = editor.state.doc.textBetween(0, from, "").length;
       onCursorChange?.(textOffset, textOffset);
+
+      // ✅ Envia cursor junto com a atualização de conteúdo
+      send({ type: "cursor", from: textOffset, to: textOffset });
+      console.log("[Editor] enviando cursor:", textOffset); // ✅
     },
+
     onSelectionUpdate: ({ editor, transaction }) => {
       if (!editable) return;
       const isPointerSelection = transaction.getMeta("pointer");
@@ -101,9 +117,28 @@ export const WorkspaceEditor: React.FC<WorkspaceEditorProps> = ({
       if (cursorDebounceRef.current) clearTimeout(cursorDebounceRef.current);
       cursorDebounceRef.current = setTimeout(() => {
         onCursorChange?.(textOffset, textOffset);
+        // ✅ Envia cursor via WebRTC com debounce
+        send({ type: "cursor", from: textOffset, to: textOffset });
       }, 100);
     },
   });
+
+  // ✅ Listener de scroll no container do editor
+  useEffect(() => {
+    const scrollEl = editorScrollRef.current;
+    if (!scrollEl || !editable) return;
+
+    const handleScroll = () => {
+      if (scrollDebounceRef.current) clearTimeout(scrollDebounceRef.current);
+      scrollDebounceRef.current = setTimeout(() => {
+        send({ type: "scroll", top: scrollEl.scrollTop });
+        console.log("[Editor] enviando scroll:", scrollEl.scrollTop); // ✅
+      }, 50);
+    };
+
+    scrollEl.addEventListener("scroll", handleScroll, { passive: true });
+    return () => scrollEl.removeEventListener("scroll", handleScroll);
+  }, [editable, send]);
 
   useEffect(() => {
     if (editor) editor.setEditable(editable);
@@ -121,13 +156,11 @@ export const WorkspaceEditor: React.FC<WorkspaceEditorProps> = ({
       if (editor.getHTML() === content) return;
 
       queueMicrotask(() => {
-        // Preserva a seleção atual antes do setContent
         const { from, to } = editor.state.selection;
         const docSize = editor.state.doc.content.size;
 
         editor.commands.setContent(content);
 
-        // Restaura a seleção após o setContent se as posições ainda forem válidas
         const newDocSize = editor.state.doc.content.size;
         if (from <= newDocSize && to <= newDocSize) {
           editor.commands.setTextSelection({ from, to });
@@ -163,7 +196,11 @@ export const WorkspaceEditor: React.FC<WorkspaceEditorProps> = ({
         )}
       </div>
 
-      <div className={styles.editorScroll}>
+      {/* ✅ ref no container de scroll para capturar eventos */}
+      <div
+        ref={editorScrollRef} 
+        className={styles.editorScroll}
+      >
         <EditorContent editor={editor} className={styles.editorContent} />
       </div>
 

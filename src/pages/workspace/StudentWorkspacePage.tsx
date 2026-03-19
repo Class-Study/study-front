@@ -1,5 +1,7 @@
 import { WSProvider, useWS } from "@/contexts/WSContext";
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import { WebRTCProvider, useWebRTC } from "@/contexts/WebRTCContext";
+import { useChatMessages } from "@/hooks/useChatMessages";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Header } from "@/components/layout/Header/Header";
 import DocxPreviewEditor from "@/components/ui/DocxPreviewEditor/DocxPreviewEditor";
@@ -10,28 +12,52 @@ import { WorkspaceSidebar } from "./components/WorkspaceSidebar/WorkspaceSidebar
 import { WorkspaceEditor } from "./components/WorkspaceEditor/WorkspaceEditor";
 import { WorkspaceChat } from "./components/WorkspaceChat/WorkspaceChat";
 import {
-  ChatMessage,
   WorkspaceActivity,
   WorkspaceData,
   WorkspaceFolder,
 } from "@/types/workspace.types";
 import styles from "./WorkspacePage.module.css";
 
-const MOCK_CHAT: ChatMessage[] = [
-  {
-    id: "1",
-    authorId: "teacher",
-    authorName: "Professor",
-    content:
-      "Oi! Pode comecar este exercicio e me chamar aqui no chat se precisar.",
-    sentAt: "10:00",
-    isOwn: false,
-  },
-];
-
 const SIDEBAR_MIN_WIDTH = 200;
 const SIDEBAR_MAX_WIDTH = 450;
 const SIDEBAR_WIDTH_STORAGE_KEY = "workspace.student.sidebar.width";
+
+// ─── ChatBridge — dentro do WebRTCProvider, eleva estado para o pai ──────────
+
+const ChatBridge: React.FC<{
+  activityId: string | null;
+  user: { id: string; name: string; email: string; role: any };
+  setMessages: (msgs: any[]) => void;
+  setSendMessage: (fn: (content: string) => void) => void;
+  registerAddIncoming: (fn: (data: any) => void) => void;
+}> = ({ activityId, user, setMessages, setSendMessage, registerAddIncoming }) => {
+  const { send } = useWebRTC(); // ✅ dentro do WebRTCProvider
+
+  const { messages, sendMessage, addIncomingMessage } = useChatMessages({
+    activityId,
+    user,
+    send,
+  });
+
+  // ✅ Registra addIncomingMessage para receber chat do professor via WebRTC
+  useEffect(() => {
+    registerAddIncoming(addIncomingMessage);
+  }, [addIncomingMessage]);
+
+  // ✅ Sincroniza messages com o pai — setMessages é estável (setter do useState)
+  useEffect(() => {
+    setMessages(messages);
+  }, [messages]);
+
+  // ✅ Registra sendMessage via setter — só roda quando sendMessage muda
+  useEffect(() => {
+    setSendMessage(sendMessage);
+  }, [sendMessage]);
+
+  return null; // não renderiza nada
+};
+
+// ─── Props ────────────────────────────────────────────────────────────────────
 
 interface StudentWorkspacePageInnerProps {
   userId: string;
@@ -44,11 +70,10 @@ interface StudentWorkspacePageInnerProps {
   workspaceActivities: WorkspaceActivity[];
   exerciseFolders: WorkspaceFolder[];
   saveContent: (activityId: string, html: string) => void;
-  moveActivity: (
-    activityId: string,
-    targetFolderId: string,
-  ) => Promise<boolean>;
+  moveActivity: (activityId: string, targetFolderId: string) => Promise<boolean>;
 }
+
+// ─── Inner ────────────────────────────────────────────────────────────────────
 
 const StudentWorkspacePageInner: React.FC<StudentWorkspacePageInnerProps> = ({
   userId,
@@ -60,13 +85,12 @@ const StudentWorkspacePageInner: React.FC<StudentWorkspacePageInnerProps> = ({
   workspace,
   workspaceActivities,
   exerciseFolders,
-  saveContent,
   moveActivity,
 }) => {
-  const { ws, sendWSMessage, onReconnect } = useWS();
+  const { user } = useAuth();
+  const { wsRef, sendWSMessage, onReconnect } = useWS();
+  const [activeActivity, setActiveActivity] = useState<WorkspaceActivity | null>(null);
 
-  const [activeActivity, setActiveActivity] =
-    useState<WorkspaceActivity | null>(null);
   const [sidebarWidth, setSidebarWidth] = useState<number>(() => {
     if (typeof window === "undefined") return 240;
     const raw = window.localStorage.getItem(SIDEBAR_WIDTH_STORAGE_KEY);
@@ -76,24 +100,26 @@ const StudentWorkspacePageInner: React.FC<StudentWorkspacePageInnerProps> = ({
   });
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [chatVisible, setChatVisible] = useState(true);
-  const [messages, setMessages] = useState<ChatMessage[]>(MOCK_CHAT);
   const [isEditingNewWorkspace, setIsEditingNewWorkspace] = useState(false);
   const [newWorkspaceTitle, setNewWorkspaceTitle] = useState(
     `Novo Workspace - ${new Date().toLocaleDateString("pt-BR")}`,
   );
   const [newWorkspaceContent, setNewWorkspaceContent] = useState("<p></p>");
-  const [workspaceDraftFeedback, setWorkspaceDraftFeedback] = useState<
-    string | null
-  >(null);
+  const [workspaceDraftFeedback, setWorkspaceDraftFeedback] = useState<string | null>(null);
   const bodyRef = useRef<HTMLDivElement | null>(null);
   const isResizingRef = useRef(false);
+
+  // ✅ Chat state no pai — ChatBridge atualiza via setters diretos
+  const [chatMessages, setChatMessages] = useState<any[]>([]);
+  const sendMessageRef = useRef<(content: string) => void>(() => {});
+  const addIncomingMessageRef = useRef<((data: any) => void) | null>(null);
 
   const allActivities = useMemo(
     () => workspace.folders.flatMap((folder) => folder.activities),
     [workspace],
   );
 
-  // ─── Snapshot collaboration ───────────────────────────────────────────────
+  // ─── Snapshot ────────────────────────────────────────────────────────────
   const { html, ready, notifyChange } = useSnapshot({
     activityId: activeActivity?.id ?? "",
     initialHtml: activeActivity?.convertedHtml,
@@ -109,7 +135,6 @@ const StudentWorkspacePageInner: React.FC<StudentWorkspacePageInnerProps> = ({
     },
   });
 
-  // ─── Envia snapshot ao conectar e ao reconectar ───────────────────────────
   const htmlRef = useRef(html);
   htmlRef.current = html;
 
@@ -118,6 +143,7 @@ const StudentWorkspacePageInner: React.FC<StudentWorkspacePageInnerProps> = ({
     if (!activeActivity || activeActivity.type !== "EXERCISE") return;
 
     const sendSnapshot = async () => {
+      const ws = wsRef?.current;
       if (!ws || ws.readyState !== WebSocket.OPEN) return;
       if (!htmlRef.current) return;
       const { compressSnapshot } = await import("@/utils/snapshot");
@@ -133,9 +159,9 @@ const StudentWorkspacePageInner: React.FC<StudentWorkspacePageInnerProps> = ({
 
     sendSnapshot();
     onReconnect(sendSnapshot);
-  }, [ready, activeActivity?.id, ws]);
+  }, [ready, activeActivity?.id, wsRef]);
 
-  // ─── Sincroniza activeActivity com atualizações do workspace ─────────────
+  // ─── Sincroniza atividade ─────────────────────────────────────────────────
   useEffect(() => {
     if (!activeActivity && allActivities.length > 0) {
       setActiveActivity(allActivities[0]);
@@ -144,36 +170,19 @@ const StudentWorkspacePageInner: React.FC<StudentWorkspacePageInnerProps> = ({
 
   useEffect(() => {
     if (!activeActivity) return;
-    const updatedActivity = allActivities.find(
-      (a) => a.id === activeActivity.id,
-    );
-    if (updatedActivity && updatedActivity !== activeActivity) {
-      setActiveActivity(updatedActivity);
-    }
+    const updated = allActivities.find((a) => a.id === activeActivity.id);
+    if (updated && updated !== activeActivity) setActiveActivity(updated);
   }, [activeActivity, allActivities]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    window.localStorage.setItem(
-      SIDEBAR_WIDTH_STORAGE_KEY,
-      String(sidebarWidth),
-    );
+    window.localStorage.setItem(SIDEBAR_WIDTH_STORAGE_KEY, String(sidebarWidth));
   }, [sidebarWidth]);
 
-  const handleSendMessage = (content: string): void => {
-    const newMsg: ChatMessage = {
-      id: crypto.randomUUID(),
-      authorId: userId,
-      authorName: studentName || "Voce",
-      content,
-      sentAt: new Date().toLocaleTimeString("pt-BR", {
-        hour: "2-digit",
-        minute: "2-digit",
-      }),
-      isOwn: true,
-    };
-    setMessages((prev) => [...prev, newMsg]);
-  };
+  // ✅ Limpa chat ao trocar atividade
+  useEffect(() => {
+    setChatMessages([]);
+  }, [activeActivity?.id]);
 
   const handleSelectActivity = (activity: WorkspaceActivity): void => {
     setIsEditingNewWorkspace(false);
@@ -185,25 +194,17 @@ const StudentWorkspacePageInner: React.FC<StudentWorkspacePageInnerProps> = ({
     setIsEditingNewWorkspace(true);
     setWorkspaceDraftFeedback(null);
     if (!newWorkspaceTitle.trim()) {
-      setNewWorkspaceTitle(
-        `Novo Workspace - ${new Date().toLocaleDateString("pt-BR")}`,
-      );
+      setNewWorkspaceTitle(`Novo Workspace - ${new Date().toLocaleDateString("pt-BR")}`);
     }
   };
 
-  const handleWorkspaceDraftSave = (): void => {
-    setWorkspaceDraftFeedback("Rascunho salvo localmente.");
-  };
-
+  const handleWorkspaceDraftSave = (): void => setWorkspaceDraftFeedback("Rascunho salvo localmente.");
   const handleCloseWorkspaceDraft = (): void => {
     setIsEditingNewWorkspace(false);
     setWorkspaceDraftFeedback(null);
   };
 
-  const handleMoveActivity = async (
-    activityId: string,
-    targetFolderId: string,
-  ): Promise<void> => {
+  const handleMoveActivity = async (activityId: string, targetFolderId: string): Promise<void> => {
     const moved = await moveActivity(activityId, targetFolderId);
     if (!moved) alert("Nao foi possivel mover a atividade. Tente novamente.");
   };
@@ -219,10 +220,7 @@ const StudentWorkspacePageInner: React.FC<StudentWorkspacePageInnerProps> = ({
   const handleSidebarResize = (event: MouseEvent): void => {
     if (!isResizingRef.current) return;
     const containerLeft = bodyRef.current?.getBoundingClientRect().left ?? 0;
-    const nextWidth = Math.min(
-      SIDEBAR_MAX_WIDTH,
-      Math.max(SIDEBAR_MIN_WIDTH, event.clientX - containerLeft),
-    );
+    const nextWidth = Math.min(SIDEBAR_MAX_WIDTH, Math.max(SIDEBAR_MIN_WIDTH, event.clientX - containerLeft));
     setSidebarWidth(nextWidth);
   };
 
@@ -248,20 +246,32 @@ const StudentWorkspacePageInner: React.FC<StudentWorkspacePageInnerProps> = ({
     { label: "Workspace" },
   ];
 
+  const workspaceId = activeActivity ? `${activeActivity.id}-${studentId}` : null;
+
+  // ✅ chatSendMessage estável via ref
+  const chatSendMessage = useCallback((content: string) => {
+    sendMessageRef.current(content);
+  }, []);
+
+  const registerAddIncoming = useCallback((fn: (data: any) => void) => {
+    addIncomingMessageRef.current = fn;
+  }, []);
+
+  const userForChat = {
+    id: userId,
+    name: studentName,
+    email: user?.email ?? "",
+    role: user?.role ?? "STUDENT",
+  };
+
   return (
     <div className={styles.page} data-student-id={studentId}>
       <Header breadcrumbItems={breadcrumbItems} />
 
       <div className={styles.toolbar}>
         {sidebarCollapsed && (
-          <button
-            type="button"
-            className={styles.expandSidebarBtn}
-            onClick={() => setSidebarCollapsed(false)}
-            title="Expandir sidebar"
-          >
-            ▶
-          </button>
+          <button type="button" className={styles.expandSidebarBtn}
+            onClick={() => setSidebarCollapsed(false)} title="Expandir sidebar">▶</button>
         )}
         <button
           type="button"
@@ -308,82 +318,77 @@ const StudentWorkspacePageInner: React.FC<StudentWorkspacePageInnerProps> = ({
                   onChange={(event) => setNewWorkspaceTitle(event.target.value)}
                 />
                 <div className={styles.workspaceActions}>
-                  <button
-                    type="button"
-                    className={styles.workspaceSecondaryBtn}
-                    onClick={handleCloseWorkspaceDraft}
-                  >
-                    Fechar
-                  </button>
-                  <button
-                    type="button"
-                    className={styles.workspacePrimaryBtn}
-                    onClick={handleWorkspaceDraftSave}
-                  >
-                    Salvar
-                  </button>
+                  <button type="button" className={styles.workspaceSecondaryBtn}
+                    onClick={handleCloseWorkspaceDraft}>Fechar</button>
+                  <button type="button" className={styles.workspacePrimaryBtn}
+                    onClick={handleWorkspaceDraftSave}>Salvar</button>
                 </div>
               </div>
-
               {workspaceDraftFeedback && (
-                <span className={styles.workspaceFeedback}>
-                  {workspaceDraftFeedback}
-                </span>
+                <span className={styles.workspaceFeedback}>{workspaceDraftFeedback}</span>
               )}
-
               <div className={styles.workspaceEditorBody}>
                 <DocxPreviewEditor
                   html={newWorkspaceContent}
                   editable={true}
-                  onChange={(html) => setNewWorkspaceContent(html)}
+                  onChange={(h) => setNewWorkspaceContent(h)}
                 />
               </div>
             </div>
+          ) : workspaceId ? (
+            // ✅ WebRTCProvider por atividade
+            <WebRTCProvider
+              key={workspaceId}
+              workspaceId={workspaceId}
+              role="student"
+              onData={(data) => {
+                // ✅ Redireciona chat do professor para o hook via ref
+                if (data.type === "chat") addIncomingMessageRef.current?.(data);
+              }}
+            >
+              {/* ✅ ChatBridge — acessa useWebRTC() e atualiza pai via setters diretos */}
+              <ChatBridge
+                activityId={activeActivity?.id ?? null}
+                user={userForChat}
+                setMessages={setChatMessages}
+                setSendMessage={(fn) => { sendMessageRef.current = fn; }}
+                registerAddIncoming={registerAddIncoming}
+              />
+              <WorkspaceEditor
+                activity={activeActivity}
+                studentId={studentId}
+                editable={activeActivity?.type === "EXERCISE"}
+                html={html}
+                onContentChange={notifyChange}
+                headerStatus={
+                  saving ? <span className={styles.savingIndicator}>Salvando...</span> : null
+                }
+              />
+            </WebRTCProvider>
           ) : (
             <WorkspaceEditor
-              activity={activeActivity}
-              editable={activeActivity?.type === "EXERCISE"}
-              html={html}
-              onContentChange={notifyChange}
-              onCursorChange={(from, to) => {
-                if (!activeActivity?.id) return;
-                sendWSMessage({
-                  type: "cursor",
-                  activityId: activeActivity.id,
-                  from,
-                  to,
-                  userName: studentName || "Aluno",
-                  userId,
-                  workspaceId: studentId,
-                });
-              }}
-              headerStatus={
-                saving ? (
-                  <span className={styles.savingIndicator}>Salvando...</span>
-                ) : null
-              }
+              activity={null}
+              studentId={studentId}
+              editable={false}
+              html=""
+              onContentChange={() => {}}
+              headerStatus={null}
             />
           )}
         </div>
 
-        <div
-          className={`${styles.rightPanel} ${chatVisible ? "" : styles.rightPanelHidden}`}
-        >
+        <div className={`${styles.rightPanel} ${chatVisible ? "" : styles.rightPanelHidden}`}>
           <div className={styles.teacherPresenceSection}>
             <span className={styles.teacherPresenceLabel}>Professor</span>
             <div className={styles.teacherPresenceCard}>
               <span
                 className={`${styles.teacherPresenceDot} ${
-                  teacherOnline
-                    ? styles.teacherPresenceDotOnline
-                    : styles.teacherPresenceDotOffline
+                  teacherOnline ? styles.teacherPresenceDotOnline : styles.teacherPresenceDotOffline
                 }`}
                 aria-hidden="true"
               />
               <div className={styles.teacherPresenceInfo}>
-                <span className={styles.teacherPresenceName}>
-                  {teacherName}
-                </span>
+                <span className={styles.teacherPresenceName}>{teacherName}</span>
                 <span className={styles.teacherPresenceStatus}>
                   {teacherOnline ? "Online agora" : "Offline"}
                 </span>
@@ -392,10 +397,11 @@ const StudentWorkspacePageInner: React.FC<StudentWorkspacePageInnerProps> = ({
           </div>
 
           <div className={styles.chatSection}>
+            {/* ✅ chatMessages e chatSendMessage elevados do ChatBridge */}
             <WorkspaceChat
               activityTitle={activeActivity?.title ?? ""}
-              messages={messages}
-              onSendMessage={handleSendMessage}
+              messages={chatMessages}
+              onSendMessage={chatSendMessage}
             />
           </div>
         </div>
@@ -404,26 +410,15 @@ const StudentWorkspacePageInner: React.FC<StudentWorkspacePageInnerProps> = ({
   );
 };
 
-// ─── Camada 2: aguarda carregamento, monta WSProvider com dados prontos ───────
+// ─── Camada 2 ─────────────────────────────────────────────────────────────────
 
 const StudentWorkspacePageContent: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const {
-    workspace,
-    studentId,
-    studentName,
-    teacherName,
-    teacherOnline,
-    loading,
-    error,
-    accessDenied,
-    saving,
-    fetchWorkspace,
-    saveContent,
-    moveActivity,
-    workspaceActivities,
-    exerciseFolders,
+    workspace, studentId, studentName, teacherName, teacherOnline,
+    loading, error, accessDenied, saving, fetchWorkspace,
+    saveContent, moveActivity, workspaceActivities, exerciseFolders,
   } = useMyWorkspace();
 
   const breadcrumbItems = [
@@ -436,9 +431,7 @@ const StudentWorkspacePageContent: React.FC = () => {
     if (accessDenied) navigate("/account-inactive", { replace: true });
   }, [accessDenied, navigate]);
 
-  useEffect(() => {
-    void fetchWorkspace();
-  }, [fetchWorkspace]);
+  useEffect(() => { void fetchWorkspace(); }, [fetchWorkspace]);
 
   if (loading) {
     return (

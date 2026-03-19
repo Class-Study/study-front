@@ -1,30 +1,38 @@
-// components/ProfessorViewer.tsx
 import React, { useEffect, useRef } from "react";
 import styles from "./ProfessorViewer.module.css";
 
 interface Props {
-  html?: string;
-  remoteCursor?: {
-    from: number;
-    to: number;
-    userName: string;
-  } | null;
+  html: string;
+  cursor: { from: number; to: number; userName?: string } | null;
+  scroll?: number | null;
+  studentName?: string;
 }
 
-export const ProfessorViewer: React.FC<Props> = ({ html, remoteCursor }) => {
+export const ProfessorViewer: React.FC<Props> = ({
+  html,
+  cursor,
+  scroll,
+  studentName,
+}) => {
+  const wrapperRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const cursorRef = useRef<HTMLDivElement>(null);
-  const hideTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // ✅ Aplica scroll no wrapper (quem tem overflow-y: auto)
   useEffect(() => {
-    if (!remoteCursor || !containerRef.current || !cursorRef.current) return;
+    if (scroll == null || !wrapperRef.current) return;
+    wrapperRef.current.scrollTop = scroll;
+  }, [scroll]);
+
+  // ✅ Posiciona cursor remoto
+  useEffect(() => {
+    if (!cursor || !containerRef.current || !cursorRef.current) return;
 
     const container = containerRef.current;
     const cursorEl = cursorRef.current;
-    const totalLength = container.innerText.length;
-    const safeFrom = Math.min(remoteCursor.from, totalLength);
 
-    cursorEl.setAttribute("data-name", remoteCursor.userName ?? "");
+    const totalLength = container.innerText.length;
+    const safeFrom = Math.min(cursor.from, totalLength);
 
     const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT);
 
@@ -45,11 +53,7 @@ export const ProfessorViewer: React.FC<Props> = ({ html, remoteCursor }) => {
       currentPos += length;
     }
 
-    if (!targetNode) {
-      cursorEl.style.top = `${container.scrollHeight - 20}px`;
-      cursorEl.style.left = `0px`;
-      return;
-    }
+    if (!targetNode) return;
 
     const range = document.createRange();
     range.setStart(targetNode, offset);
@@ -57,31 +61,27 @@ export const ProfessorViewer: React.FC<Props> = ({ html, remoteCursor }) => {
 
     const rect = range.getBoundingClientRect();
     const containerRect = container.getBoundingClientRect();
-    const scrollTop = container.closest(`.${styles.wrapper}`)?.scrollTop ?? 0;
-    const scrollLeft = container.closest(`.${styles.wrapper}`)?.scrollLeft ?? 0;
 
-    const top = rect.top - containerRect.top + scrollTop;
-    const left = rect.left - containerRect.left + scrollLeft;
+    const top = rect.top - containerRect.top + container.scrollTop;
+    const left = rect.left - containerRect.left + container.scrollLeft;
 
-    // Esconde brevemente e reposiciona
-    cursorEl.classList.add(styles.cursorHidden);
-
-    if (hideTimeoutRef.current) clearTimeout(hideTimeoutRef.current);
-    hideTimeoutRef.current = setTimeout(() => {
-      cursorEl.style.top = `${top}px`;
-      cursorEl.style.left = `${left}px`;
-      cursorEl.classList.remove(styles.cursorHidden);
-    }, 100);
-  }, [html, remoteCursor]);
+    cursorEl.style.transform = `translate(${left}px, ${top}px)`;
+  }, [cursor]);
 
   return (
-    <div className={styles.wrapper}>
+    <div ref={wrapperRef} className={styles.wrapper}>
       <div
         ref={containerRef}
         className={styles.content}
-        dangerouslySetInnerHTML={{ __html: html ?? "" }}
+        dangerouslySetInnerHTML={{ __html: html }}
       />
-      <div ref={cursorRef} className={styles.cursor}>
+
+      {/* ✅ data-name alimenta o ::after do CSS com o nome do aluno */}
+      <div
+        ref={cursorRef}
+        className={styles.cursor}
+        data-name={studentName ?? "Aluno"}
+      >
         <div className={styles.cursorBar} />
       </div>
     </div>
