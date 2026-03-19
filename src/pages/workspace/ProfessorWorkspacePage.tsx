@@ -22,6 +22,7 @@ import { WorkspaceNotes } from "./components/WorkspaceNotes/WorkspaceNotes";
 import { UploadActivityModal } from "./components/UploadActivityModal/UploadActivityModal";
 import { WorkspaceActivity, ChatMessage } from "@/types/workspace.types";
 import styles from "./WorkspacePage.module.css";
+import { PresenceCard } from "@/components/ui/PresenceCard/PresenceCard";
 
 const SIDEBAR_MIN_WIDTH = 200;
 const SIDEBAR_MAX_WIDTH = 450;
@@ -36,6 +37,7 @@ const ProfessorChatBridge: React.FC<{
   sendMessageRef: React.MutableRefObject<(content: string) => void>;
   addIncomingRef: React.MutableRefObject<((data: any) => void) | null>;
   onMessagesChange: () => void;
+  onConnectedChange: (v: boolean) => void;
 }> = ({
   activityId,
   user,
@@ -43,8 +45,9 @@ const ProfessorChatBridge: React.FC<{
   sendMessageRef,
   addIncomingRef,
   onMessagesChange,
+  onConnectedChange,
 }) => {
-  const { send } = useWebRTC();
+  const { send, connected } = useWebRTC();
 
   const { messages, sendMessage, addIncomingMessage } = useChatMessages({
     activityId,
@@ -53,6 +56,10 @@ const ProfessorChatBridge: React.FC<{
   });
 
   const prevLengthRef = useRef(-1);
+
+  useEffect(() => {
+    onConnectedChange(connected);
+  }, [connected]);
 
   useEffect(() => {
     console.log("[Bridge] messages mudou, length:", messages.length);
@@ -79,6 +86,7 @@ const ProfessorWorkspacePageContent: React.FC<{
   onActivityChange: (activityId: string | null) => void;
   chatMessages: ChatMessage[];
   chatSendMessage: (content: string) => void;
+  peerConnected: boolean;
 }> = ({
   rtcHtml,
   rtcCursor,
@@ -86,6 +94,7 @@ const ProfessorWorkspacePageContent: React.FC<{
   onActivityChange,
   chatMessages,
   chatSendMessage,
+  peerConnected,
 }) => {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -509,6 +518,11 @@ const ProfessorWorkspacePageContent: React.FC<{
           className={`${styles.rightPanel} ${chatVisible ? "" : styles.rightPanelHidden}`}
         >
           <div className={styles.chatSection}>
+            <PresenceCard
+              name={studentName}
+              label="Aluno"
+              connected={peerConnected}
+            />
             <WorkspaceChat
               activityTitle={activeActivity?.title ?? ""}
               messages={chatMessages}
@@ -553,6 +567,7 @@ const ProfessorWorkspacePage: React.FC = () => {
 
   // ✅ Chat via refs + estado separado para forçar re-render com nova referência
   const messagesRef = useRef<ChatMessage[]>([]);
+  const [peerConnected, setPeerConnected] = useState(false);
   const sendMessageRef = useRef<(content: string) => void>(() => {});
   const addIncomingRef = useRef<((data: any) => void) | null>(null);
 
@@ -609,6 +624,8 @@ const ProfessorWorkspacePage: React.FC = () => {
     sendMessageRef.current(content);
   }, []);
 
+  const { send, connected } = useWebRTC();
+
   return (
     <WSProvider userId={user.id} workspaceId={targetStudentId}>
       {workspaceId ? (
@@ -626,6 +643,7 @@ const ProfessorWorkspacePage: React.FC = () => {
             addIncomingRef={addIncomingRef}
             // ✅ Cria nova referência de array ao notificar — React detecta a mudança
             onMessagesChange={handleMessagesChange}
+            onConnectedChange={setPeerConnected}
           />
           <ProfessorWorkspacePageContent
             rtcHtml={rtcHtml}
@@ -634,6 +652,7 @@ const ProfessorWorkspacePage: React.FC = () => {
             onActivityChange={handleActivityChange}
             chatMessages={chatMessages}
             chatSendMessage={chatSendMessage}
+            peerConnected={peerConnected}
           />
         </WebRTCProvider>
       ) : (
@@ -644,6 +663,7 @@ const ProfessorWorkspacePage: React.FC = () => {
           onActivityChange={handleActivityChange}
           chatMessages={chatMessages}
           chatSendMessage={chatSendMessage}
+          peerConnected={peerConnected}
         />
       )}
     </WSProvider>
