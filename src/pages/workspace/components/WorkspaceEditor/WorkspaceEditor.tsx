@@ -103,7 +103,6 @@ export const WorkspaceEditor: React.FC<WorkspaceEditorProps> = ({
 
       // ✅ Envia cursor junto com a atualização de conteúdo
       send({ type: "cursor", from: textOffset, to: textOffset });
-      console.log("[Editor] enviando cursor:", textOffset); // ✅
     },
 
     onSelectionUpdate: ({ editor, transaction }) => {
@@ -132,7 +131,6 @@ export const WorkspaceEditor: React.FC<WorkspaceEditorProps> = ({
       if (scrollDebounceRef.current) clearTimeout(scrollDebounceRef.current);
       scrollDebounceRef.current = setTimeout(() => {
         send({ type: "scroll", top: scrollEl.scrollTop });
-        console.log("[Editor] enviando scroll:", scrollEl.scrollTop); // ✅
       }, 50);
     };
 

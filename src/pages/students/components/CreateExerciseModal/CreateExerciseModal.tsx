@@ -87,7 +87,6 @@ export const CreateExerciseModal: React.FC<CreateExerciseModalProps> = ({
     try {
       const arrayBuffer = await selectedFile.arrayBuffer();
       const result = await mammoth.convertToHtml({ arrayBuffer });
-      console.log('HTML Convertido:', result.value);
 
       setFile(selectedFile);
       setConvertedHtml(result.value);

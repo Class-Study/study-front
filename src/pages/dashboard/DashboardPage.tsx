@@ -63,7 +63,6 @@ export const DashboardPage: React.FC = () => {
   ];
 
   const handleNewStudent = () => {
-    console.log('Botão Novo Aluno clicado! Navegando para /dashboard/student/new...');
     navigate('/dashboard/student/new');
   };
 

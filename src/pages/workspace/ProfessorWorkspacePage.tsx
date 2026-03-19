@@ -62,7 +62,6 @@ const ProfessorChatBridge: React.FC<{
   }, [connected]);
 
   useEffect(() => {
-    console.log("[Bridge] messages mudou, length:", messages.length);
     messagesRef.current = messages;
     onMessagesChange();
   }, [messages]);
@@ -117,6 +116,8 @@ const ProfessorWorkspacePageContent: React.FC<{
 
   const [activeActivity, setActiveActivity] =
     useState<WorkspaceActivity | null>(null);
+  const activeActivityRef = useRef<WorkspaceActivity | null>(null);
+
   const [studentName, setStudentName] = useState("");
   const [sidebarWidth, setSidebarWidth] = useState<number>(() => {
     if (typeof window === "undefined") return 240;
@@ -148,6 +149,7 @@ const ProfessorWorkspacePageContent: React.FC<{
   }>({ isOpen: false, folderId: null });
   const bodyRef = useRef<HTMLDivElement | null>(null);
   const isResizingRef = useRef(false);
+  const initializedRef = useRef(false);
 
   const allActivities = useMemo(
     () => [
@@ -205,17 +207,20 @@ const ProfessorWorkspacePageContent: React.FC<{
   }, [isStudent, targetStudentId, user?.name]);
 
   useEffect(() => {
-    if (!activeActivity && allActivities.length > 0) {
+    if (allActivities.length > 0 && !activeActivityRef.current) {
+      initializedRef.current = true;
       const first = workspaceActivities[0] ?? allActivities[0];
       setActiveActivity(first);
       onActivityChange(first.id);
     }
-  }, [activeActivity, allActivities, workspaceActivities]);
+  }, [allActivities, workspaceActivities]);
 
   useEffect(() => {
     if (!activeActivity) return;
     const updated = allActivities.find((a) => a.id === activeActivity.id);
-    if (updated && updated !== activeActivity) setActiveActivity(updated);
+    if (updated && updated.convertedHtml !== activeActivity.convertedHtml) {
+      setActiveActivity(updated);
+    }
   }, [activeActivity, allActivities]);
 
   useEffect(() => {
@@ -293,12 +298,13 @@ const ProfessorWorkspacePageContent: React.FC<{
     onActivityChange(activity.id);
   };
 
-  const handleSelectActivity = (activity: WorkspaceActivity): void => {
-    setIsEditingNewWorkspace(false);
-    setWorkspaceDraftFeedback(null);
-    setActiveActivity(activity);
-    onActivityChange(activity.id);
-  };
+const handleSelectActivity = (activity: WorkspaceActivity): void => {
+  setIsEditingNewWorkspace(false);
+  setWorkspaceDraftFeedback(null);
+  activeActivityRef.current = activity; // ✅ atualiza a ref
+  setActiveActivity(activity);
+  onActivityChange(activity.id);
+};
 
   const handleMoveActivity = async (
     activityId: string,
@@ -623,8 +629,6 @@ const ProfessorWorkspacePage: React.FC = () => {
   const chatSendMessage = useCallback((content: string) => {
     sendMessageRef.current(content);
   }, []);
-
-  const { send, connected } = useWebRTC();
 
   return (
     <WSProvider userId={user.id} workspaceId={targetStudentId}>

@@ -21,26 +21,11 @@ const sendWSMessage = wsContext?.sendWSMessage;
     const ws = wsRef?.current;  
     if (!ws || !workspaceId) return;
 
-    console.log(`[WebRTC] iniciando como ${role}`);
 
     const pc = new RTCPeerConnection({
       iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
     });
     pcRef.current = pc;
-
-    // ✅ Log de mudança de estado geral
-    pc.onconnectionstatechange = () => {
-      console.log(`[WebRTC] connectionState → ${pc.connectionState}`);
-    };
-
-    // ✅ Log de ICE
-    pc.oniceconnectionstatechange = () => {
-      console.log(`[WebRTC] iceConnectionState → ${pc.iceConnectionState}`);
-    };
-
-    pc.onicegatheringstatechange = () => {
-      console.log(`[WebRTC] iceGatheringState → ${pc.iceGatheringState}`);
-    };
 
     if (role === "student") {
       const channel = pc.createDataChannel("collab");
@@ -55,7 +40,6 @@ const sendWSMessage = wsContext?.sendWSMessage;
     }
 
     pc.ondatachannel = (e) => {
-      console.log("[WebRTC] ✅ canal recebido (teacher)");
       channelRef.current = e.channel;
       e.channel.onopen = () => console.log("[WebRTC] ✅ canal aberto (teacher)");
       e.channel.onmessage = (ev) => {
@@ -65,7 +49,6 @@ const sendWSMessage = wsContext?.sendWSMessage;
 
     pc.onicecandidate = (e) => {
       if (e.candidate) {
-        console.log("[WebRTC] enviando ICE candidate via WS");
         sendWSMessage?.({
           type: "webrtc-signal",
           workspaceId,
@@ -77,14 +60,11 @@ const sendWSMessage = wsContext?.sendWSMessage;
     };
 
     if (role === "student") {
-      console.log("[WebRTC] criando offer...");
       pc.createOffer()
         .then((offer) => {
-          console.log("[WebRTC] offer criada, setando local description");
           return pc.setLocalDescription(offer);
         })
         .then(() => {
-          console.log("[WebRTC] enviando offer via WS");
           sendWSMessage?.({
             type: "webrtc-signal",
             workspaceId,
@@ -99,19 +79,15 @@ const sendWSMessage = wsContext?.sendWSMessage;
         const msg = JSON.parse(event.data);
         if (msg.type !== "webrtc-signal" || msg.workspaceId !== workspaceId) return;
 
-        console.log(`[WebRTC] sinal recebido via WS:`, msg.data.sdp?.type ?? "candidate");
 
         const { sdp, candidate } = msg.data;
 
         if (sdp) {
-          console.log(`[WebRTC] setando remote description (${sdp.type})`);
           await pc.setRemoteDescription(new RTCSessionDescription(sdp));
 
           if (sdp.type === "offer") {
-            console.log("[WebRTC] criando answer...");
             const answer = await pc.createAnswer();
             await pc.setLocalDescription(answer);
-            console.log("[WebRTC] enviando answer via WS");
             sendWSMessage?.({
               type: "webrtc-signal",
               workspaceId,
@@ -121,7 +97,6 @@ const sendWSMessage = wsContext?.sendWSMessage;
         }
 
         if (candidate) {
-          console.log("[WebRTC] adicionando ICE candidate");
           await pc.addIceCandidate(new RTCIceCandidate(candidate));
         }
       } catch (e) {

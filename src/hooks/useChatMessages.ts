@@ -33,18 +33,15 @@ export const useChatMessages = ({
   // ─── Carrega histórico ao montar ou trocar atividade ─────────────────────
   useEffect(() => {
     if (!activityId) {
-      console.log("[Chat] activityId nulo — limpando mensagens");
       setMessages([]);
       return;
     }
 
-    console.log("[Chat] carregando histórico para activityId:", activityId);
     setIsLoading(true);
 
     chatService
       .getMessages(activityId, userIdRef.current)
       .then((msgs) => {
-        console.log("[Chat] histórico carregado:", msgs.length, "mensagens");
         setMessages(msgs);
       })
       .catch((e) => console.error("[Chat] erro ao carregar histórico:", e))
