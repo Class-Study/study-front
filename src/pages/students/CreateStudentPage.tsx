@@ -85,7 +85,6 @@ export const CreateStudentPage: React.FC = () => {
   const [submitError, setSubmitError] = useState('');
 
   useEffect(() => {
-    console.log('CreateStudentPage montado! Buscando level profiles...');
     fetchLevelProfiles();
   }, []);
 

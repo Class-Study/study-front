@@ -125,7 +125,6 @@ export const CreateExerciseModal: React.FC<CreateExerciseModalProps> = ({
         originalFilename: file.name,
       };
 
-      console.log('Payload criação de exercício:', payload);
       await onSave(payload);
       onClose();
     } catch {

@@ -20,6 +20,8 @@ import { ProfessorViewer } from "./components/WorkspaceEditor/ProfessorViewer";
 import { WorkspaceChat } from "./components/WorkspaceChat/WorkspaceChat";
 import { WorkspaceNotes } from "./components/WorkspaceNotes/WorkspaceNotes";
 import { UploadActivityModal } from "./components/UploadActivityModal/UploadActivityModal";
+import { ActiveFileBar } from "../workspace/ActiveFileBar/ActiveFileBar";
+import { ActivityPreviewModal } from "../workspace/ActivityPreviewModal/ActivityPreviewModal";
 import { WorkspaceActivity, ChatMessage } from "@/types/workspace.types";
 import styles from "./WorkspacePage.module.css";
 import { PresenceCard } from "@/components/ui/PresenceCard/PresenceCard";
@@ -86,6 +88,9 @@ const ProfessorWorkspacePageContent: React.FC<{
   chatMessages: ChatMessage[];
   chatSendMessage: (content: string) => void;
   peerConnected: boolean;
+  studentActivityTitle: string | null;
+  onStudentActivityChange: (activityId: string, activityTitle: string) => void;
+  activeActivityIdRef: React.MutableRefObject<string | null>;
 }> = ({
   rtcHtml,
   rtcCursor,
@@ -94,6 +99,9 @@ const ProfessorWorkspacePageContent: React.FC<{
   chatMessages,
   chatSendMessage,
   peerConnected,
+  studentActivityTitle,
+  onStudentActivityChange,
+  activeActivityIdRef,
 }) => {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -147,6 +155,8 @@ const ProfessorWorkspacePageContent: React.FC<{
     isOpen: boolean;
     folderId: string | null;
   }>({ isOpen: false, folderId: null });
+  const [previewActivity, setPreviewActivity] =
+    useState<WorkspaceActivity | null>(null);
   const bodyRef = useRef<HTMLDivElement | null>(null);
   const isResizingRef = useRef(false);
   const initializedRef = useRef(false);
@@ -174,8 +184,19 @@ const ProfessorWorkspacePageContent: React.FC<{
       } catch {
         return;
       }
+
+      console.log("[Professor WS] mensagem recebida | type:", message.type);
+
       if (message.type === "snapshot" && message.snapshot) {
         applyRemoteSnapshot(message.snapshot);
+      }
+      if (message.type === "student-activity-change") {
+        console.log("[Professor WS] student-activity-change recebido | activityId:", message.activityId, "| activityTitle:", message.activityTitle);
+        console.log("[Professor WS] chamando handleActivityChange com activityId:", message.activityId);
+        onStudentActivityChange(
+          message.activityId,
+          message.activityTitle ?? "",
+        );
       }
     };
     wsRef.current.addEventListener("message", handleMessage);
@@ -207,17 +228,22 @@ const ProfessorWorkspacePageContent: React.FC<{
   }, [isStudent, targetStudentId, user?.name]);
 
   useEffect(() => {
-    if (allActivities.length > 0 && !activeActivityRef.current) {
+    if (allActivities.length > 0 && !initializedRef.current) {
       initializedRef.current = true;
-      const first = workspaceActivities[0] ?? allActivities[0];
-      setActiveActivity(first);
-      onActivityChange(first.id);
+
+      // ✅ Só seta a primeira atividade se o aluno ainda não enviou nenhuma
+      if (!activeActivityIdRef.current) {
+        const first = workspaceActivities[0] ?? allActivities[0];
+        setActiveActivity(first);
+        onActivityChange(first.id);
+      }
     }
   }, [allActivities, workspaceActivities]);
 
   useEffect(() => {
     if (!activeActivity) return;
     const updated = allActivities.find((a) => a.id === activeActivity.id);
+
     if (updated && updated.convertedHtml !== activeActivity.convertedHtml) {
       setActiveActivity(updated);
     }
@@ -298,13 +324,9 @@ const ProfessorWorkspacePageContent: React.FC<{
     onActivityChange(activity.id);
   };
 
-const handleSelectActivity = (activity: WorkspaceActivity): void => {
-  setIsEditingNewWorkspace(false);
-  setWorkspaceDraftFeedback(null);
-  activeActivityRef.current = activity; // ✅ atualiza a ref
-  setActiveActivity(activity);
-  onActivityChange(activity.id);
-};
+  const handleSelectActivity = (activity: WorkspaceActivity): void => {
+    setPreviewActivity(activity);
+  };
 
   const handleMoveActivity = async (
     activityId: string,
@@ -462,13 +484,15 @@ const handleSelectActivity = (activity: WorkspaceActivity): void => {
           newItemForm={newItemForm}
           onChangeNewItemForm={setNewItemForm}
           onCreateFolder={handleCreateFolder}
-          onCreateWorkspace={handleCreateWorkspace}
           onOpenUploadForFolder={handleOpenUploadForFolder}
           onMoveActivity={handleMoveActivity}
           readOnly={isStudent}
         />
-
         <div className={styles.editorArea}>
+          <ActiveFileBar
+            activityTitle={studentActivityTitle}
+            isLive={peerConnected}
+          />
           {isWorkspaceActive ? (
             <div className={styles.workspaceContainer}>
               <div className={styles.workspaceHeaderRow}>
@@ -515,6 +539,7 @@ const handleSelectActivity = (activity: WorkspaceActivity): void => {
                 cursor={rtcCursor}
                 scroll={rtcScroll}
                 studentName={studentName}
+                waiting={!viewerHtml && peerConnected} // ✅ conectado mas sem html ainda
               />
             )
           )}
@@ -551,6 +576,10 @@ const handleSelectActivity = (activity: WorkspaceActivity): void => {
         onClose={() => setUploadModalState({ isOpen: false, folderId: null })}
         onSave={handleSaveUploadedActivity}
       />
+      <ActivityPreviewModal
+        activity={previewActivity}
+        onClose={() => setPreviewActivity(null)}
+      />
     </div>
   );
 };
@@ -574,22 +603,39 @@ const ProfessorWorkspacePage: React.FC = () => {
   // ✅ Chat via refs + estado separado para forçar re-render com nova referência
   const messagesRef = useRef<ChatMessage[]>([]);
   const [peerConnected, setPeerConnected] = useState(false);
+  const [studentActivityTitle, setStudentActivityTitle] = useState<
+    string | null
+  >(null);
   const sendMessageRef = useRef<(content: string) => void>(() => {});
   const addIncomingRef = useRef<((data: any) => void) | null>(null);
 
   // ✅ chatMessages é um estado real — nova referência a cada update
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const studentActivityIdRef = useRef<string | null>(null);
 
   const handleData = useCallback((data: any) => {
     if (data.type === "html") setRtcHtml(data.html);
     if (data.type === "cursor") setRtcCursor(data);
     if (data.type === "scroll") setRtcScroll(data.top);
     if (data.type === "chat") addIncomingRef.current?.(data);
+    if (data.type === "student-activity") {
+      studentActivityIdRef.current = data.activityId;
+      setStudentActivityTitle(data.activityTitle);
+      // ✅ Não limpa rtcHtml aqui — o html novo vai sobrescrever via "html" type
+    }
   }, []);
 
   const activeActivityIdRef = useRef<string | null>(null);
 
   const handleActivityChange = useCallback((activityId: string | null) => {
+    console.log(
+      "[PAI] handleActivityChange:",
+      activityId,
+      "| ref:",
+      activeActivityIdRef.current,
+      "| igual?",
+      activityId === activeActivityIdRef.current,
+    );
     if (activityId === activeActivityIdRef.current) {
       return;
     }
@@ -603,10 +649,6 @@ const ProfessorWorkspacePage: React.FC = () => {
   }, []);
 
   const handleMessagesChange = useCallback(() => {
-    console.log(
-      "[Pai] onMessagesChange chamado, messagesRef.current.length:",
-      messagesRef.current.length,
-    );
     setChatMessages([...messagesRef.current]);
   }, []);
 
@@ -632,7 +674,25 @@ const ProfessorWorkspacePage: React.FC = () => {
 
   return (
     <WSProvider userId={user.id} workspaceId={targetStudentId}>
-      {workspaceId ? (
+      {/* ✅ Content sempre montado — nunca remonta com troca de atividade */}
+      <ProfessorWorkspacePageContent
+        rtcHtml={rtcHtml}
+        rtcCursor={rtcCursor}
+        rtcScroll={rtcScroll}
+        onActivityChange={handleActivityChange}
+        onStudentActivityChange={(activityId, activityTitle) => {
+          handleActivityChange(activityId); // passa só o activityId
+          setStudentActivityTitle(activityTitle);
+        }}
+        chatMessages={chatMessages}
+        chatSendMessage={chatSendMessage}
+        peerConnected={peerConnected}
+        studentActivityTitle={studentActivityTitle}
+        activeActivityIdRef={activeActivityIdRef}
+      />
+
+      {/* ✅ WebRTCProvider separado — remonta sozinho sem arrastar o Content */}
+      {workspaceId && (
         <WebRTCProvider
           key={workspaceId}
           workspaceId={workspaceId}
@@ -645,30 +705,10 @@ const ProfessorWorkspacePage: React.FC = () => {
             messagesRef={messagesRef}
             sendMessageRef={sendMessageRef}
             addIncomingRef={addIncomingRef}
-            // ✅ Cria nova referência de array ao notificar — React detecta a mudança
             onMessagesChange={handleMessagesChange}
             onConnectedChange={setPeerConnected}
           />
-          <ProfessorWorkspacePageContent
-            rtcHtml={rtcHtml}
-            rtcCursor={rtcCursor}
-            rtcScroll={rtcScroll}
-            onActivityChange={handleActivityChange}
-            chatMessages={chatMessages}
-            chatSendMessage={chatSendMessage}
-            peerConnected={peerConnected}
-          />
         </WebRTCProvider>
-      ) : (
-        <ProfessorWorkspacePageContent
-          rtcHtml=""
-          rtcCursor={null}
-          rtcScroll={null}
-          onActivityChange={handleActivityChange}
-          chatMessages={chatMessages}
-          chatSendMessage={chatSendMessage}
-          peerConnected={peerConnected}
-        />
       )}
     </WSProvider>
   );

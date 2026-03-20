@@ -6,6 +6,7 @@ interface Props {
   cursor: { from: number; to: number; userName?: string } | null;
   scroll?: number | null;
   studentName?: string;
+  waiting?: boolean; // ✅ novo
 }
 
 export const ProfessorViewer: React.FC<Props> = ({
@@ -13,6 +14,7 @@ export const ProfessorViewer: React.FC<Props> = ({
   cursor,
   scroll,
   studentName,
+  waiting = false,
 }) => {
   const wrapperRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -67,6 +69,17 @@ export const ProfessorViewer: React.FC<Props> = ({
 
     cursorEl.style.transform = `translate(${left}px, ${top}px)`;
   }, [cursor]);
+
+  if (waiting || !html) {
+    return (
+      <div className={styles.waiting}>
+        <span className={styles.waitingIcon}>👀</span>
+        <p className={styles.waitingText}>
+          Aguardando o aluno abrir um arquivo...
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div ref={wrapperRef} className={styles.wrapper}>

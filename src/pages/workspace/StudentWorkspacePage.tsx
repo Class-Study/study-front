@@ -38,6 +38,9 @@ const ChatBridge: React.FC<{
   setMessages: (msgs: any[]) => void;
   setSendMessage: (fn: (content: string) => void) => void;
   registerAddIncoming: (fn: (data: any) => void) => void;
+  setSendActivity: (fn: (id: string, title: string) => void) => void;
+  activityTitle: string | null;
+  currentHtml: string;
 }> = ({
   activityId,
   user,
@@ -45,14 +48,57 @@ const ChatBridge: React.FC<{
   setSendMessage,
   registerAddIncoming,
   setConnected,
+  setSendActivity,
+  activityTitle,
+  currentHtml,
 }) => {
-  const { send, connected } = useWebRTC(); // ✅ dentro do WebRTCProvider
+  const { send, connected } = useWebRTC();
+  const sentInitialHtmlRef = useRef(false);
 
   const { messages, sendMessage, addIncomingMessage } = useChatMessages({
     activityId,
     user,
     send,
   });
+
+  // Reset sentInitialHtmlRef ao montar ou trocar activityId
+  useEffect(() => {
+    sentInitialHtmlRef.current = false;
+  }, [activityId]);
+
+  // Envia student-activity quando conecta OU muda activityId
+  useEffect(() => {
+    console.log("[ChatBridge] check student-activity | connected:", connected,
+      "| activityId:", activityId,
+      "| activityTitle:", activityTitle);
+
+    if (!connected || !activityId) return;
+
+    console.log("[ChatBridge] enviando student-activity | activityId:", activityId);
+
+    send({
+      type: "student-activity",
+      activityId: activityId ?? "",
+      activityTitle: activityTitle ?? "",
+    });
+  }, [connected, activityId]);
+
+  // Envia HTML inicial — usa activityId como dependência primária
+  useEffect(() => {
+    console.log("[ChatBridge] check html inicial | connected:", connected,
+      "| activityId:", activityId,
+      "| currentHtml length:", currentHtml?.length ?? 0,
+      "| sentInitialRef:", sentInitialHtmlRef.current);
+
+    if (!connected || !activityId || !currentHtml) return;
+    if (sentInitialHtmlRef.current) return;
+
+    console.log("[ChatBridge] enviando html inicial | activityId:", activityId,
+      "| length:", currentHtml.length);
+
+    send({ type: "html", html: currentHtml, activityId });
+    sentInitialHtmlRef.current = true;
+  }, [connected, activityId, currentHtml]);
 
   // ✅ Registra addIncomingMessage para receber chat do professor via WebRTC
   useEffect(() => {
@@ -72,6 +118,12 @@ const ChatBridge: React.FC<{
   useEffect(() => {
     setSendMessage(sendMessage);
   }, [sendMessage]);
+
+  useEffect(() => {
+    setSendActivity((activityId: string, activityTitle: string) => {
+      send({ type: "student-activity", activityId, activityTitle });
+    });
+  }, [send]);
 
   return null; // não renderiza nada
 };
@@ -113,6 +165,7 @@ const StudentWorkspacePageInner: React.FC<StudentWorkspacePageInnerProps> = ({
   const { wsRef, sendWSMessage, onReconnect } = useWS();
   const [activeActivity, setActiveActivity] =
     useState<WorkspaceActivity | null>(null);
+  const sentInitialHtmlRef = useRef(false);
 
   const [sidebarWidth, setSidebarWidth] = useState<number>(() => {
     if (typeof window === "undefined") return 240;
@@ -217,6 +270,18 @@ const StudentWorkspacePageInner: React.FC<StudentWorkspacePageInnerProps> = ({
     setIsEditingNewWorkspace(false);
     setWorkspaceDraftFeedback(null);
     setActiveActivity(activity);
+
+    console.log("[handleSelectActivity] atividade selecionada:", activity.id, activity.title);
+    console.log("[handleSelectActivity] enviando WS student-activity-change | workspaceId:", studentId, "| activityId:", activity.id);
+
+    sendWSMessage({
+      type: "student-activity-change",
+      workspaceId: studentId,
+      activityId: activity.id,
+      activityTitle: activity.title,
+    });
+
+    console.log("[handleSelectActivity] WS enviado");
   };
 
   const handleCreateWorkspace = (): void => {
@@ -288,6 +353,8 @@ const StudentWorkspacePageInner: React.FC<StudentWorkspacePageInnerProps> = ({
     ? `${activeActivity.id}-${studentId}`
     : null;
 
+  const sendActivityRef = useRef<(id: string, title: string) => void>(() => {});
+
   // ✅ chatSendMessage estável via ref
   const chatSendMessage = useCallback((content: string) => {
     sendMessageRef.current(content);
@@ -341,14 +408,13 @@ const StudentWorkspacePageInner: React.FC<StudentWorkspacePageInnerProps> = ({
           newItemForm={null}
           onChangeNewItemForm={() => {}}
           onCreateFolder={() => {}}
-          onCreateWorkspace={handleCreateWorkspace}
           onOpenUploadForFolder={() => {}}
           onMoveActivity={handleMoveActivity}
           readOnly={true}
           allowCreate={false}
           allowMove={true}
           allowWorkspaceMove={false}
-          allowCreateWorkspace={true}
+          allowCreateWorkspace={false}
           allowCreateFolder={false}
           allowUploadToFolder={false}
         />
@@ -407,6 +473,7 @@ const StudentWorkspacePageInner: React.FC<StudentWorkspacePageInnerProps> = ({
               {/* ✅ ChatBridge — acessa useWebRTC() e atualiza pai via setters diretos */}
               <ChatBridge
                 activityId={activeActivity?.id ?? null}
+                activityTitle={activeActivity?.title ?? null} // ✅ novo
                 user={userForChat}
                 setMessages={setChatMessages}
                 setSendMessage={(fn) => {
@@ -414,6 +481,10 @@ const StudentWorkspacePageInner: React.FC<StudentWorkspacePageInnerProps> = ({
                 }}
                 setConnected={setPeerConnected}
                 registerAddIncoming={registerAddIncoming}
+                setSendActivity={(fn) => {
+                  sendActivityRef.current = fn;
+                }}
+                currentHtml={html}
               />
               <WorkspaceEditor
                 activity={activeActivity}

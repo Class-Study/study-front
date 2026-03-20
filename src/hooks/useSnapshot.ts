@@ -51,13 +51,15 @@ export const useSnapshot = ({
   useEffect(() => {
     if (!activityId) {
       setHtml(initialHtml ?? "");
+      console.log("[Snapshot] reset síncrono | activityId:", activityId, "| initialHtml length:", (initialHtml ?? "").length);
       setReady(true);
       return;
     }
 
     let cancelled = false;
     setReady(false);
-    setHtml(initialHtml ?? ""); // ← adiciona essa linha
+    setHtml(initialHtml ?? "");
+    console.log("[Snapshot] reset síncrono | activityId:", activityId, "| initialHtml length:", (initialHtml ?? "").length);
 
     fetchSnapshot(activityId).then((snapshot) => {
       if (cancelled) return;
@@ -65,6 +67,7 @@ export const useSnapshot = ({
       if (snapshot) {
         try {
           const decompressed = decompressSnapshot(snapshot);
+          console.log("[Snapshot] snapshot do servidor | activityId:", activityId, "| length:", decompressed.length);
           setHtml(decompressed);
           lastSnapshotRef.current = snapshot;
           setReady(true);
@@ -74,6 +77,7 @@ export const useSnapshot = ({
         }
       }
 
+      console.log("[Snapshot] sem snapshot, usando initialHtml | activityId:", activityId, "| initialHtml length:", (initialHtml ?? "").length);
       setReady(true);
     });
 

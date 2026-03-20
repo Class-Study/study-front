@@ -95,14 +95,22 @@ export const WorkspaceEditor: React.FC<WorkspaceEditorProps> = ({
       onContentChange?.(newHtml);
 
       // ✅ Envia HTML em tempo real via WebRTC
-      send({ type: "html", html: newHtml });
+      send({ type: "html", html: newHtml, activityId: activity?.id });
+      // ✅ Remove o send de student-activity daqui — já é feito no ChatBridge
 
       const { from } = editor.state.selection;
       const textOffset = editor.state.doc.textBetween(0, from, "").length;
       onCursorChange?.(textOffset, textOffset);
 
       // ✅ Envia cursor junto com a atualização de conteúdo
-      send({ type: "cursor", from: textOffset, to: textOffset });
+      send({
+        type: "cursor",
+        from: textOffset,
+        to: textOffset,
+        activityId: activity?.id,
+      });
+
+      // ❌ Removido: envio de student-activity é responsabilidade do ChatBridge
     },
 
     onSelectionUpdate: ({ editor, transaction }) => {
@@ -117,7 +125,12 @@ export const WorkspaceEditor: React.FC<WorkspaceEditorProps> = ({
       cursorDebounceRef.current = setTimeout(() => {
         onCursorChange?.(textOffset, textOffset);
         // ✅ Envia cursor via WebRTC com debounce
-        send({ type: "cursor", from: textOffset, to: textOffset });
+        send({
+          type: "cursor",
+          from: textOffset,
+          to: textOffset,
+          activityId: activity?.id,
+        });
       }, 100);
     },
   });
@@ -130,7 +143,11 @@ export const WorkspaceEditor: React.FC<WorkspaceEditorProps> = ({
     const handleScroll = () => {
       if (scrollDebounceRef.current) clearTimeout(scrollDebounceRef.current);
       scrollDebounceRef.current = setTimeout(() => {
-        send({ type: "scroll", top: scrollEl.scrollTop });
+        send({
+          type: "scroll",
+          top: scrollEl.scrollTop,
+          activityId: activity?.id,
+        });
       }, 50);
     };
 
@@ -143,15 +160,32 @@ export const WorkspaceEditor: React.FC<WorkspaceEditorProps> = ({
   }, [editor, editable]);
 
   useEffect(() => {
+    console.log("[Editor] useEffect disparou | activityId:", activity?.id,
+      "| lastActivityId:", lastActivityIdRef.current,
+      "| isActivityChange:", activity?.id !== lastActivityIdRef.current,
+      "| html length:", html?.length ?? 0,
+      "| editable:", editable,
+      "| editor existe:", !!editor);
+
     if (!editor) return;
     const content = html ?? activity?.convertedHtml;
-    if (!content) return;
+    if (!content) {
+      console.log("[Editor] sem content, abortando | activityId:", activity?.id);
+      return;
+    }
 
     const isActivityChange = activity?.id !== lastActivityIdRef.current;
     lastActivityIdRef.current = activity?.id ?? null;
 
     if (isActivityChange || !editable) {
-      if (editor.getHTML() === content) return;
+      if (editor.getHTML() === content) {
+        console.log("[Editor] html idêntico, sem troca | activityId:", activity?.id);
+        return;
+      }
+
+      console.log("[Editor] trocando conteúdo | activityId:", activity?.id,
+        "| isActivityChange:", isActivityChange,
+        "| novo html length:", content.length);
 
       queueMicrotask(() => {
         const { from, to } = editor.state.selection;
@@ -164,6 +198,8 @@ export const WorkspaceEditor: React.FC<WorkspaceEditorProps> = ({
           editor.commands.setTextSelection({ from, to });
         }
       });
+    } else {
+      console.log("[Editor] sem troca — não é mudança de atividade e editable=true | activityId:", activity?.id);
     }
   }, [html, activity?.id, editable]);
 
@@ -195,10 +231,7 @@ export const WorkspaceEditor: React.FC<WorkspaceEditorProps> = ({
       </div>
 
       {/* ✅ ref no container de scroll para capturar eventos */}
-      <div
-        ref={editorScrollRef} 
-        className={styles.editorScroll}
-      >
+      <div ref={editorScrollRef} className={styles.editorScroll}>
         <EditorContent editor={editor} className={styles.editorContent} />
       </div>
 

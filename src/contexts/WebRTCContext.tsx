@@ -10,7 +10,7 @@ import { useWS } from "./WSContext";
 
 interface WebRTCContextValue {
   send: (data: any) => void;
-  connected: boolean; // ✅ expõe estado de conexão
+  connected: boolean;
 }
 
 const WebRTCContext = createContext<WebRTCContextValue>({
@@ -32,7 +32,7 @@ export const WebRTCProvider: React.FC<{
   const initializedRef = useRef(false);
   const queueRef = useRef<any[]>([]);
 
-  const [connected, setConnected] = useState(false); // ✅ estado reativo
+  const [connected, setConnected] = useState(false);
 
   useEffect(() => {
     onDataRef.current = onData;
@@ -51,6 +51,7 @@ export const WebRTCProvider: React.FC<{
       if (initializedRef.current) return;
       initializedRef.current = true;
 
+
       const createPeer = () => {
         if (pcRef.current) {
           pcRef.current.close();
@@ -68,30 +69,26 @@ export const WebRTCProvider: React.FC<{
           setConnected(pc.connectionState === "connected");
         };
 
-        pc.oniceconnectionstatechange = () =>
-          console.log(`[WebRTC] iceConnectionState → ${pc.iceConnectionState}`);
+        pc.oniceconnectionstatechange = () => {}
+          
 
         if (role === "student") {
           const channel = pc.createDataChannel("collab");
           channelRef.current = channel;
 
           channel.onopen = () => {
-            setConnected(true); // ✅ canal aberto = conectado
+            setConnected(true);
             if (queueRef.current.length > 0) {
-              queueRef.current.forEach((msg) =>
-                channel.send(JSON.stringify(msg)),
-              );
+              queueRef.current.forEach((msg) => channel.send(JSON.stringify(msg)));
               queueRef.current = [];
             }
           };
           channel.onclose = () => {
             setConnected(false);
           };
-          channel.onerror = (e) => console.error("[WebRTC] erro canal:", e);
+          channel.onerror = (e) => console.error("[WebRTC] erro canal (student):", e);
           channel.onmessage = (e) => {
-            try {
-              onDataRef.current(JSON.parse(e.data));
-            } catch {}
+            try { onDataRef.current(JSON.parse(e.data)); } catch {}
           };
         }
 
@@ -99,17 +96,14 @@ export const WebRTCProvider: React.FC<{
           const ch = e.channel;
           channelRef.current = ch;
           ch.onopen = () => {
-            setConnected(true); // ✅ canal aberto = conectado
+            setConnected(true);
           };
           ch.onclose = () => {
             setConnected(false);
           };
-          ch.onerror = (err) =>
-            console.error("[WebRTC] erro canal (teacher):", err);
+          ch.onerror = (err) => console.error("[WebRTC] erro canal (teacher):", err);
           ch.onmessage = (ev) => {
-            try {
-              onDataRef.current(JSON.parse(ev.data));
-            } catch {}
+            try { onDataRef.current(JSON.parse(ev.data)); } catch {}
           };
         };
 
@@ -120,6 +114,7 @@ export const WebRTCProvider: React.FC<{
               workspaceId,
               data: { candidate: e.candidate },
             });
+          } else {
           }
         };
 
@@ -143,6 +138,10 @@ export const WebRTCProvider: React.FC<{
         try {
           const msg = JSON.parse(event.data);
 
+          // ✅ Loga todas as mensagens WS relevantes
+          if (["webrtc-signal", "webrtc-ready", "webrtc-student-ready"].includes(msg.type)) {
+          }
+
           if (
             msg.type === "webrtc-ready" &&
             msg.workspaceId === workspaceId &&
@@ -161,30 +160,23 @@ export const WebRTCProvider: React.FC<{
             role === "teacher"
           ) {
             createPeer();
-            sendWSMessage?.({
-              type: "webrtc-ready",
-              workspaceId,
-              role: "teacher",
-            });
+            sendWSMessage?.({ type: "webrtc-ready", workspaceId, role: "teacher" });
             return;
           }
 
-          if (msg.type !== "webrtc-signal" || msg.workspaceId !== workspaceId)
-            return;
+          if (msg.type !== "webrtc-signal" || msg.workspaceId !== workspaceId) return;
 
           const pc = pcRef.current;
-          if (!pc) return;
+          if (!pc) {
+            console.warn(`[WebRTC] sinal recebido mas pc é null (${role})`);
+            return;
+          }
 
           if (msg.data.sdp) {
-            if (
-              msg.data.sdp.type === "offer" &&
-              role === "teacher" &&
-              pc.signalingState !== "stable"
-            ) {
+
+            if (msg.data.sdp.type === "offer" && role === "teacher") {
               const newPc = createPeer();
-              await newPc.setRemoteDescription(
-                new RTCSessionDescription(msg.data.sdp),
-              );
+              await newPc.setRemoteDescription(new RTCSessionDescription(msg.data.sdp));
               const answer = await newPc.createAnswer();
               await newPc.setLocalDescription(answer);
               sendWSMessage?.({
@@ -195,9 +187,7 @@ export const WebRTCProvider: React.FC<{
               return;
             }
 
-            await pc.setRemoteDescription(
-              new RTCSessionDescription(msg.data.sdp),
-            );
+            await pc.setRemoteDescription(new RTCSessionDescription(msg.data.sdp));
 
             if (msg.data.sdp.type === "offer") {
               const answer = await pc.createAnswer();
@@ -214,7 +204,6 @@ export const WebRTCProvider: React.FC<{
             await pc.addIceCandidate(new RTCIceCandidate(msg.data.candidate));
           }
         } catch (e) {
-          console.error("[WebRTC] erro no handler:", e);
         }
       };
 
@@ -227,11 +216,7 @@ export const WebRTCProvider: React.FC<{
       }
 
       if (role === "student") {
-        sendWSMessage?.({
-          type: "webrtc-student-ready",
-          workspaceId,
-          role: "student",
-        });
+        sendWSMessage?.({ type: "webrtc-student-ready", workspaceId, role: "student" });
 
         const pc = createPeer();
 
@@ -269,6 +254,8 @@ export const WebRTCProvider: React.FC<{
       } else {
         queueRef.current.push(data);
       }
+    } else {
+      console.warn(`[WebRTC] send ignorado — canal: ${ch?.readyState ?? "null"} | type: ${data.type}`);
     }
   };
 

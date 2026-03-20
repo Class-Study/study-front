@@ -31,9 +31,9 @@ const sendWSMessage = wsContext?.sendWSMessage;
       const channel = pc.createDataChannel("collab");
       channelRef.current = channel;
 
-      channel.onopen = () => console.log("[WebRTC] ✅ canal aberto (student)");
-      channel.onclose = () => console.log("[WebRTC] canal fechado (student)");
-      channel.onerror = (e) => console.error("[WebRTC] erro no canal:", e);
+      channel.onopen = () => 
+      channel.onclose = () => 
+      channel.onerror = (e) => 
       channel.onmessage = (e) => {
         try { onDataRef.current(JSON.parse(e.data)); } catch {}
       };
@@ -41,7 +41,7 @@ const sendWSMessage = wsContext?.sendWSMessage;
 
     pc.ondatachannel = (e) => {
       channelRef.current = e.channel;
-      e.channel.onopen = () => console.log("[WebRTC] ✅ canal aberto (teacher)");
+      e.channel.onopen = () => 
       e.channel.onmessage = (ev) => {
         try { onDataRef.current(JSON.parse(ev.data)); } catch {}
       };
@@ -55,7 +55,6 @@ const sendWSMessage = wsContext?.sendWSMessage;
           data: { candidate: e.candidate },
         });
       } else {
-        console.log("[WebRTC] ICE gathering completo");
       }
     };
 

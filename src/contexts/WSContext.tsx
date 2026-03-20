@@ -38,6 +38,7 @@ export const WSProvider: React.FC<{
     wsRef.current = socket;
 
     socket.onopen = () => {
+      console.log("[WS] professor conectado | workspaceId:", wsId);
       socket.send(JSON.stringify({ type: "join", userId: uid, workspaceId: wsId }));
       
       // ✅ Sem setWs — sem re-render, sem reinicialização do WebRTC
