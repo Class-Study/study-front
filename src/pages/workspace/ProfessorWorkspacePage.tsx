@@ -16,7 +16,6 @@ import { useChatMessages } from "@/hooks/useChatMessages";
 import { useWS, WSProvider } from "@/contexts/WSContext";
 import { WebRTCProvider, useWebRTC } from "@/contexts/WebRTCContext";
 import { WorkspaceSidebar } from "./components/WorkspaceSidebar/WorkspaceSidebar";
-import { ProfessorViewer } from "./components/WorkspaceEditor/ProfessorViewer";
 import { WorkspaceChat } from "./components/WorkspaceChat/WorkspaceChat";
 import { WorkspaceNotes } from "./components/WorkspaceNotes/WorkspaceNotes";
 import { UploadActivityModal } from "./components/UploadActivityModal/UploadActivityModal";
@@ -30,7 +29,44 @@ const SIDEBAR_MIN_WIDTH = 200;
 const SIDEBAR_MAX_WIDTH = 450;
 const SIDEBAR_WIDTH_STORAGE_KEY = "workspace.sidebar.width";
 
-// ─── ChatBridge — estado de chat vive aqui, dentro do WebRTCProvider ─────────
+// ─── VideoViewer ──────────────────────────────────────────────────────────────
+
+const VideoViewer: React.FC<{ stream: MediaStream | null; waiting: boolean }> = ({
+                                                                                   stream,
+                                                                                   waiting,
+                                                                                 }) => {
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  useEffect(() => {
+    if (videoRef.current && stream) {
+      videoRef.current.srcObject = stream;
+      videoRef.current.play().catch(() => {});
+    }
+  }, [stream]);
+
+  if (waiting || !stream) {
+    return (
+        <div className={styles.waiting}>
+          <span className={styles.waitingIcon}>👀</span>
+          <p className={styles.waitingText}>
+            Aguardando o aluno abrir um arquivo...
+          </p>
+        </div>
+    );
+  }
+
+  return (
+      <video
+          ref={videoRef}
+          autoPlay
+          playsInline
+          muted
+          style={{ width: "100%", height: "100%", objectFit: "contain" }}
+      />
+  );
+};
+
+// ─── ProfessorChatBridge ──────────────────────────────────────────────────────
 
 const ProfessorChatBridge: React.FC<{
   activityId: string | null;
@@ -41,49 +77,33 @@ const ProfessorChatBridge: React.FC<{
   onMessagesChange: () => void;
   onConnectedChange: (v: boolean) => void;
 }> = ({
-  activityId,
-  user,
-  messagesRef,
-  sendMessageRef,
-  addIncomingRef,
-  onMessagesChange,
-  onConnectedChange,
-}) => {
+        activityId,
+        user,
+        messagesRef,
+        sendMessageRef,
+        addIncomingRef,
+        onMessagesChange,
+        onConnectedChange,
+      }) => {
   const { send, connected } = useWebRTC();
-
   const { messages, sendMessage, addIncomingMessage } = useChatMessages({
     activityId,
     user,
     send,
   });
 
-  const prevLengthRef = useRef(-1);
-
-  useEffect(() => {
-    onConnectedChange(connected);
-  }, [connected]);
-
-  useEffect(() => {
-    messagesRef.current = messages;
-    onMessagesChange();
-  }, [messages]);
-  useEffect(() => {
-    sendMessageRef.current = sendMessage;
-  }, [sendMessage]);
-
-  useEffect(() => {
-    addIncomingRef.current = addIncomingMessage;
-  }, [addIncomingMessage]);
+  useEffect(() => { onConnectedChange(connected); }, [connected]);
+  useEffect(() => { messagesRef.current = messages; onMessagesChange(); }, [messages]);
+  useEffect(() => { sendMessageRef.current = sendMessage; }, [sendMessage]);
+  useEffect(() => { addIncomingRef.current = addIncomingMessage; }, [addIncomingMessage]);
 
   return null;
 };
 
-// ─── Camada interna — sem hooks de WebRTC ────────────────────────────────────
+// ─── ProfessorWorkspacePageContent ───────────────────────────────────────────
 
-const ProfessorWorkspacePageContent: React.FC<{
-  rtcHtml: string;
-  rtcCursor: { from: number; to: number; userName?: string } | null;
-  rtcScroll: number | null;
+interface ProfessorWorkspacePageContentProps {
+  remoteStream: MediaStream | null;
   onActivityChange: (activityId: string | null) => void;
   chatMessages: ChatMessage[];
   chatSendMessage: (content: string) => void;
@@ -91,18 +111,18 @@ const ProfessorWorkspacePageContent: React.FC<{
   studentActivityTitle: string | null;
   onStudentActivityChange: (activityId: string, activityTitle: string) => void;
   activeActivityIdRef: React.MutableRefObject<string | null>;
-}> = ({
-  rtcHtml,
-  rtcCursor,
-  rtcScroll,
-  onActivityChange,
-  chatMessages,
-  chatSendMessage,
-  peerConnected,
-  studentActivityTitle,
-  onStudentActivityChange,
-  activeActivityIdRef,
-}) => {
+}
+
+const ProfessorWorkspacePageContent: React.FC<ProfessorWorkspacePageContentProps> = ({
+                                                                                       remoteStream,
+                                                                                       onActivityChange,
+                                                                                       chatMessages,
+                                                                                       chatSendMessage,
+                                                                                       peerConnected,
+                                                                                       studentActivityTitle,
+                                                                                       onStudentActivityChange,
+                                                                                       activeActivityIdRef,
+                                                                                     }) => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { studentId } = useParams<{ studentId: string }>();
@@ -122,10 +142,7 @@ const ProfessorWorkspacePageContent: React.FC<{
     moveActivity,
   } = useWorkspace(targetStudentId, isStudent);
 
-  const [activeActivity, setActiveActivity] =
-    useState<WorkspaceActivity | null>(null);
-  const activeActivityRef = useRef<WorkspaceActivity | null>(null);
-
+  const [activeActivity, setActiveActivity] = useState<WorkspaceActivity | null>(null);
   const [studentName, setStudentName] = useState("");
   const [sidebarWidth, setSidebarWidth] = useState<number>(() => {
     if (typeof window === "undefined") return 240;
@@ -138,100 +155,76 @@ const ProfessorWorkspacePageContent: React.FC<{
   const [chatVisible, setChatVisible] = useState(true);
   const [isEditingNewWorkspace, setIsEditingNewWorkspace] = useState(false);
   const [newWorkspaceTitle, setNewWorkspaceTitle] = useState(
-    `Novo Workspace - ${new Date().toLocaleDateString("pt-BR")}`,
+      `Novo Workspace - ${new Date().toLocaleDateString("pt-BR")}`,
   );
-  const [newWorkspaceContent, setNewWorkspaceContent] =
-    useState<string>("<p></p>");
-  const [workspaceDrafts, setWorkspaceDrafts] = useState<
-    Record<string, { title: string; convertedHtml: string }>
-  >({});
-  const [workspaceDraftFeedback, setWorkspaceDraftFeedback] = useState<
-    string | null
-  >(null);
-  const [newItemForm, setNewItemForm] = useState<{ title: string } | null>(
-    null,
-  );
+  const [newWorkspaceContent, setNewWorkspaceContent] = useState<string>("<p></p>");
+  const [workspaceDrafts, setWorkspaceDrafts] = useState<Record<string, { title: string; convertedHtml: string }>>({});
+  const [workspaceDraftFeedback, setWorkspaceDraftFeedback] = useState<string | null>(null);
+  const [newItemForm, setNewItemForm] = useState<{ title: string } | null>(null);
   const [uploadModalState, setUploadModalState] = useState<{
     isOpen: boolean;
     folderId: string | null;
   }>({ isOpen: false, folderId: null });
-  const [previewActivity, setPreviewActivity] =
-    useState<WorkspaceActivity | null>(null);
+  const [previewActivity, setPreviewActivity] = useState<WorkspaceActivity | null>(null);
   const bodyRef = useRef<HTMLDivElement | null>(null);
   const isResizingRef = useRef(false);
   const initializedRef = useRef(false);
 
   const allActivities = useMemo(
-    () => [
-      ...workspaceActivities,
-      ...exerciseFolders.flatMap((folder) => folder.activities),
-    ],
-    [exerciseFolders, workspaceActivities],
+      () => [
+        ...workspaceActivities,
+        ...exerciseFolders.flatMap((folder) => folder.activities),
+      ],
+      [exerciseFolders, workspaceActivities],
   );
 
-  const { html: snapshotHtml, applyRemoteSnapshot } = useSnapshot({
+  const { applyRemoteSnapshot } = useSnapshot({
     activityId: activeActivity?.id ?? "",
     initialHtml: activeActivity?.convertedHtml,
     onSnapshot: () => {},
   });
 
+  const applyRemoteSnapshotRef = useRef(applyRemoteSnapshot);
+  useEffect(() => {
+    applyRemoteSnapshotRef.current = applyRemoteSnapshot;
+  }, [applyRemoteSnapshot]);
+
   useEffect(() => {
     if (!wsRef.current) return;
     const handleMessage = (event: MessageEvent) => {
       let message;
-      try {
-        message = JSON.parse(event.data);
-      } catch {
-        return;
-      }
-
-      console.log("[Professor WS] mensagem recebida | type:", message.type);
+      try { message = JSON.parse(event.data); } catch { return; }
 
       if (message.type === "snapshot" && message.snapshot) {
-        applyRemoteSnapshot(message.snapshot);
+        applyRemoteSnapshotRef.current(message.snapshot);
       }
       if (message.type === "student-activity-change") {
-        console.log("[Professor WS] student-activity-change recebido | activityId:", message.activityId, "| activityTitle:", message.activityTitle);
-        console.log("[Professor WS] chamando handleActivityChange com activityId:", message.activityId);
-        onStudentActivityChange(
-          message.activityId,
-          message.activityTitle ?? "",
-        );
+        onStudentActivityChange(message.activityId, message.activityTitle ?? "");
       }
     };
     wsRef.current.addEventListener("message", handleMessage);
     return () => wsRef.current?.removeEventListener("message", handleMessage);
-  }, [wsRef, applyRemoteSnapshot]);
+  }, [wsRef]);
 
   useEffect(() => {
     if (accessDenied) {
-      navigate(isStudent ? "/account-inactive" : "/access-denied", {
-        replace: true,
-      });
+      navigate(isStudent ? "/account-inactive" : "/access-denied", { replace: true });
     }
   }, [accessDenied, isStudent, navigate]);
 
-  useEffect(() => {
-    fetchWorkspace();
-  }, [fetchWorkspace, targetStudentId]);
+  useEffect(() => { fetchWorkspace(); }, [fetchWorkspace, targetStudentId]);
 
   useEffect(() => {
     if (!targetStudentId) return;
-    if (isStudent) {
-      setStudentName(user?.name ?? "Aluno");
-      return;
-    }
-    studentService
-      .getById(targetStudentId)
-      .then((student) => setStudentName(student.name))
-      .catch(() => {});
+    if (isStudent) { setStudentName(user?.name ?? "Aluno"); return; }
+    studentService.getById(targetStudentId)
+        .then((student) => setStudentName(student.name))
+        .catch(() => {});
   }, [isStudent, targetStudentId, user?.name]);
 
   useEffect(() => {
     if (allActivities.length > 0 && !initializedRef.current) {
       initializedRef.current = true;
-
-      // ✅ Só seta a primeira atividade se o aluno ainda não enviou nenhuma
       if (!activeActivityIdRef.current) {
         const first = workspaceActivities[0] ?? allActivities[0];
         setActiveActivity(first);
@@ -243,7 +236,6 @@ const ProfessorWorkspacePageContent: React.FC<{
   useEffect(() => {
     if (!activeActivity) return;
     const updated = allActivities.find((a) => a.id === activeActivity.id);
-
     if (updated && updated.convertedHtml !== activeActivity.convertedHtml) {
       setActiveActivity(updated);
     }
@@ -265,10 +257,7 @@ const ProfessorWorkspacePageContent: React.FC<{
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    window.localStorage.setItem(
-      SIDEBAR_WIDTH_STORAGE_KEY,
-      String(sidebarWidth),
-    );
+    window.localStorage.setItem(SIDEBAR_WIDTH_STORAGE_KEY, String(sidebarWidth));
   }, [sidebarWidth]);
 
   const breadcrumbItems = [
@@ -278,9 +267,7 @@ const ProfessorWorkspacePageContent: React.FC<{
     },
     {
       label: studentName || "Aluno",
-      path: isStudent
-        ? "/student/profile"
-        : `/dashboard/student/${targetStudentId}`,
+      path: isStudent ? "/student/profile" : `/dashboard/student/${targetStudentId}`,
     },
     { label: "Workspace" },
   ];
@@ -291,33 +278,13 @@ const ProfessorWorkspacePageContent: React.FC<{
     if (folder) setNewItemForm(null);
   };
 
-  const handleCreateWorkspace = async (): Promise<void> => {
-    setIsEditingNewWorkspace(true);
-    setWorkspaceDraftFeedback(null);
-    if (!newWorkspaceTitle.trim()) {
-      setNewWorkspaceTitle(
-        `Novo Workspace - ${new Date().toLocaleDateString("pt-BR")}`,
-      );
-    }
-  };
-
-  const handleOpenUploadForFolder = (folderId: string): void => {
-    setUploadModalState({ isOpen: true, folderId });
-  };
-
   const handleSaveUploadedActivity = async (payload: {
-    folderId: string;
-    title: string;
-    type: "EXERCISE";
-    convertedHtml: string;
-    originalFilename: string;
+    folderId: string; title: string; type: "EXERCISE";
+    convertedHtml: string; originalFilename: string;
   }): Promise<void> => {
     const activity = await createActivity(
-      payload.folderId,
-      payload.title,
-      payload.type,
-      payload.convertedHtml,
-      payload.originalFilename,
+        payload.folderId, payload.title, payload.type,
+        payload.convertedHtml, payload.originalFilename,
     );
     if (!activity) throw new Error("Falha ao criar atividade");
     setActiveActivity(activity);
@@ -328,61 +295,44 @@ const ProfessorWorkspacePageContent: React.FC<{
     setPreviewActivity(activity);
   };
 
-  const handleMoveActivity = async (
-    activityId: string,
-    targetFolderId: string,
-  ): Promise<void> => {
+  const handleMoveActivity = async (activityId: string, targetFolderId: string): Promise<void> => {
     const moved = await moveActivity(activityId, targetFolderId);
     if (!moved) alert("Nao foi possivel mover a atividade. Tente novamente.");
   };
 
-  const handleWorkspaceDraftSave = (): void =>
-    setWorkspaceDraftFeedback("Rascunho salvo localmente.");
+  const handleWorkspaceDraftSave = (): void => setWorkspaceDraftFeedback("Rascunho salvo localmente.");
   const handleCloseWorkspaceDraft = (): void => {
     setIsEditingNewWorkspace(false);
     setWorkspaceDraftFeedback(null);
   };
 
-  const isWorkspaceActive =
-    isEditingNewWorkspace || activeActivity?.type === "WORKSPACE";
-  const selectedWorkspaceDraft =
-    activeActivity?.type === "WORKSPACE"
-      ? workspaceDrafts[activeActivity.id]
-      : null;
+  const isWorkspaceActive = isEditingNewWorkspace || activeActivity?.type === "WORKSPACE";
+  const selectedWorkspaceDraft = activeActivity?.type === "WORKSPACE"
+      ? workspaceDrafts[activeActivity.id] : null;
 
   const workspaceTitle = isEditingNewWorkspace
-    ? newWorkspaceTitle
-    : (selectedWorkspaceDraft?.title ?? activeActivity?.title ?? "");
+      ? newWorkspaceTitle
+      : (selectedWorkspaceDraft?.title ?? activeActivity?.title ?? "");
 
   const workspaceContent = isEditingNewWorkspace
-    ? newWorkspaceContent
-    : (selectedWorkspaceDraft?.convertedHtml ??
-      activeActivity?.convertedHtml ??
-      "<p></p>");
+      ? newWorkspaceContent
+      : (selectedWorkspaceDraft?.convertedHtml ?? activeActivity?.convertedHtml ?? "<p></p>");
 
   const updateWorkspaceTitle = (nextTitle: string): void => {
-    if (isEditingNewWorkspace) {
-      setNewWorkspaceTitle(nextTitle);
-      return;
-    }
+    if (isEditingNewWorkspace) { setNewWorkspaceTitle(nextTitle); return; }
     if (!activeActivity || activeActivity.type !== "WORKSPACE") return;
     setWorkspaceDrafts((prev) => ({
       ...prev,
       [activeActivity.id]: {
         title: nextTitle,
-        convertedHtml:
-          prev[activeActivity.id]?.convertedHtml ??
-          activeActivity.convertedHtml,
+        convertedHtml: prev[activeActivity.id]?.convertedHtml ?? activeActivity.convertedHtml,
       },
     }));
   };
 
   const updateWorkspaceContent = (nextHtml: string): void => {
     setWorkspaceDraftFeedback(null);
-    if (isEditingNewWorkspace) {
-      setNewWorkspaceContent(nextHtml);
-      return;
-    }
+    if (isEditingNewWorkspace) { setNewWorkspaceContent(nextHtml); return; }
     if (!activeActivity || activeActivity.type !== "WORKSPACE") return;
     setWorkspaceDrafts((prev) => ({
       ...prev,
@@ -404,10 +354,7 @@ const ProfessorWorkspacePageContent: React.FC<{
   const handleSidebarResize = (event: MouseEvent): void => {
     if (!isResizingRef.current) return;
     const containerLeft = bodyRef.current?.getBoundingClientRect().left ?? 0;
-    const nextWidth = Math.min(
-      SIDEBAR_MAX_WIDTH,
-      Math.max(SIDEBAR_MIN_WIDTH, event.clientX - containerLeft),
-    );
+    const nextWidth = Math.min(SIDEBAR_MAX_WIDTH, Math.max(SIDEBAR_MIN_WIDTH, event.clientX - containerLeft));
     setSidebarWidth(nextWidth);
   };
 
@@ -427,223 +374,159 @@ const ProfessorWorkspacePageContent: React.FC<{
     };
   }, []);
 
-  const viewerHtml = rtcHtml || snapshotHtml || "";
-
   if (loading) {
     return (
-      <div className={styles.page}>
-        <Header breadcrumbItems={breadcrumbItems} />
-        <div className={styles.loadingState}>Carregando workspace...</div>
-      </div>
+        <div className={styles.page}>
+          <Header breadcrumbItems={breadcrumbItems} />
+          <div className={styles.loadingState}>Carregando workspace...</div>
+        </div>
     );
   }
 
   if (error) {
     return (
-      <div className={styles.page}>
-        <Header breadcrumbItems={breadcrumbItems} />
-        <div className={styles.errorState}>{error}</div>
-      </div>
+        <div className={styles.page}>
+          <Header breadcrumbItems={breadcrumbItems} />
+          <div className={styles.errorState}>{error}</div>
+        </div>
     );
   }
 
   return (
-    <div className={styles.page}>
-      <Header breadcrumbItems={breadcrumbItems} />
+      <div className={styles.page}>
+        <Header breadcrumbItems={breadcrumbItems} />
 
-      <div className={styles.toolbar}>
-        {sidebarCollapsed && (
-          <button
-            type="button"
-            className={styles.expandSidebarBtn}
-            onClick={() => setSidebarCollapsed(false)}
-            title="Expandir sidebar"
-          >
-            ▶
-          </button>
-        )}
-        <button
-          type="button"
-          className={`${styles.chatToggleBtn} ${chatVisible ? styles.chatToggleBtnActive : ""}`}
-          onClick={() => setChatVisible((v) => !v)}
-        >
-          ⇌ Chat
-        </button>
-      </div>
-
-      <div className={styles.body} ref={bodyRef}>
-        <WorkspaceSidebar
-          folders={exerciseFolders}
-          workspaces={workspaceActivities}
-          activeActivityId={activeActivity?.id ?? null}
-          width={sidebarWidth}
-          onSelectActivity={handleSelectActivity}
-          collapsed={sidebarCollapsed}
-          onToggleCollapse={() => setSidebarCollapsed((prev) => !prev)}
-          onResizeStart={handleSidebarResizeStart}
-          newItemForm={newItemForm}
-          onChangeNewItemForm={setNewItemForm}
-          onCreateFolder={handleCreateFolder}
-          onOpenUploadForFolder={handleOpenUploadForFolder}
-          onMoveActivity={handleMoveActivity}
-          readOnly={isStudent}
-        />
-        <div className={styles.editorArea}>
-          <ActiveFileBar
-            activityTitle={studentActivityTitle}
-            isLive={peerConnected}
-          />
-          {isWorkspaceActive ? (
-            <div className={styles.workspaceContainer}>
-              <div className={styles.workspaceHeaderRow}>
-                <input
-                  className={styles.workspaceTitleInput}
-                  placeholder="Titulo do Workspace..."
-                  value={workspaceTitle}
-                  onChange={(event) => updateWorkspaceTitle(event.target.value)}
-                />
-                <div className={styles.workspaceActions}>
-                  <button
-                    type="button"
-                    className={styles.workspaceSecondaryBtn}
-                    onClick={handleCloseWorkspaceDraft}
-                  >
-                    Fechar
-                  </button>
-                  <button
-                    type="button"
-                    className={styles.workspacePrimaryBtn}
-                    onClick={handleWorkspaceDraftSave}
-                  >
-                    Salvar
-                  </button>
-                </div>
-              </div>
-              {workspaceDraftFeedback && (
-                <span className={styles.workspaceFeedback}>
-                  {workspaceDraftFeedback}
-                </span>
-              )}
-              <div className={styles.workspaceEditorBody}>
-                <DocxPreviewEditor
-                  html={workspaceContent}
-                  editable={true}
-                  onChange={updateWorkspaceContent}
-                />
-              </div>
-            </div>
-          ) : (
-            activeActivity && (
-              <ProfessorViewer
-                html={viewerHtml}
-                cursor={rtcCursor}
-                scroll={rtcScroll}
-                studentName={studentName}
-                waiting={!viewerHtml && peerConnected} // ✅ conectado mas sem html ainda
-              />
-            )
+        <div className={styles.toolbar}>
+          {sidebarCollapsed && (
+              <button type="button" className={styles.expandSidebarBtn}
+                      onClick={() => setSidebarCollapsed(false)} title="Expandir sidebar">
+                ▶
+              </button>
           )}
+          <button
+              type="button"
+              className={`${styles.chatToggleBtn} ${chatVisible ? styles.chatToggleBtnActive : ""}`}
+              onClick={() => setChatVisible((v) => !v)}
+          >
+            ⇌ Chat
+          </button>
         </div>
 
-        <div
-          className={`${styles.rightPanel} ${chatVisible ? "" : styles.rightPanelHidden}`}
-        >
-          <div className={styles.chatSection}>
-            <PresenceCard
-              name={studentName}
-              label="Aluno"
-              connected={peerConnected}
-            />
-            <WorkspaceChat
-              activityTitle={activeActivity?.title ?? ""}
-              messages={chatMessages}
-              onSendMessage={chatSendMessage}
-            />
+        <div className={styles.body} ref={bodyRef}>
+          <WorkspaceSidebar
+              folders={exerciseFolders}
+              workspaces={workspaceActivities}
+              activeActivityId={activeActivity?.id ?? null}
+              width={sidebarWidth}
+              onSelectActivity={handleSelectActivity}
+              collapsed={sidebarCollapsed}
+              onToggleCollapse={() => setSidebarCollapsed((prev) => !prev)}
+              onResizeStart={handleSidebarResizeStart}
+              newItemForm={newItemForm}
+              onChangeNewItemForm={setNewItemForm}
+              onCreateFolder={handleCreateFolder}
+              onOpenUploadForFolder={(folderId) => setUploadModalState({ isOpen: true, folderId })}
+              onMoveActivity={handleMoveActivity}
+              readOnly={isStudent}
+          />
+
+          <div className={styles.editorArea}>
+            <ActiveFileBar activityTitle={studentActivityTitle} isLive={peerConnected} />
+            {isWorkspaceActive ? (
+                <div className={styles.workspaceContainer}>
+                  <div className={styles.workspaceHeaderRow}>
+                    <input
+                        className={styles.workspaceTitleInput}
+                        placeholder="Titulo do Workspace..."
+                        value={workspaceTitle}
+                        onChange={(event) => updateWorkspaceTitle(event.target.value)}
+                    />
+                    <div className={styles.workspaceActions}>
+                      <button type="button" className={styles.workspaceSecondaryBtn}
+                              onClick={handleCloseWorkspaceDraft}>Fechar</button>
+                      <button type="button" className={styles.workspacePrimaryBtn}
+                              onClick={handleWorkspaceDraftSave}>Salvar</button>
+                    </div>
+                  </div>
+                  {workspaceDraftFeedback && (
+                      <span className={styles.workspaceFeedback}>{workspaceDraftFeedback}</span>
+                  )}
+                  <div className={styles.workspaceEditorBody}>
+                    <DocxPreviewEditor
+                        html={workspaceContent}
+                        editable={true}
+                        onChange={updateWorkspaceContent}
+                    />
+                  </div>
+                </div>
+            ) : (
+                activeActivity && (
+                    <VideoViewer
+                        stream={remoteStream}
+                        waiting={!remoteStream && peerConnected}
+                    />
+                )
+            )}
           </div>
-          <div className={styles.notesSection}>
-            <WorkspaceNotes
-              activityTitle={activeActivity?.title ?? ""}
-              studentId={targetStudentId}
-            />
+
+          <div className={`${styles.rightPanel} ${chatVisible ? "" : styles.rightPanelHidden}`}>
+            <div className={styles.chatSection}>
+              <PresenceCard name={studentName} label="Aluno" connected={peerConnected} />
+              <WorkspaceChat
+                  activityTitle={activeActivity?.title ?? ""}
+                  messages={chatMessages}
+                  onSendMessage={chatSendMessage}
+              />
+            </div>
+            <div className={styles.notesSection}>
+              <WorkspaceNotes activityTitle={activeActivity?.title ?? ""} studentId={targetStudentId} />
+            </div>
           </div>
         </div>
+
+        <UploadActivityModal
+            isOpen={!isStudent && uploadModalState.isOpen}
+            folders={exerciseFolders}
+            selectedFolderId={uploadModalState.folderId}
+            onClose={() => setUploadModalState({ isOpen: false, folderId: null })}
+            onSave={handleSaveUploadedActivity}
+        />
+        <ActivityPreviewModal activity={previewActivity} onClose={() => setPreviewActivity(null)} />
       </div>
-
-      <UploadActivityModal
-        isOpen={!isStudent && uploadModalState.isOpen}
-        folders={exerciseFolders}
-        selectedFolderId={uploadModalState.folderId}
-        onClose={() => setUploadModalState({ isOpen: false, folderId: null })}
-        onSave={handleSaveUploadedActivity}
-      />
-      <ActivityPreviewModal
-        activity={previewActivity}
-        onClose={() => setPreviewActivity(null)}
-      />
-    </div>
   );
 };
 
-// ─── Camada externa ───────────────────────────────────────────────────────────
+// ─── ProfessorWorkspacePage (pai) ─────────────────────────────────────────────
 
 const ProfessorWorkspacePage: React.FC = () => {
   const { user } = useAuth();
   const { studentId } = useParams<{ studentId: string }>();
   const targetStudentId = studentId ?? user?.id ?? "";
 
-  const [rtcHtml, setRtcHtml] = useState("");
-  const [rtcCursor, setRtcCursor] = useState<{
-    from: number;
-    to: number;
-    userName?: string;
-  } | null>(null);
-  const [rtcScroll, setRtcScroll] = useState<number | null>(null);
   const [activeActivityId, setActiveActivityId] = useState<string | null>(null);
-
-  // ✅ Chat via refs + estado separado para forçar re-render com nova referência
+  const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
   const messagesRef = useRef<ChatMessage[]>([]);
   const [peerConnected, setPeerConnected] = useState(false);
-  const [studentActivityTitle, setStudentActivityTitle] = useState<
-    string | null
-  >(null);
+  const [studentActivityTitle, setStudentActivityTitle] = useState<string | null>(null);
   const sendMessageRef = useRef<(content: string) => void>(() => {});
   const addIncomingRef = useRef<((data: any) => void) | null>(null);
-
-  // ✅ chatMessages é um estado real — nova referência a cada update
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const studentActivityIdRef = useRef<string | null>(null);
+  const activeActivityIdRef = useRef<string | null>(null);
 
   const handleData = useCallback((data: any) => {
-    if (data.type === "html") setRtcHtml(data.html);
-    if (data.type === "cursor") setRtcCursor(data);
-    if (data.type === "scroll") setRtcScroll(data.top);
     if (data.type === "chat") addIncomingRef.current?.(data);
     if (data.type === "student-activity") {
       studentActivityIdRef.current = data.activityId;
       setStudentActivityTitle(data.activityTitle);
-      // ✅ Não limpa rtcHtml aqui — o html novo vai sobrescrever via "html" type
     }
   }, []);
 
-  const activeActivityIdRef = useRef<string | null>(null);
-
   const handleActivityChange = useCallback((activityId: string | null) => {
-    console.log(
-      "[PAI] handleActivityChange:",
-      activityId,
-      "| ref:",
-      activeActivityIdRef.current,
-      "| igual?",
-      activityId === activeActivityIdRef.current,
-    );
-    if (activityId === activeActivityIdRef.current) {
-      return;
-    }
+    if (activityId === activeActivityIdRef.current) return;
     activeActivityIdRef.current = activityId;
     setActiveActivityId(activityId);
-    setRtcHtml("");
-    setRtcCursor(null);
-    setRtcScroll(null);
+    setRemoteStream(null);
     messagesRef.current = [];
     setChatMessages([]);
   }, []);
@@ -653,19 +536,14 @@ const ProfessorWorkspacePage: React.FC = () => {
   }, []);
 
   const workspaceId = activeActivityId
-    ? `${activeActivityId}-${targetStudentId}`
-    : null;
+      ? `${activeActivityId}-${targetStudentId}`
+      : null;
 
   if (!user?.id || !targetStudentId) return null;
 
   const userForChat = useMemo(
-    () => ({
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-    }),
-    [user.id, user.name, user.email, user.role],
+      () => ({ id: user.id, name: user.name, email: user.email, role: user.role }),
+      [user.id, user.name, user.email, user.role],
   );
 
   const chatSendMessage = useCallback((content: string) => {
@@ -673,44 +551,41 @@ const ProfessorWorkspacePage: React.FC = () => {
   }, []);
 
   return (
-    <WSProvider userId={user.id} workspaceId={targetStudentId}>
-      {/* ✅ Content sempre montado — nunca remonta com troca de atividade */}
-      <ProfessorWorkspacePageContent
-        rtcHtml={rtcHtml}
-        rtcCursor={rtcCursor}
-        rtcScroll={rtcScroll}
-        onActivityChange={handleActivityChange}
-        onStudentActivityChange={(activityId, activityTitle) => {
-          handleActivityChange(activityId); // passa só o activityId
-          setStudentActivityTitle(activityTitle);
-        }}
-        chatMessages={chatMessages}
-        chatSendMessage={chatSendMessage}
-        peerConnected={peerConnected}
-        studentActivityTitle={studentActivityTitle}
-        activeActivityIdRef={activeActivityIdRef}
-      />
+      <WSProvider userId={user.id} workspaceId={targetStudentId}>
+        <ProfessorWorkspacePageContent
+            remoteStream={remoteStream}
+            onActivityChange={handleActivityChange}
+            onStudentActivityChange={(activityId, activityTitle) => {
+              handleActivityChange(activityId);
+              setStudentActivityTitle(activityTitle);
+            }}
+            chatMessages={chatMessages}
+            chatSendMessage={chatSendMessage}
+            peerConnected={peerConnected}
+            studentActivityTitle={studentActivityTitle}
+            activeActivityIdRef={activeActivityIdRef}
+        />
 
-      {/* ✅ WebRTCProvider separado — remonta sozinho sem arrastar o Content */}
-      {workspaceId && (
-        <WebRTCProvider
-          key={workspaceId}
-          workspaceId={workspaceId}
-          role="teacher"
-          onData={handleData}
-        >
-          <ProfessorChatBridge
-            activityId={activeActivityId}
-            user={userForChat}
-            messagesRef={messagesRef}
-            sendMessageRef={sendMessageRef}
-            addIncomingRef={addIncomingRef}
-            onMessagesChange={handleMessagesChange}
-            onConnectedChange={setPeerConnected}
-          />
-        </WebRTCProvider>
-      )}
-    </WSProvider>
+        {workspaceId && (
+            <WebRTCProvider
+                key={workspaceId}
+                workspaceId={workspaceId}
+                role="teacher"
+                onData={handleData}
+                onRemoteStream={setRemoteStream}
+            >
+              <ProfessorChatBridge
+                  activityId={activeActivityId}
+                  user={userForChat}
+                  messagesRef={messagesRef}
+                  sendMessageRef={sendMessageRef}
+                  addIncomingRef={addIncomingRef}
+                  onMessagesChange={handleMessagesChange}
+                  onConnectedChange={setPeerConnected}
+              />
+            </WebRTCProvider>
+        )}
+      </WSProvider>
   );
 };
 

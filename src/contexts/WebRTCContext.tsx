@@ -11,11 +11,13 @@ import { useWS } from "./WSContext";
 interface WebRTCContextValue {
   send: (data: any) => void;
   connected: boolean;
+  remoteStream: MediaStream | null;
 }
 
 const WebRTCContext = createContext<WebRTCContextValue>({
   send: () => {},
   connected: false,
+  remoteStream: null,
 });
 
 export const WebRTCProvider: React.FC<{
@@ -23,7 +25,9 @@ export const WebRTCProvider: React.FC<{
   workspaceId: string;
   role: "student" | "teacher";
   onData: (data: any) => void;
-}> = ({ children, workspaceId, role, onData }) => {
+  videoStream?: MediaStream | null;
+  onRemoteStream?: (stream: MediaStream) => void;
+}> = ({ children, workspaceId, role, onData, videoStream, onRemoteStream }) => {
   const { wsRef, sendWSMessage } = useWS();
 
   const pcRef = useRef<RTCPeerConnection | null>(null);
@@ -31,12 +35,18 @@ export const WebRTCProvider: React.FC<{
   const onDataRef = useRef(onData);
   const initializedRef = useRef(false);
   const queueRef = useRef<any[]>([]);
+  const onRemoteStreamRef = useRef(onRemoteStream);
 
   const [connected, setConnected] = useState(false);
+  const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
 
   useEffect(() => {
     onDataRef.current = onData;
   }, [onData]);
+
+  useEffect(() => {
+    onRemoteStreamRef.current = onRemoteStream;
+  }, [onRemoteStream]);
 
   useEffect(() => {
     if (initializedRef.current) return;
@@ -70,7 +80,15 @@ export const WebRTCProvider: React.FC<{
         };
 
         pc.oniceconnectionstatechange = () => {}
-          
+
+        // ✅ Professor recebe o stream de vídeo do aluno
+        pc.ontrack = (event) => {
+          if (role === "teacher" && event.streams[0]) {
+            setRemoteStream(event.streams[0]);
+            onRemoteStreamRef.current?.(event.streams[0]);
+          }
+        };
+
 
         if (role === "student") {
           const channel = pc.createDataChannel("collab");
@@ -117,6 +135,13 @@ export const WebRTCProvider: React.FC<{
           } else {
           }
         };
+
+        // ✅ Aluno adiciona tracks de vídeo quando videoStream está disponível
+        if (role === "student" && videoStream) {
+          videoStream.getTracks().forEach((track) => {
+            pc.addTrack(track, videoStream);
+          });
+        }
 
         return pc;
       };
@@ -259,8 +284,38 @@ export const WebRTCProvider: React.FC<{
     }
   };
 
+  // ✅ Quando videoStream muda (aluno troca de atividade), renegocia
+  useEffect(() => {
+    const pc = pcRef.current;
+    if (!pc || !videoStream || role !== "student") return;
+
+    // Remove tracks antigas
+    pc.getSenders().forEach((sender) => {
+      if (sender.track?.kind === "video") {
+        pc.removeTrack(sender);
+      }
+    });
+
+    // Adiciona novas tracks
+    videoStream.getTracks().forEach((track) => {
+      pc.addTrack(track, videoStream);
+    });
+
+    // Renegocia
+    pc.createOffer()
+      .then((offer) => pc.setLocalDescription(offer))
+      .then(() => {
+        sendWSMessage?.({
+          type: "webrtc-signal",
+          workspaceId,
+          data: { sdp: pc.localDescription },
+        });
+      })
+      .catch(() => {});
+  }, [videoStream, role, workspaceId, sendWSMessage]);
+
   return (
-    <WebRTCContext.Provider value={{ send, connected }}>
+    <WebRTCContext.Provider value={{ send, connected, remoteStream }}>
       {children}
     </WebRTCContext.Provider>
   );

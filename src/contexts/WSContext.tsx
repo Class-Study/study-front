@@ -1,9 +1,4 @@
-import React, {
-  createContext,
-  useContext,
-  useEffect,
-  useRef,
-} from "react";
+import React, { createContext, useContext, useEffect, useRef } from "react";
 
 const WS_URL = "ws://localhost:8080/api/v1/ws";
 
@@ -38,9 +33,12 @@ export const WSProvider: React.FC<{
     wsRef.current = socket;
 
     socket.onopen = () => {
-      console.log("[WS] professor conectado | workspaceId:", wsId);
-      socket.send(JSON.stringify({ type: "join", userId: uid, workspaceId: wsId }));
-      
+      console.log("[WS] conectado | userId:", uid, "| workspaceId:", wsId);
+
+      socket.send(
+        JSON.stringify({ type: "join", userId: uid, workspaceId: wsId }),
+      );
+
       // ✅ Sem setWs — sem re-render, sem reinicialização do WebRTC
       onOpenCallbackRef.current?.();
 
@@ -69,12 +67,19 @@ export const WSProvider: React.FC<{
     if (
       wsRef.current?.readyState === WebSocket.OPEN ||
       wsRef.current?.readyState === WebSocket.CONNECTING
-    ) return;
+    )
+      return;
 
     createSocket(userId, workspaceId);
   }, [userId, workspaceId]);
 
   const sendWSMessage = (msg: any) => {
+    console.log(
+      "[WS] sendWSMessage | type:",
+      msg.type,
+      "| readyState:",
+      wsRef.current?.readyState ?? "null",
+    );
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify(msg));
     }

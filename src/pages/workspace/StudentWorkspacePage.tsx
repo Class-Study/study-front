@@ -1,3 +1,4 @@
+import { useEditorCapture } from "@/hooks/useEditorCapture";
 import { WSProvider, useWS } from "@/contexts/WSContext";
 import { WebRTCProvider, useWebRTC } from "@/contexts/WebRTCContext";
 import { useChatMessages } from "@/hooks/useChatMessages";
@@ -68,13 +69,10 @@ const ChatBridge: React.FC<{
 
   // Envia student-activity quando conecta OU muda activityId
   useEffect(() => {
-    console.log("[ChatBridge] check student-activity | connected:", connected,
-      "| activityId:", activityId,
-      "| activityTitle:", activityTitle);
+
 
     if (!connected || !activityId) return;
 
-    console.log("[ChatBridge] enviando student-activity | activityId:", activityId);
 
     send({
       type: "student-activity",
@@ -85,16 +83,12 @@ const ChatBridge: React.FC<{
 
   // Envia HTML inicial — usa activityId como dependência primária
   useEffect(() => {
-    console.log("[ChatBridge] check html inicial | connected:", connected,
-      "| activityId:", activityId,
-      "| currentHtml length:", currentHtml?.length ?? 0,
-      "| sentInitialRef:", sentInitialHtmlRef.current);
+
 
     if (!connected || !activityId || !currentHtml) return;
     if (sentInitialHtmlRef.current) return;
 
-    console.log("[ChatBridge] enviando html inicial | activityId:", activityId,
-      "| length:", currentHtml.length);
+
 
     send({ type: "html", html: currentHtml, activityId });
     sentInitialHtmlRef.current = true;
@@ -165,7 +159,17 @@ const StudentWorkspacePageInner: React.FC<StudentWorkspacePageInnerProps> = ({
   const { wsRef, sendWSMessage, onReconnect } = useWS();
   const [activeActivity, setActiveActivity] =
     useState<WorkspaceActivity | null>(null);
-  const sentInitialHtmlRef = useRef(false);
+
+  // ✅ Editor capture para transmissão de vídeo via WebRTC
+  const editorContainerRef = useRef<HTMLDivElement>(null);
+  const [videoStream, setVideoStream] = useState<MediaStream | null>(null);
+
+  useEditorCapture({
+    elementRef: editorContainerRef,
+    enabled: !!activeActivity && activeActivity.type === "EXERCISE",
+    intervalMs: 100,
+    onStream: setVideoStream,
+  });
 
   const [sidebarWidth, setSidebarWidth] = useState<number>(() => {
     if (typeof window === "undefined") return 240;
@@ -271,8 +275,6 @@ const StudentWorkspacePageInner: React.FC<StudentWorkspacePageInnerProps> = ({
     setWorkspaceDraftFeedback(null);
     setActiveActivity(activity);
 
-    console.log("[handleSelectActivity] atividade selecionada:", activity.id, activity.title);
-    console.log("[handleSelectActivity] enviando WS student-activity-change | workspaceId:", studentId, "| activityId:", activity.id);
 
     sendWSMessage({
       type: "student-activity-change",
@@ -280,8 +282,6 @@ const StudentWorkspacePageInner: React.FC<StudentWorkspacePageInnerProps> = ({
       activityId: activity.id,
       activityTitle: activity.title,
     });
-
-    console.log("[handleSelectActivity] WS enviado");
   };
 
   const handleCreateWorkspace = (): void => {
@@ -469,6 +469,7 @@ const StudentWorkspacePageInner: React.FC<StudentWorkspacePageInnerProps> = ({
                 // ✅ Redireciona chat do professor para o hook via ref
                 if (data.type === "chat") addIncomingMessageRef.current?.(data);
               }}
+              videoStream={videoStream}
             >
               {/* ✅ ChatBridge — acessa useWebRTC() e atualiza pai via setters diretos */}
               <ChatBridge
@@ -497,6 +498,7 @@ const StudentWorkspacePageInner: React.FC<StudentWorkspacePageInnerProps> = ({
                     <span className={styles.savingIndicator}>Salvando...</span>
                   ) : null
                 }
+                editorContainerRef={editorContainerRef}
               />
             </WebRTCProvider>
           ) : (

@@ -25,6 +25,7 @@ interface WorkspaceEditorProps {
   onCursorChange?: (from: number, to: number) => void;
   remoteCursor?: { from: number; to: number; userName: string } | null;
   headerStatus?: React.ReactNode;
+  editorContainerRef?: React.RefObject<HTMLDivElement>;
 }
 
 export const WorkspaceEditor: React.FC<WorkspaceEditorProps> = ({
@@ -37,6 +38,7 @@ export const WorkspaceEditor: React.FC<WorkspaceEditorProps> = ({
   onCursorChange,
   remoteCursor,
   headerStatus,
+  editorContainerRef,
 }) => {
   const { send } = useWebRTC(); // ✅ pega do WebRTCProvider acima
 
@@ -94,9 +96,6 @@ export const WorkspaceEditor: React.FC<WorkspaceEditorProps> = ({
       const newHtml = editor.getHTML();
       onContentChange?.(newHtml);
 
-      // ✅ Envia HTML em tempo real via WebRTC
-      send({ type: "html", html: newHtml, activityId: activity?.id });
-      // ✅ Remove o send de student-activity daqui — já é feito no ChatBridge
 
       const { from } = editor.state.selection;
       const textOffset = editor.state.doc.textBetween(0, from, "").length;
@@ -109,8 +108,6 @@ export const WorkspaceEditor: React.FC<WorkspaceEditorProps> = ({
         to: textOffset,
         activityId: activity?.id,
       });
-
-      // ❌ Removido: envio de student-activity é responsabilidade do ChatBridge
     },
 
     onSelectionUpdate: ({ editor, transaction }) => {
@@ -160,46 +157,31 @@ export const WorkspaceEditor: React.FC<WorkspaceEditorProps> = ({
   }, [editor, editable]);
 
   useEffect(() => {
-    console.log("[Editor] useEffect disparou | activityId:", activity?.id,
-      "| lastActivityId:", lastActivityIdRef.current,
-      "| isActivityChange:", activity?.id !== lastActivityIdRef.current,
-      "| html length:", html?.length ?? 0,
-      "| editable:", editable,
-      "| editor existe:", !!editor);
-
     if (!editor) return;
     const content = html ?? activity?.convertedHtml;
-    if (!content) {
-      console.log("[Editor] sem content, abortando | activityId:", activity?.id);
-      return;
-    }
-
     const isActivityChange = activity?.id !== lastActivityIdRef.current;
-    lastActivityIdRef.current = activity?.id ?? null;
 
+    // ✅ Quando é troca de atividade, ignora comparação de html
+    // O html pode ser do arquivo anterior nesse momento
     if (isActivityChange || !editable) {
-      if (editor.getHTML() === content) {
-        console.log("[Editor] html idêntico, sem troca | activityId:", activity?.id);
+      if (!isActivityChange && editor.getHTML() === content) {
+        return;
+      }
+      if (!content) {
         return;
       }
 
-      console.log("[Editor] trocando conteúdo | activityId:", activity?.id,
-        "| isActivityChange:", isActivityChange,
-        "| novo html length:", content.length);
+      const nextActivityId = activity?.id ?? null;
 
       queueMicrotask(() => {
+        lastActivityIdRef.current = nextActivityId;
+        editor.commands.setContent(content ?? "");
         const { from, to } = editor.state.selection;
-        const docSize = editor.state.doc.content.size;
-
-        editor.commands.setContent(content);
-
         const newDocSize = editor.state.doc.content.size;
         if (from <= newDocSize && to <= newDocSize) {
           editor.commands.setTextSelection({ from, to });
         }
       });
-    } else {
-      console.log("[Editor] sem troca — não é mudança de atividade e editable=true | activityId:", activity?.id);
     }
   }, [html, activity?.id, editable]);
 
@@ -232,7 +214,9 @@ export const WorkspaceEditor: React.FC<WorkspaceEditorProps> = ({
 
       {/* ✅ ref no container de scroll para capturar eventos */}
       <div ref={editorScrollRef} className={styles.editorScroll}>
-        <EditorContent editor={editor} className={styles.editorContent} />
+        <div ref={editorContainerRef}>
+          <EditorContent editor={editor} className={styles.editorContent} />
+        </div>
       </div>
 
       <div className={styles.footer}>
