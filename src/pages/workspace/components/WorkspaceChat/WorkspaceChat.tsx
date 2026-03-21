@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Send } from 'lucide-react';
-import { ChatMessage } from '@/types/workspace.types';
+import { ChatMessage } from '@/types/chat.types';
 import styles from './WorkspaceChat.module.css';
 
 interface WorkspaceChatProps {
@@ -21,9 +21,14 @@ export const WorkspaceChat: React.FC<WorkspaceChatProps> = ({
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  // 📍 PASSO 1: UI - Usuário clica em enviar
   const handleSend = (): void => {
     const content = draft.trim();
-    if (!content) return;
+    if (!content) {
+      return;
+    }
+
+    // Chama callback do pai (StudentWorkspacePage ou ProfessorWorkspacePage)
     onSendMessage(content);
     setDraft('');
   };

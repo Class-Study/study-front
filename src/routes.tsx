@@ -5,7 +5,7 @@ import { DashboardPage } from '@/pages/dashboard/DashboardPage';
 import { CreateStudentPage } from '@/pages/students/CreateStudentPage';
 import { StudentProfilePage } from '@/pages/students/StudentProfilePage';
 import { BillingPage } from '@/pages/billing/BillingPage';
-import { WorkspacePage } from '@/pages/workspace/WorkspacePage';
+import { ProfessorWorkspacePage } from '@/pages/workspace/ProfessorWorkspacePage.tsx';
 import { StudentWorkspacePage } from '@/pages/workspace/StudentWorkspacePage';
 import { MyProfilePage } from '@/pages/me/MyProfilePage';
 import { AccessDeniedPage } from '@/pages/errors/AccessDeniedPage';
@@ -47,7 +47,7 @@ export const AppRoutes: React.FC = () => {
         path="/dashboard/student/:studentId/workspace"
         element={
           <PrivateRoute requiredRoles={['TEACHER', 'ADMIN']}>
-            <WorkspacePage />
+            <ProfessorWorkspacePage />
           </PrivateRoute>
         }
       />

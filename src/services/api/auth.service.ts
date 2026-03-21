@@ -19,12 +19,6 @@ const authService = {
     // user está dentro de response.data.user
     const user = response.data.user;
 
-    console.log('Login response:', {
-      user,
-      accessToken: accessToken ? 'SET' : 'EMPTY',
-      refreshToken: refreshToken ? 'SET' : 'EMPTY',
-    });
-
     return { user, accessToken, refreshToken };
   },
 
