@@ -195,4 +195,3 @@ const ProfessorWorkspacePage: React.FC = () => {
 };
 
 export {ProfessorWorkspacePage};
-export default ProfessorWorkspacePage;

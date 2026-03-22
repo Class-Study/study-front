@@ -15,7 +15,7 @@ import styles from './WorkspacePage.module.css';
 
 /* ─── Student Workspace ───────────────────────────────────────────────────── */
 
-export const StudentWorkspacePage: React.FC = () => {
+const StudentWorkspacePage: React.FC = () => {
     const navigate = useNavigate();
     const {user} = useAuth();
     const {wsRef, isConnected} = useWS();
@@ -277,4 +277,4 @@ export const StudentWorkspacePage: React.FC = () => {
     );
 };
 
-export default StudentWorkspacePage;
+export {StudentWorkspacePage};
