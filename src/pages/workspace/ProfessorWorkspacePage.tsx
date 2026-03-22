@@ -7,7 +7,7 @@ import React, {
 } from 'react';
 import {useNavigate, useParams} from 'react-router-dom';
 import {Header} from '@/components/layout/Header/Header';
-import studentService from '@/services/api/student.service';
+import {useStudents} from '@/hooks/useStudents';
 import {useAuth} from '@/hooks/useAuth';
 import {useWorkspace} from '@/hooks/useWorkspace';
 import {WorkspaceSidebar} from './components/WorkspaceSidebar/WorkspaceSidebar';
@@ -16,7 +16,7 @@ import {WorkspaceChat} from './components/WorkspaceChat/WorkspaceChat';
 import {WorkspaceNotes} from './components/WorkspaceNotes/WorkspaceNotes';
 import {WorkspaceActivity} from '@/types/workspace.types';
 import {ChatMessage} from "@/types/chat.types.ts";
-import { ChatBridge } from "./components/chat/ChatBridge";
+import {ChatBridge} from "./components/chat/ChatBridge";
 import {WebRTCProvider} from "@/contexts/WebRTCContext";
 import {useWS, WSProvider} from "@/contexts/WSContext";
 import styles from './WorkspacePage.module.css';
@@ -31,6 +31,7 @@ const ProfessorWorkspacePage: React.FC = () => {
     const {user} = useAuth();
     const {studentId} = useParams<{ studentId: string }>();
     const {wsRef} = useWS();
+    const {getStudentById} = useStudents();
 
     const isStudent = user?.role === 'STUDENT';
     const targetStudentId = studentId ?? user?.id ?? '';
@@ -159,7 +160,7 @@ const ProfessorWorkspacePage: React.FC = () => {
             return;
         }
 
-        studentService.getById(targetStudentId)
+        getStudentById(targetStudentId)
             .then((student) => setStudentName(student.name))
             .catch(() => {
             });
