@@ -7,8 +7,8 @@ import React, {
 } from 'react';
 import {useNavigate} from 'react-router-dom';
 import {Header} from '@/components/layout/Header/Header';
-import {WebRTCProvider, useWebRTC} from '@/contexts/WebRTCContext';
-import {useChatMessages} from '@/hooks/useChatMessages';
+import {WebRTCProvider} from '@/contexts/WebRTCContext';
+import {ChatBridge} from "./components/chat/ChatBridge";
 import DocxPreviewEditor from '@/components/ui/DocxPreviewEditor/DocxPreviewEditor';
 import {useAuth} from '@/hooks/useAuth';
 import {useMyWorkspace} from '@/hooks/useMyWorkspace';
@@ -18,45 +18,12 @@ import {WorkspaceChat} from './components/WorkspaceChat/WorkspaceChat';
 import {WorkspaceActivity} from '@/types/workspace.types';
 import {ChatMessage} from '@/types/chat.types';
 import styles from './WorkspacePage.module.css';
-import {useWS} from "@/contexts/WSContext.tsx";
+import {useWS, WSProvider} from "@/contexts/WSContext.tsx";
 
 const SIDEBAR_MIN_WIDTH = 200;
 const SIDEBAR_MAX_WIDTH = 450;
 const SIDEBAR_WIDTH_STORAGE_KEY = 'workspace.student.sidebar.width';
 
-/* ================= CHAT BRIDGE ================= */
-const ChatBridge: React.FC<any> = ({
-                                       activityId,
-                                       user,
-                                       messagesRef,
-                                       sendMessageRef,
-                                       addIncomingRef,
-                                       onMessagesChange,
-                                   }) => {
-
-    const {send} = useWebRTC();
-
-    const {messages, sendMessage, addIncomingMessage} = useChatMessages({
-        activityId,
-        user,
-        send,
-    });
-
-    useEffect(() => {
-        messagesRef.current = messages;
-        onMessagesChange();
-    }, [messages, onMessagesChange]);
-
-    useEffect(() => {
-        sendMessageRef.current = sendMessage;
-    }, [sendMessage]);
-
-    useEffect(() => {
-        addIncomingRef.current = addIncomingMessage;
-    }, [addIncomingMessage]);
-
-    return null;
-};
 /* ================================================= */
 
 export const StudentWorkspacePage: React.FC = () => {
@@ -84,7 +51,8 @@ export const StudentWorkspacePage: React.FC = () => {
     const [activeActivity, setActiveActivity] = useState<WorkspaceActivity | null>(null);
 
     const messagesRef = useRef<ChatMessage[]>([]);
-    const sendMessageRef = useRef<(content: string) => void>(() => {});
+    const sendMessageRef = useRef<(content: string) => void>(() => {
+    });
     const addIncomingRef = useRef<((data: any) => void) | null>(null);
     const [messages, setMessages] = useState<ChatMessage[]>([]);
     const activeActivityIdRef = useRef<string | null>(null);
@@ -284,147 +252,153 @@ export const StudentWorkspacePage: React.FC = () => {
     }
 
     return (
-        <WebRTCProvider key={workspaceId ?? 'no-workspace'}>
-            <ChatBridge
-                activityId={activeActivity?.id ?? null}
-                user={userForChat}
-                messagesRef={messagesRef}
-                sendMessageRef={sendMessageRef}
-                addIncomingRef={addIncomingRef}
-                onMessagesChange={handleMessagesChange}
-            />
+        <WSProvider userId={user?.id} workspaceId={workspaceId ?? undefined}>
+            <WebRTCProvider key={workspaceId ?? 'no-workspace'} workspaceId={workspaceId} role="student">
+                <ChatBridge
+                    activityId={activeActivity?.id ?? null}
+                    user={userForChat}
+                    messagesRef={messagesRef}
+                    sendMessageRef={sendMessageRef}
+                    addIncomingRef={addIncomingRef}
+                    onMessagesChange={handleMessagesChange}
+                />
 
-            <div className={styles.page} data-student-id={studentId}>
-                <Header breadcrumbItems={breadcrumbItems}/>
+                <div className={styles.page} data-student-id={studentId}>
+                    <Header breadcrumbItems={breadcrumbItems}/>
 
-                <div className={styles.toolbar}>
-                    {sidebarCollapsed && (
+                    <div className={styles.toolbar}>
+                        {sidebarCollapsed && (
+                            <button
+                                type="button"
+                                className={styles.expandSidebarBtn}
+                                onClick={() => setSidebarCollapsed(false)}
+                                title="Expandir sidebar"
+                            >
+                                ▶
+                            </button>
+                        )}
                         <button
                             type="button"
-                            className={styles.expandSidebarBtn}
-                            onClick={() => setSidebarCollapsed(false)}
-                            title="Expandir sidebar"
+                            className={`${styles.chatToggleBtn} ${chatVisible ? styles.chatToggleBtnActive : ''}`}
+                            onClick={() => setChatVisible((v) => !v)}
                         >
-                            ▶
+                            ⇌ Chat
                         </button>
-                    )}
-                    <button
-                        type="button"
-                        className={`${styles.chatToggleBtn} ${chatVisible ? styles.chatToggleBtnActive : ''}`}
-                        onClick={() => setChatVisible((v) => !v)}
-                    >
-                        ⇌ Chat
-                    </button>
-                </div>
-
-                <div className={styles.body} ref={bodyRef}>
-                    <WorkspaceSidebar
-                        folders={exerciseFolders}
-                        workspaces={workspaceActivities}
-                        activeActivityId={activeActivity?.id ?? null}
-                        width={sidebarWidth}
-                        onSelectActivity={handleSelectActivity}
-                        collapsed={sidebarCollapsed}
-                        onToggleCollapse={() => setSidebarCollapsed((prev) => !prev)}
-                        onResizeStart={handleSidebarResizeStart}
-                        newItemForm={null}
-                        onChangeNewItemForm={() => {}}
-                        onCreateFolder={() => {}}
-                        onCreateWorkspace={handleCreateWorkspace}
-                        onOpenUploadForFolder={() => {}}
-                        onMoveActivity={handleMoveActivity}
-                        readOnly={true}
-                        allowCreate={false}
-                        allowMove={true}
-                        allowWorkspaceMove={false}
-                        allowCreateWorkspace={true}
-                        allowCreateFolder={false}
-                        allowUploadToFolder={false}
-                    />
-
-                    <div className={styles.editorArea}>
-                        {isEditingNewWorkspace ? (
-                            <div className={styles.workspaceContainer}>
-                                <div className={styles.workspaceHeaderRow}>
-                                    <input
-                                        className={styles.workspaceTitleInput}
-                                        placeholder="Titulo do Workspace..."
-                                        value={newWorkspaceTitle}
-                                        onChange={(e) => setNewWorkspaceTitle(e.target.value)}
-                                    />
-                                    <div className={styles.workspaceActions}>
-                                        <button
-                                            type="button"
-                                            className={styles.workspaceSecondaryBtn}
-                                            onClick={() => {
-                                                setIsEditingNewWorkspace(false);
-                                                setWorkspaceDraftFeedback(null);
-                                            }}
-                                        >
-                                            Fechar
-                                        </button>
-                                        <button
-                                            type="button"
-                                            className={styles.workspacePrimaryBtn}
-                                            onClick={() => setWorkspaceDraftFeedback('Rascunho salvo localmente.')}
-                                        >
-                                            Salvar
-                                        </button>
-                                    </div>
-                                </div>
-                                {workspaceDraftFeedback && (
-                                    <span className={styles.workspaceFeedback}>{workspaceDraftFeedback}</span>
-                                )}
-                                <div className={styles.workspaceEditorBody}>
-                                    <DocxPreviewEditor
-                                        html={newWorkspaceContent}
-                                        editable={true}
-                                        onChange={setNewWorkspaceContent}
-                                    />
-                                </div>
-                            </div>
-                        ) : (
-                            <WorkspaceEditor
-                                activity={activeActivity}
-                                editable={activeActivity?.type === 'EXERCISE'}
-                                onContentChange={(html) => {
-                                    if (activeActivity?.id && activeActivity.type === 'EXERCISE') {
-                                        saveContent(activeActivity.id, html);
-                                    }
-                                }}
-                                headerStatus={saving ? <span className={styles.savingIndicator}>Salvando...</span> : null}
-                            />
-                        )}
                     </div>
 
-                    <div className={`${styles.rightPanel} ${chatVisible ? '' : styles.rightPanelHidden}`}>
-                        <div className={styles.teacherPresenceSection}>
-                            <span className={styles.teacherPresenceLabel}>Professor</span>
-                            <div className={styles.teacherPresenceCard}>
+                    <div className={styles.body} ref={bodyRef}>
+                        <WorkspaceSidebar
+                            folders={exerciseFolders}
+                            workspaces={workspaceActivities}
+                            activeActivityId={activeActivity?.id ?? null}
+                            width={sidebarWidth}
+                            onSelectActivity={handleSelectActivity}
+                            collapsed={sidebarCollapsed}
+                            onToggleCollapse={() => setSidebarCollapsed((prev) => !prev)}
+                            onResizeStart={handleSidebarResizeStart}
+                            newItemForm={null}
+                            onChangeNewItemForm={() => {
+                            }}
+                            onCreateFolder={() => {
+                            }}
+                            onCreateWorkspace={handleCreateWorkspace}
+                            onOpenUploadForFolder={() => {
+                            }}
+                            onMoveActivity={handleMoveActivity}
+                            readOnly={true}
+                            allowCreate={false}
+                            allowMove={true}
+                            allowWorkspaceMove={false}
+                            allowCreateWorkspace={true}
+                            allowCreateFolder={false}
+                            allowUploadToFolder={false}
+                        />
+
+                        <div className={styles.editorArea}>
+                            {isEditingNewWorkspace ? (
+                                <div className={styles.workspaceContainer}>
+                                    <div className={styles.workspaceHeaderRow}>
+                                        <input
+                                            className={styles.workspaceTitleInput}
+                                            placeholder="Titulo do Workspace..."
+                                            value={newWorkspaceTitle}
+                                            onChange={(e) => setNewWorkspaceTitle(e.target.value)}
+                                        />
+                                        <div className={styles.workspaceActions}>
+                                            <button
+                                                type="button"
+                                                className={styles.workspaceSecondaryBtn}
+                                                onClick={() => {
+                                                    setIsEditingNewWorkspace(false);
+                                                    setWorkspaceDraftFeedback(null);
+                                                }}
+                                            >
+                                                Fechar
+                                            </button>
+                                            <button
+                                                type="button"
+                                                className={styles.workspacePrimaryBtn}
+                                                onClick={() => setWorkspaceDraftFeedback('Rascunho salvo localmente.')}
+                                            >
+                                                Salvar
+                                            </button>
+                                        </div>
+                                    </div>
+                                    {workspaceDraftFeedback && (
+                                        <span className={styles.workspaceFeedback}>{workspaceDraftFeedback}</span>
+                                    )}
+                                    <div className={styles.workspaceEditorBody}>
+                                        <DocxPreviewEditor
+                                            html={newWorkspaceContent}
+                                            editable={true}
+                                            onChange={setNewWorkspaceContent}
+                                        />
+                                    </div>
+                                </div>
+                            ) : (
+                                <WorkspaceEditor
+                                    activity={activeActivity}
+                                    editable={activeActivity?.type === 'EXERCISE'}
+                                    onContentChange={(html) => {
+                                        if (activeActivity?.id && activeActivity.type === 'EXERCISE') {
+                                            saveContent(activeActivity.id, html);
+                                        }
+                                    }}
+                                    headerStatus={saving ?
+                                        <span className={styles.savingIndicator}>Salvando...</span> : null}
+                                />
+                            )}
+                        </div>
+
+                        <div className={`${styles.rightPanel} ${chatVisible ? '' : styles.rightPanelHidden}`}>
+                            <div className={styles.teacherPresenceSection}>
+                                <span className={styles.teacherPresenceLabel}>Professor</span>
+                                <div className={styles.teacherPresenceCard}>
                                 <span
                                     className={`${styles.teacherPresenceDot} ${teacherOnline ? styles.teacherPresenceDotOnline : styles.teacherPresenceDotOffline}`}
                                     aria-hidden="true"
                                 />
-                                <div className={styles.teacherPresenceInfo}>
-                                    <span className={styles.teacherPresenceName}>{teacherName}</span>
-                                    <span className={styles.teacherPresenceStatus}>
+                                    <div className={styles.teacherPresenceInfo}>
+                                        <span className={styles.teacherPresenceName}>{teacherName}</span>
+                                        <span className={styles.teacherPresenceStatus}>
                                         {teacherOnline ? 'Online agora' : 'Offline'}
                                     </span>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
 
-                        <div className={styles.chatSection}>
-                            <WorkspaceChat
-                                activityTitle={activeActivity?.title ?? ''}
-                                messages={messages}
-                                onSendMessage={handleSendMessage}
-                            />
+                            <div className={styles.chatSection}>
+                                <WorkspaceChat
+                                    activityTitle={activeActivity?.title ?? ''}
+                                    messages={messages}
+                                    onSendMessage={handleSendMessage}
+                                />
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
-        </WebRTCProvider>
+            </WebRTCProvider>
+        </WSProvider>
     );
 };
 

@@ -1,4 +1,5 @@
 import React, {
+    useCallback,
     useEffect,
     useMemo,
     useRef,
@@ -15,55 +16,14 @@ import {WorkspaceChat} from './components/WorkspaceChat/WorkspaceChat';
 import {WorkspaceNotes} from './components/WorkspaceNotes/WorkspaceNotes';
 import {WorkspaceActivity} from '@/types/workspace.types';
 import {ChatMessage} from "@/types/chat.types.ts";
-import {useChatMessages} from "@/hooks/useChatMessages";
-import {useWebRTC, WebRTCProvider} from "@/contexts/WebRTCContext";
-import {useWS} from "@/contexts/WSContext";
+import { ChatBridge } from "./components/chat/ChatBridge";
+import {WebRTCProvider} from "@/contexts/WebRTCContext";
+import {useWS, WSProvider} from "@/contexts/WSContext";
 import styles from './WorkspacePage.module.css';
 
 const SIDEBAR_MIN_WIDTH = 200;
 const SIDEBAR_MAX_WIDTH = 450;
 const SIDEBAR_WIDTH_STORAGE_KEY = 'workspace.sidebar.width';
-
-/* ================= CHAT BRIDGE ================= */
-// 📍 Componente intermediário que gerencia todo o estado do chat
-// Instancia useChatMessages e expõe funções via refs para acesso fora do escopo React
-
-const ChatBridge: React.FC<any> = ({
-                                       activityId,
-                                       user,
-                                       messagesRef,
-                                       sendMessageRef,
-                                       addIncomingRef,
-                                       onMessagesChange,
-                                   }) => {
-    const {send} = useWebRTC();
-
-    // TODO: useChatMessages retorna {messages, sendMessage, addIncomingMessage}
-    const {messages, sendMessage, addIncomingMessage} = useChatMessages({
-        activityId,
-        user,
-        send,
-    });
-
-    // TODO: Sincroniza mensagens com o ref (para acesso fora do componente)
-    useEffect(() => {
-        messagesRef.current = messages;
-        onMessagesChange();
-    }, [messages, onMessagesChange]);
-
-    // TODO: Expõe sendMessage via ref para WorkspacePage chamar
-    useEffect(() => {
-        sendMessageRef.current = sendMessage;
-    }, [sendMessage]);
-
-    // TODO: Expõe addIncomingMessage via ref para WebSocket listener chamar
-    useEffect(() => {
-        addIncomingRef.current = addIncomingMessage;
-    }, [addIncomingMessage]);
-
-
-    return null;
-};
 /* ================================================= */
 
 const ProfessorWorkspacePage: React.FC = () => {
@@ -95,9 +55,9 @@ const ProfessorWorkspacePage: React.FC = () => {
     const addIncomingRef = useRef<((data: any) => void) | null>(null);
     const [messages, setMessages] = useState<ChatMessage[]>([]);
 
-    const handleMessagesChange = () => {
+    const handleMessagesChange = useCallback(() => {
         setMessages([...messagesRef.current]);
-    };
+    }, []);
 
     const handleSendMessage = (content: string) => {
 
@@ -229,7 +189,7 @@ const ProfessorWorkspacePage: React.FC = () => {
                 ? "/student/profile"
                 : `/dashboard/student/${targetStudentId}`,
         },
-        { label: "Workspace" },
+        {label: "Workspace"},
     ];
 
     const handleCreateFolder = async (): Promise<void> => {
@@ -282,96 +242,98 @@ const ProfessorWorkspacePage: React.FC = () => {
     if (error) {
         return (
             <div className={styles.page}>
-                <Header breadcrumbItems={breadcrumbItems} />
+                <Header breadcrumbItems={breadcrumbItems}/>
                 <div className={styles.errorState}>{error}</div>
             </div>
         );
     }
 
     return (
-        <WebRTCProvider key={workspaceId}>
-            <ChatBridge
-                activityId={activeActivity?.id ?? null}
-                user={userForChat}
-                messagesRef={messagesRef}
-                sendMessageRef={sendMessageRef}
-                addIncomingRef={addIncomingRef}
-                onMessagesChange={handleMessagesChange}
-            />
+        <WSProvider userId={user?.id} workspaceId={workspaceId ?? undefined}>
+            <WebRTCProvider key={workspaceId} workspaceId={workspaceId} role="teacher">
+                <ChatBridge
+                    activityId={activeActivity?.id ?? null}
+                    user={userForChat}
+                    messagesRef={messagesRef}
+                    sendMessageRef={sendMessageRef}
+                    addIncomingRef={addIncomingRef}
+                    onMessagesChange={handleMessagesChange}
+                />
 
-            <div className={styles.page}>
-                <Header breadcrumbItems={breadcrumbItems} />
+                <div className={styles.page}>
+                    <Header breadcrumbItems={breadcrumbItems}/>
 
-                <div className={styles.toolbar}>
-                    {sidebarCollapsed && (
+                    <div className={styles.toolbar}>
+                        {sidebarCollapsed && (
+                            <button
+                                type="button"
+                                className={styles.expandSidebarBtn}
+                                onClick={() => setSidebarCollapsed(false)}
+                                title="Expandir sidebar"
+                            >
+                                ▶
+                            </button>
+                        )}
                         <button
                             type="button"
-                            className={styles.expandSidebarBtn}
-                            onClick={() => setSidebarCollapsed(false)}
-                            title="Expandir sidebar"
+                            className={`${styles.chatToggleBtn} ${chatVisible ? styles.chatToggleBtnActive : ""}`}
+                            onClick={() => setChatVisible((v) => !v)}
                         >
-                            ▶
+                            ⇌ Chat
                         </button>
-                    )}
-                    <button
-                        type="button"
-                        className={`${styles.chatToggleBtn} ${chatVisible ? styles.chatToggleBtnActive : ""}`}
-                        onClick={() => setChatVisible((v) => !v)}
-                    >
-                        ⇌ Chat
-                    </button>
-                </div>
+                    </div>
 
-                <div className={styles.body} ref={bodyRef}>
-                    <WorkspaceSidebar
-                        folders={exerciseFolders}
-                        workspaces={workspaceActivities}
-                        activeActivityId={activeActivity?.id ?? null}
-                        width={sidebarWidth}
-                        onSelectActivity={handleSelectActivity}
-                        collapsed={sidebarCollapsed}
-                        onToggleCollapse={() => setSidebarCollapsed((prev) => !prev)}
-                        onResizeStart={handleSidebarResizeStart}
-                        newItemForm={newItemForm}
-                        onChangeNewItemForm={setNewItemForm}
-                        onCreateFolder={handleCreateFolder}
-                        onCreateWorkspace={() => setIsEditingNewWorkspace(true)}
-                        onOpenUploadForFolder={() => {
-                        }}
-                        onMoveActivity={handleMoveActivity}
-                        readOnly={isStudent}
-                    />
-
-                    <div className={styles.editorArea}>
-                        <WorkspaceEditor
-                            activity={activeActivity}
-                            editable={false}
-                            onContentChange={(html) => {
-                                if (activeActivity?.id) {
-                                    saveContent(activeActivity.id, html);
-                                }
+                    <div className={styles.body} ref={bodyRef}>
+                        <WorkspaceSidebar
+                            folders={exerciseFolders}
+                            workspaces={workspaceActivities}
+                            activeActivityId={activeActivity?.id ?? null}
+                            width={sidebarWidth}
+                            onSelectActivity={handleSelectActivity}
+                            collapsed={sidebarCollapsed}
+                            onToggleCollapse={() => setSidebarCollapsed((prev) => !prev)}
+                            onResizeStart={handleSidebarResizeStart}
+                            newItemForm={newItemForm}
+                            onChangeNewItemForm={setNewItemForm}
+                            onCreateFolder={handleCreateFolder}
+                            onCreateWorkspace={() => setIsEditingNewWorkspace(true)}
+                            onOpenUploadForFolder={() => {
                             }}
+                            onMoveActivity={handleMoveActivity}
+                            readOnly={isStudent}
                         />
-                    </div>
 
-                    <div className={`${styles.rightPanel} ${!chatVisible ? styles.rightPanelHidden : ''}`}>
-                        <div className={styles.chatSection}>
-                            <WorkspaceChat
-                                activityTitle={activeActivity?.title ?? ''}
-                                messages={messages}
-                                onSendMessage={handleSendMessage}
+                        <div className={styles.editorArea}>
+                            <WorkspaceEditor
+                                activity={activeActivity}
+                                editable={false}
+                                onContentChange={(html) => {
+                                    if (activeActivity?.id) {
+                                        saveContent(activeActivity.id, html);
+                                    }
+                                }}
                             />
                         </div>
-                        <div className={styles.notesSection}>
-                            <WorkspaceNotes
-                                activityTitle={activeActivity?.title ?? ''}
-                                studentId={targetStudentId}
-                            />
+
+                        <div className={`${styles.rightPanel} ${!chatVisible ? styles.rightPanelHidden : ''}`}>
+                            <div className={styles.chatSection}>
+                                <WorkspaceChat
+                                    activityTitle={activeActivity?.title ?? ''}
+                                    messages={messages}
+                                    onSendMessage={handleSendMessage}
+                                />
+                            </div>
+                            <div className={styles.notesSection}>
+                                <WorkspaceNotes
+                                    activityTitle={activeActivity?.title ?? ''}
+                                    studentId={targetStudentId}
+                                />
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
-        </WebRTCProvider>
+            </WebRTCProvider>
+        </WSProvider>
     );
 };
 
