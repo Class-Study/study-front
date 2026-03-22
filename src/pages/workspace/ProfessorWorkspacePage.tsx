@@ -1,30 +1,20 @@
-import React, {
-    useCallback,
-    useEffect,
-    useMemo,
-    useRef,
-    useState
-} from 'react';
+import React, {useEffect, useMemo, useState} from 'react';
 import {useNavigate, useParams} from 'react-router-dom';
-import {Header} from '@/components/layout/Header/Header';
-import {useStudents} from '@/hooks/useStudents';
 import {useAuth} from '@/hooks/useAuth';
+import {useStudents} from '@/hooks/useStudents';
 import {useWorkspace} from '@/hooks/useWorkspace';
+import {useWorkspaceBase} from '@/hooks/useWorkspaceBase';
+import {useWS} from '@/contexts/WSContext';
+import {WorkspaceShell} from './components/WorkspaceShell/WorkspaceShell';
 import {WorkspaceSidebar} from './components/WorkspaceSidebar/WorkspaceSidebar';
 import {WorkspaceEditor} from './components/WorkspaceEditor/WorkspaceEditor';
 import {WorkspaceChat} from './components/WorkspaceChat/WorkspaceChat';
 import {WorkspaceNotes} from './components/WorkspaceNotes/WorkspaceNotes';
+import {Header} from '@/components/layout/Header/Header';
 import {WorkspaceActivity} from '@/types/workspace.types';
-import {ChatMessage} from "@/types/chat.types.ts";
-import {ChatBridge} from "./components/chat/ChatBridge";
-import {WebRTCProvider} from "@/contexts/WebRTCContext";
-import {useWS, WSProvider} from "@/contexts/WSContext";
 import styles from './WorkspacePage.module.css';
 
-const SIDEBAR_MIN_WIDTH = 200;
-const SIDEBAR_MAX_WIDTH = 450;
-const SIDEBAR_WIDTH_STORAGE_KEY = 'workspace.sidebar.width';
-/* ================================================= */
+/* ─── Professor Workspace ─────────────────────────────────────────────────── */
 
 const ProfessorWorkspacePage: React.FC = () => {
     const navigate = useNavigate();
@@ -36,6 +26,7 @@ const ProfessorWorkspacePage: React.FC = () => {
     const isStudent = user?.role === 'STUDENT';
     const targetStudentId = studentId ?? user?.id ?? '';
 
+    // ── Dados específicos do professor ────────────────────────────────────────
     const {
         workspaceActivities,
         exerciseFolders,
@@ -48,104 +39,28 @@ const ProfessorWorkspacePage: React.FC = () => {
         moveActivity,
     } = useWorkspace(targetStudentId, isStudent);
 
-    const [activeActivity, setActiveActivity] = useState<WorkspaceActivity | null>(null);
-
-    const messagesRef = useRef<ChatMessage[]>([]);
-    const sendMessageRef = useRef<(content: string) => void>(() => {
-    });
-    const addIncomingRef = useRef<((data: any) => void) | null>(null);
-    const [messages, setMessages] = useState<ChatMessage[]>([]);
-
-    const handleMessagesChange = useCallback(() => {
-        setMessages([...messagesRef.current]);
-    }, []);
-
-    const handleSendMessage = (content: string) => {
-
-        // Delega para o ref que aponta para useChatMessages.sendMessage
-        sendMessageRef.current(content);
-    };
-
-    const activeActivityIdRef = useRef<string | null>(null);
-
-    useEffect(() => {
-        if (activeActivity?.id === activeActivityIdRef.current) return;
-
-        activeActivityIdRef.current = activeActivity?.id ?? null;
-
-        messagesRef.current = [];
-        setMessages([]);
-    }, [activeActivity?.id]);
-
-    useEffect(() => {
-        if (!wsRef?.current) {
-            return;
-        }
-
-        // 📍 PASSO 4: PROFESSOR - Recebe mensagem via WebSocket
-        const handleMessage = (event: MessageEvent) => {
-            let data;
-            try {
-                data = JSON.parse(event.data);
-            } catch (e) {
-                return;
-            }
-
-            if (data.type === "chat") {
-                if (addIncomingRef.current) {
-                    addIncomingRef.current(data);
-                }
-            }
-        };
-
-        wsRef.current.addEventListener("message", handleMessage);
-
-        return () => {
-            wsRef.current?.removeEventListener("message", handleMessage);
-        };
-    }, []);
-    /* ================================================= */
-
-    const userForChat = {
-        id: user?.id,
-        name: user?.name,
-        email: user?.email,
-        role: user?.role,
-    };
-
-    const [sidebarWidth, setSidebarWidth] = useState<number>(() => {
-        if (typeof window === 'undefined') return 240;
-        const raw = window.localStorage.getItem(SIDEBAR_WIDTH_STORAGE_KEY);
-        const parsed = Number(raw);
-        if (Number.isNaN(parsed)) return 240;
-        return Math.min(SIDEBAR_MAX_WIDTH, Math.max(SIDEBAR_MIN_WIDTH, parsed));
-    });
-
-    const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-    const [newItemForm, setNewItemForm] = useState<{ title: string } | null>(
-        null,
-    );
-    const [isEditingNewWorkspace, setIsEditingNewWorkspace] = useState(false);
-    const [workspaceDraftFeedback, setWorkspaceDraftFeedback] = useState<string | null>(null);
-    const [chatVisible, setChatVisible] = useState(true);
-    const [studentName, setStudentName] = useState('');
-
-    const bodyRef = useRef<HTMLDivElement | null>(null);
-    const isResizingRef = useRef(false);
-
     const allActivities = useMemo(
         () => [
             ...workspaceActivities,
-            ...exerciseFolders.flatMap((folder) => folder.activities),
+            ...exerciseFolders.flatMap((f) => f.activities),
         ],
-        [exerciseFolders, workspaceActivities],
+        [workspaceActivities, exerciseFolders],
     );
 
+    // ── Hook pai — toda lógica compartilhada ──────────────────────────────────
+    const ws = useWorkspaceBase({
+        sidebarStorageKey: 'workspace.sidebar.width',
+        wsRef,
+        // professor não reconecta — listener registrado apenas 1 vez
+    });
 
+    // ── Estado exclusivo do professor ─────────────────────────────────────────
+    const [newItemForm, setNewItemForm] = useState<{ title: string } | null>(null);
+    const [studentName, setStudentName] = useState('');
+
+    // ── Efeitos ───────────────────────────────────────────────────────────────
     useEffect(() => {
-        if (accessDenied) {
-            navigate(isStudent ? '/account-inactive' : '/access-denied', {replace: true});
-        }
+        if (accessDenied) navigate(isStudent ? '/account-inactive' : '/access-denied', {replace: true});
     }, [accessDenied]);
 
     useEffect(() => {
@@ -154,45 +69,35 @@ const ProfessorWorkspacePage: React.FC = () => {
 
     useEffect(() => {
         if (!targetStudentId) return;
-
         if (isStudent) {
             setStudentName(user?.name ?? 'Aluno');
             return;
         }
-
         getStudentById(targetStudentId)
-            .then((student) => setStudentName(student.name))
+            .then((s) => setStudentName(s.name))
             .catch(() => {
             });
     }, [isStudent, targetStudentId]);
 
+    // Auto-seleciona primeira atividade
     useEffect(() => {
-        if (!activeActivity && allActivities.length > 0) {
-            setActiveActivity(workspaceActivities[0] ?? allActivities[0]);
+        if (!ws.activeActivity && allActivities.length > 0) {
+            ws.setActiveActivity(workspaceActivities[0] ?? allActivities[0]);
         }
-    }, [activeActivity, allActivities]);
+    }, [ws.activeActivity, allActivities]);
 
-    const workspaceId = activeActivity?.id
-        ? `${activeActivity.id}-${targetStudentId}`
-        : null;
-
-    if (loading) return <div>Carregando...</div>;
-    if (error) return <div>{error}</div>;
+    // ── Derivados ─────────────────────────────────────────────────────────────
+    const workspaceId = ws.activeActivity?.id ? `${ws.activeActivity.id}-${targetStudentId}` : null;
 
     const breadcrumbItems = [
-        {
-            label: isStudent ? "Meu Perfil" : "Dashboard",
-            path: isStudent ? "/student/profile" : "/dashboard",
-        },
-        {
-            label: studentName || "Aluno",
-            path: isStudent
-                ? "/student/profile"
-                : `/dashboard/student/${targetStudentId}`,
-        },
-        {label: "Workspace"},
+        {label: isStudent ? 'Meu Perfil' : 'Dashboard', path: isStudent ? '/student/profile' : '/dashboard'},
+        {label: studentName || 'Aluno', path: isStudent ? '/student/profile' : `/dashboard/student/${targetStudentId}`},
+        {label: 'Workspace'},
     ];
 
+    const userForChat = {id: user?.id, name: user?.name, email: user?.email, role: user?.role};
+
+    // ── Handlers exclusivos ───────────────────────────────────────────────────
     const handleCreateFolder = async (): Promise<void> => {
         if (!newItemForm?.title.trim()) return;
         const folder = await createFolder(newItemForm.title.trim());
@@ -200,141 +105,92 @@ const ProfessorWorkspacePage: React.FC = () => {
     };
 
     const handleSelectActivity = (activity: WorkspaceActivity): void => {
-        setIsEditingNewWorkspace(false);
-        setWorkspaceDraftFeedback(null);
-        setActiveActivity(activity);
+        ws.setActiveActivity(activity);
     };
 
-    const stopResizing = (): void => {
-        isResizingRef.current = false;
-        window.removeEventListener("mousemove", handleSidebarResize);
-        window.removeEventListener("mouseup", stopResizing);
-        document.body.style.cursor = "";
-        document.body.style.userSelect = "";
-    };
-
-    const handleSidebarResize = (event: MouseEvent): void => {
-        if (!isResizingRef.current) return;
-        const containerLeft = bodyRef.current?.getBoundingClientRect().left ?? 0;
-        const nextWidth = Math.min(
-            SIDEBAR_MAX_WIDTH,
-            Math.max(SIDEBAR_MIN_WIDTH, event.clientX - containerLeft),
-        );
-        setSidebarWidth(nextWidth);
-    };
-
-    const handleSidebarResizeStart = (): void => {
-        if (sidebarCollapsed) setSidebarCollapsed(false);
-        isResizingRef.current = true;
-        document.body.style.cursor = "col-resize";
-        document.body.style.userSelect = "none";
-        window.addEventListener("mousemove", handleSidebarResize);
-        window.addEventListener("mouseup", stopResizing);
-    };
-
-    const handleMoveActivity = async (
-        activityId: string,
-        targetFolderId: string,
-    ): Promise<void> => {
+    const handleMoveActivity = async (activityId: string, targetFolderId: string): Promise<void> => {
         const moved = await moveActivity(activityId, targetFolderId);
-        if (!moved) alert("Nao foi possivel mover a atividade. Tente novamente.");
+        if (!moved) alert('Nao foi possivel mover a atividade. Tente novamente.');
     };
 
-    if (error) {
-        return (
-            <div className={styles.page}>
-                <Header breadcrumbItems={breadcrumbItems}/>
-                <div className={styles.errorState}>{error}</div>
-            </div>
-        );
-    }
+    // ── Loading / Error ───────────────────────────────────────────────────────
+    if (loading) return <div>Carregando...</div>;
 
+    if (error) return (
+        <div className={styles.page}>
+            <Header breadcrumbItems={breadcrumbItems}/>
+            <div className={styles.errorState}>{error}</div>
+        </div>
+    );
+
+    // ── Render ────────────────────────────────────────────────────────────────
     return (
-        <WSProvider userId={user?.id} workspaceId={workspaceId ?? undefined}>
-            <WebRTCProvider key={workspaceId} workspaceId={workspaceId} role="teacher">
-                <ChatBridge
-                    activityId={activeActivity?.id ?? null}
-                    user={userForChat}
-                    messagesRef={messagesRef}
-                    sendMessageRef={sendMessageRef}
-                    addIncomingRef={addIncomingRef}
-                    onMessagesChange={handleMessagesChange}
+        <WorkspaceShell
+            userId={user?.id}
+            workspaceId={workspaceId}
+            role="teacher"
+            breadcrumbItems={breadcrumbItems}
+            activityId={ws.activeActivity?.id ?? null}
+            userForChat={userForChat}
+            messagesRef={ws.messagesRef}
+            sendMessageRef={ws.sendMessageRef}
+            addIncomingRef={ws.addIncomingRef}
+            onMessagesChange={ws.handleMessagesChange}
+            sidebarCollapsed={ws.sidebarCollapsed}
+            setSidebarCollapsed={ws.setSidebarCollapsed}
+            chatVisible={ws.chatVisible}
+            setChatVisible={ws.setChatVisible}
+            bodyRef={ws.bodyRef}
+        >
+            {/* Sidebar */}
+            <WorkspaceSidebar
+                folders={exerciseFolders}
+                workspaces={workspaceActivities}
+                activeActivityId={ws.activeActivity?.id ?? null}
+                width={ws.sidebarWidth}
+                onSelectActivity={handleSelectActivity}
+                collapsed={ws.sidebarCollapsed}
+                onToggleCollapse={() => ws.setSidebarCollapsed((p) => !p)}
+                onResizeStart={ws.handleSidebarResizeStart}
+                newItemForm={newItemForm}
+                onChangeNewItemForm={setNewItemForm}
+                onCreateFolder={handleCreateFolder}
+                onCreateWorkspace={() => {
+                }}
+                onOpenUploadForFolder={() => {
+                }}
+                onMoveActivity={handleMoveActivity}
+                readOnly={isStudent}
+            />
+
+            {/* Editor (somente leitura para o professor) */}
+            <div className={styles.editorArea}>
+                <WorkspaceEditor
+                    activity={ws.activeActivity}
+                    editable={false}
+                    onContentChange={(html) => {
+                        if (ws.activeActivity?.id) saveContent(ws.activeActivity.id, html);
+                    }}
                 />
+            </div>
 
-                <div className={styles.page}>
-                    <Header breadcrumbItems={breadcrumbItems}/>
-
-                    <div className={styles.toolbar}>
-                        {sidebarCollapsed && (
-                            <button
-                                type="button"
-                                className={styles.expandSidebarBtn}
-                                onClick={() => setSidebarCollapsed(false)}
-                                title="Expandir sidebar"
-                            >
-                                ▶
-                            </button>
-                        )}
-                        <button
-                            type="button"
-                            className={`${styles.chatToggleBtn} ${chatVisible ? styles.chatToggleBtnActive : ""}`}
-                            onClick={() => setChatVisible((v) => !v)}
-                        >
-                            ⇌ Chat
-                        </button>
-                    </div>
-
-                    <div className={styles.body} ref={bodyRef}>
-                        <WorkspaceSidebar
-                            folders={exerciseFolders}
-                            workspaces={workspaceActivities}
-                            activeActivityId={activeActivity?.id ?? null}
-                            width={sidebarWidth}
-                            onSelectActivity={handleSelectActivity}
-                            collapsed={sidebarCollapsed}
-                            onToggleCollapse={() => setSidebarCollapsed((prev) => !prev)}
-                            onResizeStart={handleSidebarResizeStart}
-                            newItemForm={newItemForm}
-                            onChangeNewItemForm={setNewItemForm}
-                            onCreateFolder={handleCreateFolder}
-                            onCreateWorkspace={() => setIsEditingNewWorkspace(true)}
-                            onOpenUploadForFolder={() => {
-                            }}
-                            onMoveActivity={handleMoveActivity}
-                            readOnly={isStudent}
-                        />
-
-                        <div className={styles.editorArea}>
-                            <WorkspaceEditor
-                                activity={activeActivity}
-                                editable={false}
-                                onContentChange={(html) => {
-                                    if (activeActivity?.id) {
-                                        saveContent(activeActivity.id, html);
-                                    }
-                                }}
-                            />
-                        </div>
-
-                        <div className={`${styles.rightPanel} ${!chatVisible ? styles.rightPanelHidden : ''}`}>
-                            <div className={styles.chatSection}>
-                                <WorkspaceChat
-                                    activityTitle={activeActivity?.title ?? ''}
-                                    messages={messages}
-                                    onSendMessage={handleSendMessage}
-                                />
-                            </div>
-                            <div className={styles.notesSection}>
-                                <WorkspaceNotes
-                                    activityTitle={activeActivity?.title ?? ''}
-                                    studentId={targetStudentId}
-                                />
-                            </div>
-                        </div>
-                    </div>
+            {/* Painel direito: chat + notas do professor */}
+            <div className={`${styles.rightPanel} ${!ws.chatVisible ? styles.rightPanelHidden : ''}`}>
+                <div className={styles.chatSection}>
+                    <WorkspaceChat
+                        activityTitle={ws.activeActivity?.title ?? ''}
+                        messages={ws.messages}
+                        onSendMessage={ws.handleSendMessage}
+                    />
                 </div>
-            </WebRTCProvider>
-        </WSProvider>
+                <div className={styles.notesSection}>
+                    <WorkspaceNotes
+                        activityTitle={ws.activeActivity?.title ?? ''}
+                        studentId={targetStudentId}
+                    />
+                </div>
+            </div>
+        </WorkspaceShell>
     );
 };
 
