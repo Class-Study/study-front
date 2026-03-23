@@ -1,10 +1,11 @@
-import React, {useEffect, useMemo, useState} from 'react';
+import React, {useEffect, useState} from 'react';
 import {useNavigate, useParams} from 'react-router-dom';
 import {useAuth} from '@/hooks/useAuth';
 import {useStudents} from '@/hooks/useStudents';
 import {useWorkspace} from '@/hooks/useWorkspace';
-import {useWorkspaceBase} from '@/hooks/useWorkspaceBase';
+import {useWorkspaceBase, UseWorkspaceBaseReturn} from '@/hooks/useWorkspaceBase';
 import {useWS} from '@/contexts/WSContext';
+import {useWebRTC} from '@/contexts/WebRTCContext';
 import {WorkspaceShell} from './components/WorkspaceShell/WorkspaceShell';
 import {StudentMirrorView} from './components/StudentMirrorView/StudentMirrorView';
 import {WorkspaceChat} from './components/WorkspaceChat/WorkspaceChat';
@@ -13,6 +14,69 @@ import {ActivityPickerModal} from './components/ActivityPickerModal/ActivityPick
 import {Header} from '@/components/layout/Header/Header';
 import {WorkspaceActivity} from '@/types/workspace.types';
 import styles from './WorkspacePage.module.css';
+
+/* ─── Painel direito do professor (dentro do WebRTCProvider) ───────────────── */
+
+interface ProfessorRightPanelProps {
+    ws: UseWorkspaceBaseReturn;
+    targetStudentId: string;
+}
+
+/**
+ * Componente renderizado DENTRO do WorkspaceShell (e portanto dentro do WebRTCProvider).
+ * Usa useWebRTC() para saber se o aluno está online e qual atividade ele definiu.
+ * O chat fica desabilitado até o aluno se conectar e definir uma atividade.
+ */
+const ProfessorRightPanel: React.FC<ProfessorRightPanelProps> = ({ws, targetStudentId}) => {
+    const {isStudentOnline, studentActivityId, studentTitle} = useWebRTC();
+
+    // A atividade é definida pelo aluno via WebRTC
+    const chatActivityTitle = studentTitle ?? ws.activeActivity?.title ?? '';
+    const chatDisabled = !isStudentOnline || !studentActivityId;
+
+    // Quando o aluno envia o activityId via WebRTC, atualiza a atividade ativa do chat
+    useEffect(() => {
+        if (studentActivityId) {
+            // O activityId vem do aluno — é usado pelo ChatBridge para carregar as mensagens
+            // Atualiza no useWorkspaceBase para que o ChatBridge receba
+            ws.setActiveActivity((prev) => {
+                if (prev?.id === studentActivityId) return prev;
+                return {
+                    id: studentActivityId,
+                    title: studentTitle ?? prev?.title ?? '',
+                    type: 'EXERCISE',
+                    convertedHtml: '',
+                    folderId: '',
+                    createdAt: '',
+                };
+            });
+        }
+    }, [studentActivityId, studentTitle]);
+
+    return (
+        <div className={`${styles.rightPanel} ${!ws.chatVisible ? styles.rightPanelHidden : ''}`}>
+            <div className={styles.chatSection}>
+                <WorkspaceChat
+                    activityTitle={chatActivityTitle}
+                    messages={ws.messages}
+                    onSendMessage={ws.handleSendMessage}
+                    disabled={chatDisabled}
+                    disabledMessage={
+                        !isStudentOnline
+                            ? 'Aguardando conexão com o aluno...'
+                            : 'Aguardando o aluno selecionar uma atividade...'
+                    }
+                />
+            </div>
+            <div className={styles.notesSection}>
+                <WorkspaceNotes
+                    activityTitle={chatActivityTitle}
+                    studentId={targetStudentId}
+                />
+            </div>
+        </div>
+    );
+};
 
 /* ─── Professor Workspace ─────────────────────────────────────────────────── */
 
@@ -25,27 +89,18 @@ const ProfessorWorkspacePage: React.FC = () => {
 
     const isStudent = user?.role === 'STUDENT';
     const targetStudentId = studentId ?? user?.id ?? '';
+    const teacherId = user?.id ?? '';
 
     // ── Dados específicos do professor ────────────────────────────────────────
     const {
         workspace,
         workspaceActivities,
-        exerciseFolders,
         loading,
         error,
         accessDenied,
         fetchWorkspace,
-        saveContent,
         createActivity,
     } = useWorkspace(targetStudentId, isStudent);
-
-    const allActivities = useMemo(
-        () => [
-            ...workspaceActivities,
-            ...exerciseFolders.flatMap((f) => f.activities),
-        ],
-        [workspaceActivities, exerciseFolders],
-    );
 
     // ── Hook pai
     const ws = useWorkspaceBase({
@@ -79,15 +134,11 @@ const ProfessorWorkspacePage: React.FC = () => {
             });
     }, [isStudent, targetStudentId]);
 
-    // Auto-seleciona primeira atividade
-    useEffect(() => {
-        if (!ws.activeActivity && allActivities.length > 0) {
-            ws.setActiveActivity(workspaceActivities[0] ?? allActivities[0]);
-        }
-    }, [ws.activeActivity, allActivities]);
-
     // ── Derivados ─────────────────────────────────────────────────────────────
-    const workspaceId = ws.activeActivity?.id ? `${ws.activeActivity.id}-${targetStudentId}` : null;
+    // Conexão WS+WebRTC é baseada em studentId + teacherId (não depende da atividade)
+    const workspaceId = targetStudentId && teacherId
+        ? `${targetStudentId}-${teacherId}`
+        : null;
 
     const breadcrumbItems = [
         {label: isStudent ? 'Meu Perfil' : 'Dashboard', path: isStudent ? '/student/profile' : '/dashboard'},
@@ -168,22 +219,8 @@ const ProfessorWorkspacePage: React.FC = () => {
                 <StudentMirrorView activity={ws.activeActivity} />
             </div>
 
-            {/* Painel direito: chat + notas do professor */}
-            <div className={`${styles.rightPanel} ${!ws.chatVisible ? styles.rightPanelHidden : ''}`}>
-                <div className={styles.chatSection}>
-                    <WorkspaceChat
-                        activityTitle={ws.activeActivity?.title ?? ''}
-                        messages={ws.messages}
-                        onSendMessage={ws.handleSendMessage}
-                    />
-                </div>
-                <div className={styles.notesSection}>
-                    <WorkspaceNotes
-                        activityTitle={ws.activeActivity?.title ?? ''}
-                        studentId={targetStudentId}
-                    />
-                </div>
-            </div>
+            {/* Painel direito: chat + notas — usa useWebRTC internamente */}
+            <ProfessorRightPanel ws={ws} targetStudentId={targetStudentId} />
         </WorkspaceShell>
     );
 };

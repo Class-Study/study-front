@@ -11,6 +11,8 @@ interface WebRTCContextValue {
     studentHtml: string | null;
     /** título da atividade definido pelo aluno */
     studentTitle: string | null;
+    /** id da atividade definido pelo aluno */
+    studentActivityId: string | null;
 }
 
 const WebRTCContext = createContext<WebRTCContextValue>({
@@ -19,6 +21,7 @@ const WebRTCContext = createContext<WebRTCContextValue>({
     isStudentOnline: false,
     studentHtml: null,
     studentTitle: null,
+    studentActivityId: null,
 });
 
 export const WebRTCProvider: React.FC<{
@@ -36,6 +39,7 @@ export const WebRTCProvider: React.FC<{
     const [isStudentOnline, setIsStudentOnline] = useState(false);
     const [studentHtml, setStudentHtml] = useState<string | null>(null);
     const [studentTitle, setStudentTitle] = useState<string | null>(null);
+    const [studentActivityId, setStudentActivityId] = useState<string | null>(null);
 
     const drainQueue = (channel: RTCDataChannel) => {
         sendQueue.current.forEach((data) => {
@@ -94,10 +98,11 @@ export const WebRTCProvider: React.FC<{
             e.channel.onmessage = (ev) => {
                 try {
                     const data = JSON.parse(ev.data);
-                    // mensagem de espelho: { type: "html-update", html: "...", title?: "..." }
+                    // mensagem de espelho: { type: "html-update", html: "...", title?: "...", activityId?: "..." }
                     if (data.type === "html-update" && typeof data.html === "string") {
                         setStudentHtml(data.html);
                         if (typeof data.title === "string") setStudentTitle(data.title);
+                        if (typeof data.activityId === "string") setStudentActivityId(data.activityId);
                     }
                     onDataRef.current?.(data);
                 } catch {}
@@ -166,6 +171,7 @@ export const WebRTCProvider: React.FC<{
             setIsStudentOnline(false);
             setStudentHtml(null);
             setStudentTitle(null);
+            setStudentActivityId(null);
         };
     }, [isConnected, workspaceId, role]);
 
@@ -185,7 +191,7 @@ export const WebRTCProvider: React.FC<{
     };
 
     return (
-        <WebRTCContext.Provider value={{ send, setOnData, isStudentOnline, studentHtml, studentTitle }}>
+        <WebRTCContext.Provider value={{ send, setOnData, isStudentOnline, studentHtml, studentTitle, studentActivityId }}>
             {children}
         </WebRTCContext.Provider>
     );

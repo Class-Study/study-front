@@ -1,4 +1,4 @@
-import React, {useEffect, useMemo, useState} from 'react';
+import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {useNavigate} from 'react-router-dom';
 import {useAuth} from '@/hooks/useAuth';
 import {useMyWorkspace} from '@/hooks/useMyWorkspace';
@@ -8,6 +8,7 @@ import {WorkspaceShell} from './components/WorkspaceShell/WorkspaceShell';
 import {WorkspaceSidebar} from './components/WorkspaceSidebar/WorkspaceSidebar';
 import {WorkspaceEditor} from './components/WorkspaceEditor/WorkspaceEditor';
 import {WorkspaceChat} from './components/WorkspaceChat/WorkspaceChat';
+import {StudentActivityBroadcaster} from './components/StudentActivityBroadcaster/StudentActivityBroadcaster';
 import DocxPreviewEditor from '@/components/ui/DocxPreviewEditor/DocxPreviewEditor';
 import {Header} from '@/components/layout/Header/Header';
 import {WorkspaceActivity} from '@/types/workspace.types';
@@ -25,6 +26,7 @@ const StudentWorkspacePage: React.FC = () => {
         workspace,
         studentId,
         studentName,
+        teacherId,
         teacherName,
         teacherOnline,
         loading,
@@ -58,6 +60,12 @@ const StudentWorkspacePage: React.FC = () => {
     const [newWorkspaceContent, setNewWorkspaceContent] = useState('<p></p>');
     const [workspaceDraftFeedback, setWorkspaceDraftFeedback] = useState<string | null>(null);
 
+    // Ref para enviar atualizações de conteúdo via WebRTC para o professor
+    const contentSenderRef = useRef<((html: string) => void) | null>(null);
+    const handleRegisterContentSender = useCallback((sender: ((html: string) => void) | null) => {
+        contentSenderRef.current = sender;
+    }, []);
+
     // ── Efeitos ───────────────────────────────────────────────────────────────
     useEffect(() => {
         void fetchWorkspace();
@@ -84,8 +92,8 @@ const StudentWorkspacePage: React.FC = () => {
     }, [ws.activeActivity, allActivities]);
 
     // ── Derivados ─────────────────────────────────────────────────────────────
-    const workspaceId = ws.activeActivity?.id && studentId
-        ? `${ws.activeActivity.id}-${studentId}`
+    const workspaceId = studentId && teacherId
+        ? `${studentId}-${teacherId}`
         : null;
 
     const breadcrumbItems = [
@@ -240,6 +248,8 @@ const StudentWorkspacePage: React.FC = () => {
                         onContentChange={(html) => {
                             if (ws.activeActivity?.id && ws.activeActivity.type === 'EXERCISE') {
                                 saveContent(ws.activeActivity.id, html);
+                                // Envia atualização de conteúdo para o professor via WebRTC
+                                contentSenderRef.current?.(html);
                             }
                         }}
                         headerStatus={saving ?
@@ -247,6 +257,12 @@ const StudentWorkspacePage: React.FC = () => {
                     />
                 )}
             </div>
+
+            {/* Broadcaster: envia info da atividade ativa para o professor via WebRTC */}
+            <StudentActivityBroadcaster
+                activity={ws.activeActivity}
+                onRegisterContentSender={handleRegisterContentSender}
+            />
 
             {/* Painel direito: presença do professor + chat */}
             <div className={`${styles.rightPanel} ${ws.chatVisible ? '' : styles.rightPanelHidden}`}>
@@ -268,7 +284,6 @@ const StudentWorkspacePage: React.FC = () => {
                 <div className={styles.chatSection}>
                     <WorkspaceChat
                         activityTitle={ws.activeActivity?.title ?? ''}
-                        workspaceId={workspaceId}
                         messages={ws.messages}
                         onSendMessage={ws.handleSendMessage}
                     />

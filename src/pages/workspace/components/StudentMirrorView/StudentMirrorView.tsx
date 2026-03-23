@@ -22,21 +22,6 @@ export const StudentMirrorView: React.FC<StudentMirrorViewProps> = ({ activity }
     // Título vem do aluno via WebRTC; enquanto não chega, mostra o da atividade como fallback
     const displayTitle = studentTitle ?? activity?.title ?? '';
 
-    /* ── Sem atividade ──────────────────────────────────────────────── */
-    if (!activity) {
-        return (
-            <div className={styles.wrapper}>
-                <div className={styles.waitingState}>
-                    <span className={styles.waitingIcon}>📂</span>
-                    <p className={styles.waitingTitle}>Nenhuma atividade selecionada</p>
-                    <p className={styles.waitingSubtitle}>
-                        Use o botão "Visualizar Atividades" para abrir uma atividade.
-                    </p>
-                </div>
-            </div>
-        );
-    }
-
     /* ── Aluno offline ──────────────────────────────────────────────── */
     if (!isStudentOnline) {
         return (

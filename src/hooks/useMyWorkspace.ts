@@ -29,6 +29,7 @@ export const useMyWorkspace = () => {
   const [workspace, setWorkspace] = useState<WorkspaceData | null>(null);
   const [studentName, setStudentName] = useState('');
   const [studentId, setStudentId] = useState('');
+  const [teacherId, setTeacherId] = useState('');
   const [teacherName, setTeacherName] = useState('Professor');
   const [teacherOnline, setTeacherOnline] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -58,6 +59,7 @@ export const useMyWorkspace = () => {
 
       setStudentId(me.id);
       setStudentName(me.name);
+      setTeacherId(me.teacherId ?? me.teacher?.id ?? '');
       updateTeacherInfo(me);
 
       setWorkspace({
@@ -233,6 +235,7 @@ export const useMyWorkspace = () => {
     workspace,
     studentId,
     studentName,
+    teacherId,
     teacherName,
     teacherOnline,
     workspaceActivities,

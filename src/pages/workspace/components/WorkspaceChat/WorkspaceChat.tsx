@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Send } from 'lucide-react';
+import { Send, WifiOff } from 'lucide-react';
 import { ChatMessage } from '@/types/chat.types';
 import styles from './WorkspaceChat.module.css';
 
@@ -7,12 +7,18 @@ interface WorkspaceChatProps {
   activityTitle: string;
   messages: ChatMessage[];
   onSendMessage: (content: string) => void;
+  /** When true, chat is disabled (e.g. student not connected) */
+  disabled?: boolean;
+  /** Optional message to show when disabled */
+  disabledMessage?: string;
 }
 
 export const WorkspaceChat: React.FC<WorkspaceChatProps> = ({
   activityTitle,
   messages,
   onSendMessage,
+  disabled = false,
+  disabledMessage,
 }) => {
   const [draft, setDraft] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -24,7 +30,7 @@ export const WorkspaceChat: React.FC<WorkspaceChatProps> = ({
   // 📍 PASSO 1: UI - Usuário clica em enviar
   const handleSend = (): void => {
     const content = draft.trim();
-    if (!content) {
+    if (!content || disabled) {
       return;
     }
 
@@ -45,55 +51,69 @@ export const WorkspaceChat: React.FC<WorkspaceChatProps> = ({
       <div className={styles.header}>
         <div className={styles.headerInfo}>
           <span className={styles.headerLabel}>Chat</span>
-          <span className={styles.headerSub}>{activityTitle}</span>
+          <span className={styles.headerSub}>{activityTitle || 'Sem atividade'}</span>
         </div>
       </div>
 
-      <div className={styles.messages}>
-        {messages.length === 0 ? (
-          <div className={styles.emptyChat}>
-            <span className={styles.emptyChatIcon}>💬</span>
-            <span className={styles.emptyChatText}>Nenhuma mensagem ainda</span>
-          </div>
-        ) : (
-          messages.map((msg) => (
-            <div
-              key={msg.id}
-              className={`${styles.messageGroup} ${msg.isOwn ? styles.messageGroupOwn : ''}`}
-            >
-              {!msg.isOwn && (
-                <span className={styles.authorName}>{msg.authorName}</span>
-              )}
-              <div className={`${styles.bubble} ${msg.isOwn ? styles.bubbleOwn : styles.bubbleOther}`}>
-                {msg.content}
+      {disabled ? (
+        <div className={styles.disabledOverlay}>
+          <WifiOff size={24} className={styles.disabledIcon} />
+          <span className={styles.disabledText}>
+            {disabledMessage || 'Chat indisponível'}
+          </span>
+          <span className={styles.disabledSubtext}>
+            O chat será habilitado quando a conexão com o aluno for estabelecida e uma atividade estiver ativa.
+          </span>
+        </div>
+      ) : (
+        <>
+          <div className={styles.messages}>
+            {messages.length === 0 ? (
+              <div className={styles.emptyChat}>
+                <span className={styles.emptyChatIcon}>💬</span>
+                <span className={styles.emptyChatText}>Nenhuma mensagem ainda</span>
               </div>
-              <span className={`${styles.sentAt} ${msg.isOwn ? styles.sentAtOwn : ''}`}>
-                {msg.sentAt}
-              </span>
-            </div>
-          ))
-        )}
-        <div ref={messagesEndRef} />
-      </div>
+            ) : (
+              messages.map((msg) => (
+                <div
+                  key={msg.id}
+                  className={`${styles.messageGroup} ${msg.isOwn ? styles.messageGroupOwn : ''}`}
+                >
+                  {!msg.isOwn && (
+                    <span className={styles.authorName}>{msg.authorName}</span>
+                  )}
+                  <div className={`${styles.bubble} ${msg.isOwn ? styles.bubbleOwn : styles.bubbleOther}`}>
+                    {msg.content}
+                  </div>
+                  <span className={`${styles.sentAt} ${msg.isOwn ? styles.sentAtOwn : ''}`}>
+                    {msg.sentAt}
+                  </span>
+                </div>
+              ))
+            )}
+            <div ref={messagesEndRef} />
+          </div>
 
-      <div className={styles.inputRow}>
-        <textarea
-          className={styles.input}
-          placeholder="Mensagem..."
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          onKeyDown={handleKeyDown}
-          rows={1}
-        />
-        <button
-          type="button"
-          className={styles.sendBtn}
-          onClick={handleSend}
-          disabled={!draft.trim()}
-        >
-          <Send size={14} />
-        </button>
-      </div>
+          <div className={styles.inputRow}>
+            <textarea
+              className={styles.input}
+              placeholder="Mensagem..."
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              onKeyDown={handleKeyDown}
+              rows={1}
+            />
+            <button
+              type="button"
+              className={styles.sendBtn}
+              onClick={handleSend}
+              disabled={!draft.trim()}
+            >
+              <Send size={14} />
+            </button>
+          </div>
+        </>
+      )}
     </div>
   );
 };
