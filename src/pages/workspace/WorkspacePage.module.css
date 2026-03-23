@@ -203,7 +203,7 @@
   flex: 0 0 auto;
   min-height: 0;
   overflow: hidden;
-  max-height: 40vh;
+  height: 45vh;
   transition: all 0.3s ease-out;
   animation: slideInRight 0.3s ease-out 0.1s both;
 }
@@ -302,17 +302,46 @@
   min-height: 0;
 }
 
-@media (max-width: 900px) {
-  .workspaceContainer {
-    padding: 20px;
-  }
+/* ── Activity Picker Bar (professor) ──────────────────────────────────────── */
+.activityPickerBar {
+  display: flex;
+  align-items: center;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-bg-card);
+  flex-shrink: 0;
+}
 
-  .workspaceHeaderRow {
-    flex-direction: column;
-    align-items: stretch;
-  }
+.activityPickerBtn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-page);
+  color: var(--color-text-primary);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
 
-  .workspaceActions {
-    justify-content: flex-end;
-  }
+.activityPickerBtn:hover {
+  background: var(--color-hover);
+  border-color: var(--color-primary);
+}
+
+.activityPickerCurrent {
+  display: inline-block;
+  max-width: 240px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 1px 8px;
+  border-radius: 10px;
+  background: var(--color-primary-light, #eff6ff);
+  color: var(--color-primary, #3b82f6);
+  font-size: 12px;
+  font-weight: 400;
 }

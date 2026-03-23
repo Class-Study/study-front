@@ -35,6 +35,13 @@ export interface WorkspaceShellProps {
     /** Conteúdo exclusivo da página (sidebar + editor + painel direito) */
     children: React.ReactNode;
 
+    /**
+     * Barra extra renderizada entre o toolbar e o body.
+     * Fica fora do flex-row do body para não virar uma coluna.
+     * Ex: activity picker bar do professor.
+     */
+    topBar?: React.ReactNode;
+
     /** Atributo extra no div.page (ex: data-student-id) */
     pageProps?: React.HTMLAttributes<HTMLDivElement>;
 }
@@ -58,6 +65,7 @@ export const WorkspaceShell: React.FC<WorkspaceShellProps> = ({
     setChatVisible,
     bodyRef,
     children,
+    topBar,
     pageProps = {},
 }) => {
     return (
@@ -98,6 +106,8 @@ export const WorkspaceShell: React.FC<WorkspaceShellProps> = ({
                             ⇌ Chat
                         </button>
                     </div>
+
+                    {topBar}
 
                     <div className={styles.body} ref={bodyRef}>
                         {children}

@@ -6,10 +6,10 @@ import {useWorkspace} from '@/hooks/useWorkspace';
 import {useWorkspaceBase} from '@/hooks/useWorkspaceBase';
 import {useWS} from '@/contexts/WSContext';
 import {WorkspaceShell} from './components/WorkspaceShell/WorkspaceShell';
-import {WorkspaceSidebar} from './components/WorkspaceSidebar/WorkspaceSidebar';
 import {WorkspaceEditor} from './components/WorkspaceEditor/WorkspaceEditor';
 import {WorkspaceChat} from './components/WorkspaceChat/WorkspaceChat';
 import {WorkspaceNotes} from './components/WorkspaceNotes/WorkspaceNotes';
+import {ActivityPickerModal} from './components/ActivityPickerModal/ActivityPickerModal';
 import {Header} from '@/components/layout/Header/Header';
 import {WorkspaceActivity} from '@/types/workspace.types';
 import styles from './WorkspacePage.module.css';
@@ -35,8 +35,6 @@ const ProfessorWorkspacePage: React.FC = () => {
         accessDenied,
         fetchWorkspace,
         saveContent,
-        createFolder,
-        moveActivity,
     } = useWorkspace(targetStudentId, isStudent);
 
     const allActivities = useMemo(
@@ -47,7 +45,7 @@ const ProfessorWorkspacePage: React.FC = () => {
         [workspaceActivities, exerciseFolders],
     );
 
-    // ── Hook pai — toda lógica compartilhada ──────────────────────────────────
+    // ── Hook pai
     const ws = useWorkspaceBase({
         sidebarStorageKey: 'workspace.sidebar.width',
         wsRef,
@@ -55,8 +53,8 @@ const ProfessorWorkspacePage: React.FC = () => {
     });
 
     // ── Estado exclusivo do professor ─────────────────────────────────────────
-    const [newItemForm, setNewItemForm] = useState<{ title: string } | null>(null);
     const [studentName, setStudentName] = useState('');
+    const [activityPickerOpen, setActivityPickerOpen] = useState(false);
 
     // ── Efeitos ───────────────────────────────────────────────────────────────
     useEffect(() => {
@@ -98,19 +96,8 @@ const ProfessorWorkspacePage: React.FC = () => {
     const userForChat = {id: user?.id, name: user?.name, email: user?.email, role: user?.role};
 
     // ── Handlers exclusivos ───────────────────────────────────────────────────
-    const handleCreateFolder = async (): Promise<void> => {
-        if (!newItemForm?.title.trim()) return;
-        const folder = await createFolder(newItemForm.title.trim());
-        if (folder) setNewItemForm(null);
-    };
-
     const handleSelectActivity = (activity: WorkspaceActivity): void => {
         ws.setActiveActivity(activity);
-    };
-
-    const handleMoveActivity = async (activityId: string, targetFolderId: string): Promise<void> => {
-        const moved = await moveActivity(activityId, targetFolderId);
-        if (!moved) alert('Nao foi possivel mover a atividade. Tente novamente.');
     };
 
     // ── Loading / Error ───────────────────────────────────────────────────────
@@ -141,29 +128,30 @@ const ProfessorWorkspacePage: React.FC = () => {
             chatVisible={ws.chatVisible}
             setChatVisible={ws.setChatVisible}
             bodyRef={ws.bodyRef}
-        >
-            {/* Sidebar */}
-            <WorkspaceSidebar
-                folders={exerciseFolders}
-                workspaces={workspaceActivities}
-                activeActivityId={ws.activeActivity?.id ?? null}
-                width={ws.sidebarWidth}
-                onSelectActivity={handleSelectActivity}
-                collapsed={ws.sidebarCollapsed}
-                onToggleCollapse={() => ws.setSidebarCollapsed((p) => !p)}
-                onResizeStart={ws.handleSidebarResizeStart}
-                newItemForm={newItemForm}
-                onChangeNewItemForm={setNewItemForm}
-                onCreateFolder={handleCreateFolder}
-                onCreateWorkspace={() => {
-                }}
-                onOpenUploadForFolder={() => {
-                }}
-                onMoveActivity={handleMoveActivity}
-                readOnly={isStudent}
-            />
+            topBar={
+                <>
+                    {/* Modal de seleção de atividade */}
+                    <ActivityPickerModal
+                        isOpen={activityPickerOpen}
+                        onClose={() => setActivityPickerOpen(false)}
+                        folders={exerciseFolders}
+                        workspaces={workspaceActivities}
+                        activeActivityId={ws.activeActivity?.id ?? null}
+                        onSelectActivity={handleSelectActivity}
+                    />
 
-            {/* Editor (somente leitura para o professor) */}
+                    {/* Barra com botão para abrir o picker — substitui a sidebar */}
+                    <div className={styles.activityPickerBar}>
+                        <button
+                            type="button"
+                            className={styles.activityPickerBtn}
+                            onClick={() => setActivityPickerOpen(true)}
+                        >📂 Visualizar Atividades
+                        </button>
+                    </div>
+                </>
+            }
+        >
             <div className={styles.editorArea}>
                 <WorkspaceEditor
                     activity={ws.activeActivity}

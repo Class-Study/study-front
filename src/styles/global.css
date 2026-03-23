@@ -47,7 +47,7 @@ textarea:focus::placeholder {
 
   /* Texto */
   --color-text-primary: #1a1814;
-  --color-text-secondary: #6b6660;
+  --color-text-secondary: #171717;
   --color-text-tertiary: #9e9890;
   --color-text-inverse: #ffffff;
   --color-label: #1a1814;
