@@ -3,7 +3,7 @@ import { ArrowLeft, Eye, PencilLine } from 'lucide-react';
 import * as mammoth from 'mammoth';
 import { Modal } from '@/components/ui/Modal/Modal';
 import DocxPreviewEditor from '@/components/ui/DocxPreviewEditor/DocxPreviewEditor';
-import styles from '@/pages/students/components/CreateExerciseModal/CreateExerciseModal.module.css';
+import styles from '@/components/ui/CreateExerciseModal/CreateExerciseModal.module.css';
 import { StudentExerciseFolder } from '@/types/studentProfile.types';
 
 interface CreateExerciseModalProps {

@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Modal } from '@/components/ui/Modal/Modal';
 import DocxPreviewEditor from '@/components/ui/DocxPreviewEditor/DocxPreviewEditor';
 import { StudentExerciseFolder } from '@/types/studentProfile.types';
-import styles from '../CreateExerciseModal/CreateExerciseModal.module.css';
+import styles from '@/components/ui/CreateExerciseModal/CreateExerciseModal.module.css';
 
 interface FreeTextExerciseModalProps {
   isOpen: boolean;

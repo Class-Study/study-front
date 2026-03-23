@@ -268,6 +268,7 @@ const StudentWorkspacePage: React.FC = () => {
                 <div className={styles.chatSection}>
                     <WorkspaceChat
                         activityTitle={ws.activeActivity?.title ?? ''}
+                        workspaceId={workspaceId}
                         messages={ws.messages}
                         onSendMessage={ws.handleSendMessage}
                     />

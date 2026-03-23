@@ -2,7 +2,7 @@ import React from 'react';
 import { Header } from '@/components/layout/Header/Header';
 import { WSProvider } from '@/contexts/WSContext';
 import { WebRTCProvider } from '@/contexts/WebRTCContext';
-import { ChatBridge } from '../chat/ChatBridge';
+import { ChatBridge } from '@/pages/workspace/components/Chat/ChatBridge';
 import { ChatMessage } from '@/types/chat.types';
 import styles from '../../WorkspacePage.module.css';
 

@@ -1,11 +1,12 @@
-import React, {useState} from 'react';
+import React, {useMemo, useState} from 'react';
 import {ChevronDown, ChevronRight, FileText, FolderClosed, FolderOpen} from 'lucide-react';
 import {Modal} from '@/components/ui/Modal/Modal';
 import {CreateExerciseModal} from '@/components/ui/CreateExerciseModal';
-import {CreateActivityRequest, WorkspaceActivity, WorkspaceFolder} from '@/types/workspace.types';
-import activityService from '@/services/api/activity.service';
+import {WorkspaceActivity, WorkspaceFolder} from '@/types/workspace.types';
 import styles from './ActivityPickerModal.module.css';
 import {ActivityType} from "@/types/activity.types.ts";
+import {FreeTextExerciseModal} from "@/pages/students/components/FreeTextExerciseModal/FreeTextExerciseModal.tsx";
+import {StudentActivity} from "@/types/studentProfile.types.ts";
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 
@@ -13,9 +14,13 @@ interface ActivityPickerModalProps {
     isOpen: boolean;
     onClose: () => void;
     folders: WorkspaceFolder[];
-    workspaces: WorkspaceActivity[];          // atividades soltas (sem pasta)
+    activities?: StudentActivity[];
+    exerciseFolders?: { id: string; name: string; position: number }[];
+    workspaces: WorkspaceActivity[];
     activeActivityId: string | null;
     onSelectActivity: (activity: WorkspaceActivity) => void;
+    onCreateActivity?: (folderId: string, payload: { title: string; type: ActivityType; convertedHtml: string; originalFilename?: string }) => Promise<WorkspaceActivity | null>;
+    onAfterSave?: () => Promise<void> | void;
 }
 
 // ─── Componente ───────────────────────────────────────────────────────────────
@@ -24,13 +29,19 @@ export const ActivityPickerModal: React.FC<ActivityPickerModalProps> = ({
                                                                             isOpen,
                                                                             onClose,
                                                                             folders,
+                                                                            activities = [],
+                                                                            exerciseFolders = [],
                                                                             workspaces,
                                                                             activeActivityId,
                                                                             onSelectActivity,
+                                                                            onCreateActivity,
+                                                                            onAfterSave,
                                                                         }) => {
     const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
     const [previewActivity, setPreviewActivity] = useState<WorkspaceActivity | null>(null);
     const [showCreateExerciseModal, setShowCreateExerciseModal] = useState(false);
+    const [isFreeTextExerciseModalOpen, setIsFreeTextExerciseModalOpen] = useState(false);
+    const [exerciseFeedback, setExerciseFeedback] = useState('');
 
     const toggleFolder = (folderId: string) => {
         setExpandedFolders((prev) => {
@@ -45,6 +56,50 @@ export const ActivityPickerModal: React.FC<ActivityPickerModalProps> = ({
         onClose();
     };
 
+    const exerciseSections = useMemo(() => {
+        const exercises = activities.filter((activity) => activity.type === 'EXERCISE');
+        const groupedActivities = new Map<string, typeof exercises>();
+
+        exercises.forEach((activity) => {
+            const current = groupedActivities.get(activity.folderId) ?? [];
+            groupedActivities.set(activity.folderId, [...current, activity]);
+        });
+
+        const knownFolderIds = new Set<string>();
+        const sections = exerciseFolders.map((folder) => {
+            knownFolderIds.add(folder.id);
+            return {
+                id: folder.id,
+                name: folder.name,
+                position: folder.position,
+                activities: groupedActivities.get(folder.id) ?? [],
+            };
+        });
+
+        exercises.forEach((activity) => {
+            if (knownFolderIds.has(activity.folderId)) return;
+            sections.push({
+                id: activity.folderId,
+                name: activity.folderName || 'Sem pasta',
+                position: Number.MAX_SAFE_INTEGER,
+                activities: exercises.filter((item) => item.folderId === activity.folderId),
+            });
+            knownFolderIds.add(activity.folderId);
+        });
+
+        return sections.sort((a, b) => a.position - b.position || a.name.localeCompare(b.name));
+    }, [activities, exerciseFolders]);
+
+    const defaultExerciseFolderId = useMemo(() => {
+        const firstFolder = exerciseSections[0];
+        return firstFolder?.id ?? null;
+    }, [exerciseSections]);
+
+    const handleOpenFreeTextExercise = (): void => {
+        setExerciseFeedback('');
+        setIsFreeTextExerciseModalOpen(true);
+    };
+
     const handleCreateExercise = async (payload: {
         folderId: string;
         title: string;
@@ -53,20 +108,24 @@ export const ActivityPickerModal: React.FC<ActivityPickerModalProps> = ({
         originalFilename: string;
     }) => {
         try {
-            const created = await activityService.create(
-                payload.folderId,
-                {
+            const created = onCreateActivity
+                ? await onCreateActivity(payload.folderId, {
                     title: payload.title,
                     type: payload.type,
                     convertedHtml: payload.convertedHtml,
-                }
-            );
+                    originalFilename: payload.originalFilename,
+                })
+                : null;
 
-            // seleciona a atividade criada
-            onSelectActivity(created);
+            // re-busca o workspace do backend para refletir instantaneamente no modal
+            await onAfterSave?.();
 
-            // fecha o modal
+            if (created) {
+                onSelectActivity(created);
+            }
+
             setShowCreateExerciseModal(false);
+            setIsFreeTextExerciseModalOpen(false);
 
         } catch (error) {
             console.error('Erro ao criar atividade:', error);
@@ -97,6 +156,7 @@ export const ActivityPickerModal: React.FC<ActivityPickerModalProps> = ({
                                 + Novo
                             </button>
                         </div>
+                        {exerciseFeedback && <p className={styles.successMsg}>{exerciseFeedback}</p>}
                         {!hasContent && (
                             <p className={styles.empty}>Nenhuma atividade encontrada.</p>
                         )}
@@ -198,6 +258,26 @@ export const ActivityPickerModal: React.FC<ActivityPickerModalProps> = ({
                 onClose={() => setShowCreateExerciseModal(false)}
                 folders={folders}
                 selectedFolderId={folders[0]?.id || null}
+                onSave={handleCreateExercise}
+                onCreateFreeText={handleOpenFreeTextExercise}
+            />
+            <FreeTextExerciseModal
+                isOpen={isFreeTextExerciseModalOpen}
+                folders={
+                    folders.length > 0
+                        ? folders.map((folder) => ({
+                            id: folder.id,
+                            name: folder.name,
+                            position: folder.position,
+                        }))
+                        : exerciseSections.map((folder) => ({
+                            id: folder.id,
+                            name: folder.name,
+                            position: folder.position,
+                        }))
+                }
+                selectedFolderId={folders[0]?.id ?? defaultExerciseFolderId}
+                onClose={() => setIsFreeTextExerciseModalOpen(false)}
                 onSave={handleCreateExercise}
             />
         </>

@@ -6,7 +6,7 @@ import {useWorkspace} from '@/hooks/useWorkspace';
 import {useWorkspaceBase} from '@/hooks/useWorkspaceBase';
 import {useWS} from '@/contexts/WSContext';
 import {WorkspaceShell} from './components/WorkspaceShell/WorkspaceShell';
-import {WorkspaceEditor} from './components/WorkspaceEditor/WorkspaceEditor';
+import {StudentMirrorView} from './components/StudentMirrorView/StudentMirrorView';
 import {WorkspaceChat} from './components/WorkspaceChat/WorkspaceChat';
 import {WorkspaceNotes} from './components/WorkspaceNotes/WorkspaceNotes';
 import {ActivityPickerModal} from './components/ActivityPickerModal/ActivityPickerModal';
@@ -28,6 +28,7 @@ const ProfessorWorkspacePage: React.FC = () => {
 
     // ── Dados específicos do professor ────────────────────────────────────────
     const {
+        workspace,
         workspaceActivities,
         exerciseFolders,
         loading,
@@ -35,6 +36,7 @@ const ProfessorWorkspacePage: React.FC = () => {
         accessDenied,
         fetchWorkspace,
         saveContent,
+        createActivity,
     } = useWorkspace(targetStudentId, isStudent);
 
     const allActivities = useMemo(
@@ -134,10 +136,20 @@ const ProfessorWorkspacePage: React.FC = () => {
                     <ActivityPickerModal
                         isOpen={activityPickerOpen}
                         onClose={() => setActivityPickerOpen(false)}
-                        folders={exerciseFolders}
+                        folders={workspace?.folders ?? []}
                         workspaces={workspaceActivities}
                         activeActivityId={ws.activeActivity?.id ?? null}
                         onSelectActivity={handleSelectActivity}
+                        onCreateActivity={async (folderId, payload) =>
+                            createActivity(
+                                folderId,
+                                payload.title,
+                                payload.type as 'EXERCISE' | 'WORKSPACE',
+                                payload.convertedHtml,
+                                payload.originalFilename,
+                            )
+                        }
+                        onAfterSave={fetchWorkspace}
                     />
 
                     {/* Barra com botão para abrir o picker — substitui a sidebar */}
@@ -153,13 +165,7 @@ const ProfessorWorkspacePage: React.FC = () => {
             }
         >
             <div className={styles.editorArea}>
-                <WorkspaceEditor
-                    activity={ws.activeActivity}
-                    editable={false}
-                    onContentChange={(html) => {
-                        if (ws.activeActivity?.id) saveContent(ws.activeActivity.id, html);
-                    }}
-                />
+                <StudentMirrorView activity={ws.activeActivity} />
             </div>
 
             {/* Painel direito: chat + notas do professor */}

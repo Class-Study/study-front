@@ -1,15 +1,24 @@
 // src/contexts/WebRTCContext.tsx
-import React, {createContext, useContext, useEffect, useRef} from "react";
+import React, {createContext, useContext, useEffect, useRef, useState} from "react";
 import {useWS} from "@/contexts/WSContext";
 
 interface WebRTCContextValue {
     send: (data: any) => void;
-    setOnData: (fn: (data: any) => void) => void; // ← adiciona isso
+    setOnData: (fn: (data: any) => void) => void;
+    /** true quando o DataChannel com o aluno está aberto (lado professor) */
+    isStudentOnline: boolean;
+    /** último HTML compactado recebido do aluno via DataChannel */
+    studentHtml: string | null;
+    /** título da atividade definido pelo aluno */
+    studentTitle: string | null;
 }
 
 const WebRTCContext = createContext<WebRTCContextValue>({
     send: () => {},
     setOnData: () => {},
+    isStudentOnline: false,
+    studentHtml: null,
+    studentTitle: null,
 });
 
 export const WebRTCProvider: React.FC<{
@@ -23,6 +32,10 @@ export const WebRTCProvider: React.FC<{
     const channelRef = useRef<RTCDataChannel | null>(null);
     const onDataRef = useRef<((data: any) => void) | null>(null);
     const sendQueue = useRef<any[]>([]);
+
+    const [isStudentOnline, setIsStudentOnline] = useState(false);
+    const [studentHtml, setStudentHtml] = useState<string | null>(null);
+    const [studentTitle, setStudentTitle] = useState<string | null>(null);
 
     const drainQueue = (channel: RTCDataChannel) => {
         sendQueue.current.forEach((data) => {
@@ -66,13 +79,28 @@ export const WebRTCProvider: React.FC<{
 
         pc.ondatachannel = (e) => {
             channelRef.current = e.channel;
+
             e.channel.onopen = () => {
                 console.log("[WebRTC] canal aberto (teacher)");
+                setIsStudentOnline(true);
                 drainQueue(e.channel);
             };
-            e.channel.onclose = () => console.log("[WebRTC] canal fechado (teacher)");
+
+            e.channel.onclose = () => {
+                console.log("[WebRTC] canal fechado (teacher)");
+                setIsStudentOnline(false);
+            };
+
             e.channel.onmessage = (ev) => {
-                try { onDataRef.current?.(JSON.parse(ev.data)); } catch {}
+                try {
+                    const data = JSON.parse(ev.data);
+                    // mensagem de espelho: { type: "html-update", html: "...", title?: "..." }
+                    if (data.type === "html-update" && typeof data.html === "string") {
+                        setStudentHtml(data.html);
+                        if (typeof data.title === "string") setStudentTitle(data.title);
+                    }
+                    onDataRef.current?.(data);
+                } catch {}
             };
         };
 
@@ -135,6 +163,9 @@ export const WebRTCProvider: React.FC<{
             pcRef.current = null;
             channelRef.current = null;
             sendQueue.current = [];
+            setIsStudentOnline(false);
+            setStudentHtml(null);
+            setStudentTitle(null);
         };
     }, [isConnected, workspaceId, role]);
 
@@ -154,10 +185,16 @@ export const WebRTCProvider: React.FC<{
     };
 
     return (
-        <WebRTCContext.Provider value={{ send, setOnData }}>
+        <WebRTCContext.Provider value={{ send, setOnData, isStudentOnline, studentHtml, studentTitle }}>
             {children}
         </WebRTCContext.Provider>
     );
 };
 
 export const useWebRTC = () => useContext(WebRTCContext);
+
+
+
+
+
+

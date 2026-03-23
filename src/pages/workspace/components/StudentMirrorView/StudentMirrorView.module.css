@@ -1,0 +1,150 @@
+/* StudentMirrorView.module.css */
+
+/* ── Container principal ─────────────────────────────────────────── */
+.wrapper {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--color-bg-page);
+}
+
+/* ── Top bar com título da atividade ─────────────────────────────── */
+.topBar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 20px;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-bg-card);
+  flex-shrink: 0;
+}
+
+.activityTitle {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin: 0;
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.onlineBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--color-success, #22c55e);
+  background: color-mix(in srgb, var(--color-success, #22c55e) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-success, #22c55e) 30%, transparent);
+  border-radius: 20px;
+  padding: 2px 10px;
+  flex-shrink: 0;
+}
+
+.onlineBadge::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+/* ── Estado aguardando ────────────────────────────────────────────── */
+.waitingState {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 40px;
+  color: var(--color-text-tertiary);
+}
+
+.waitingIcon {
+  font-size: 40px;
+  opacity: 0.5;
+  animation: float 3s ease-in-out infinite;
+}
+
+.waitingTitle {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  margin: 0;
+}
+
+.waitingSubtitle {
+  font-size: 13px;
+  color: var(--color-text-tertiary);
+  margin: 0;
+  text-align: center;
+  max-width: 300px;
+  line-height: 1.5;
+}
+
+/* Três pontinhos de loading */
+.dots {
+  display: flex;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.dots span {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--color-text-tertiary);
+  animation: bounce 1.2s ease-in-out infinite;
+}
+
+.dots span:nth-child(2) { animation-delay: 0.2s; }
+.dots span:nth-child(3) { animation-delay: 0.4s; }
+
+/* ── Área do preview do HTML recebido ────────────────────────────── */
+.previewScroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px 32px;
+}
+
+/* Renderiza o HTML do aluno com as mesmas fontes do editor */
+.previewContent {
+  max-width: 860px;
+  margin: 0 auto;
+  font-family: var(--font-sans, ui-sans-serif, system-ui, sans-serif);
+  font-size: 15px;
+  line-height: 1.7;
+  color: var(--color-text-primary);
+}
+
+.previewContent p { margin: 0 0 0.75em; }
+.previewContent h1, .previewContent h2, .previewContent h3 {
+  font-weight: 700;
+  margin: 1em 0 0.5em;
+}
+.previewContent ul, .previewContent ol { padding-left: 1.5em; margin: 0 0 0.75em; }
+.previewContent strong { font-weight: 700; }
+.previewContent em { font-style: italic; }
+
+/* ── Animations ──────────────────────────────────────────────────── */
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+
+@keyframes bounce {
+  0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
+  40% { transform: scale(1); opacity: 1; }
+}
+

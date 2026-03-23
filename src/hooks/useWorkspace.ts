@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import axios from 'axios';
 import workspaceService from '@/services/api/workspace.service';
 import activityService from '@/services/api/activity.service';
+import studentProfileService from '@/services/api/studentProfile.service';
 import {
   WorkspaceActivity,
   WorkspaceData,
@@ -91,27 +92,26 @@ export const useWorkspace = (studentId: string, studentView: boolean = false) =>
     originalFilename?: string,
   ): Promise<WorkspaceActivity | null> => {
     try {
-      const activity = await workspaceService.createActivity(studentId, folderId, {
+      const activity = await studentProfileService.createExercise(studentId, folderId, {
         title,
-        type,
+        type: type as 'EXERCISE',
         convertedHtml,
-        originalFilename,
+        originalFilename: originalFilename ?? '',
       });
 
       setWorkspace((prev) => {
         if (!prev) return prev;
-
         return {
           ...prev,
           folders: prev.folders.map((folder) => (
             folder.id === folderId
-              ? { ...folder, activities: [...folder.activities, activity] }
+              ? { ...folder, activities: [...folder.activities, activity as unknown as WorkspaceActivity] }
               : folder
           )),
         };
       });
 
-      return activity;
+      return activity as unknown as WorkspaceActivity;
     } catch {
       console.error('Erro ao criar atividade');
       return null;
