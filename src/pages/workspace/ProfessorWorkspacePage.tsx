@@ -62,6 +62,7 @@ const ProfessorRightPanel: React.FC<ProfessorRightPanelProps> = ({
                 };
             });
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [studentActivityId, studentTitle]);
 
     return (
@@ -155,6 +156,7 @@ const ProfessorWorkspacePage: React.FC = () => {
     // ── Efeitos ───────────────────────────────────────────────────────────────
     useEffect(() => {
         if (accessDenied) navigate(isStudent ? '/account-inactive' : '/access-denied', {replace: true});
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [accessDenied]);
 
     useEffect(() => {
@@ -169,8 +171,8 @@ const ProfessorWorkspacePage: React.FC = () => {
         }
         getStudentById(targetStudentId)
             .then((s) => setStudentName(s.name))
-            .catch(() => {
-            });
+            .catch(() => {});
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isStudent, targetStudentId]);
 
     // ── Derivados ─────────────────────────────────────────────────────────────

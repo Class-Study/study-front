@@ -43,6 +43,7 @@ export const StudentActivityBroadcaster: React.FC<StudentActivityBroadcasterProp
             title: activity.title,
             html: activity.convertedHtml,
         });
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [activity?.id, send]);
 
     // Re-envia quando o canal abre (reconexão do professor)

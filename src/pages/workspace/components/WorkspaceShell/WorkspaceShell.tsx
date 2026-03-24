@@ -22,7 +22,7 @@ export interface WorkspaceShellProps {
     userForChat: { id?: string; name?: string; email?: string; role?: string };
     messagesRef: React.MutableRefObject<ChatMessage[]>;
     sendMessageRef: React.MutableRefObject<(content: string) => void>;
-    addIncomingRef: React.MutableRefObject<((data: any) => void) | null>;
+    addIncomingRef: React.MutableRefObject<((data: Record<string, unknown>) => void) | null>;
     onMessagesChange: () => void;
 
     // Layout (vêm do useWorkspaceBase)

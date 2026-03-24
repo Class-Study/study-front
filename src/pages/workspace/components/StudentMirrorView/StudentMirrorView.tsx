@@ -164,7 +164,6 @@ export const StudentMirrorView: React.FC<StudentMirrorViewProps> = ({ activity }
                         <div
                             ref={contentRef}
                             className={styles.previewContent}
-                            /* eslint-disable-next-line react/no-danger */
                             dangerouslySetInnerHTML={{ __html: studentHtml }}
                         />
                         {/* Cursor remoto do aluno */}

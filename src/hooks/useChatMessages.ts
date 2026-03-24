@@ -7,14 +7,14 @@ import chatService from "@/services/api/chat.service";
 interface UseChatMessagesProps {
     activityId: string | null;
     user: AuthUser;
-    send: (data: any) => void;
+    send: (data: Record<string, unknown>) => void;
 }
 
 interface UseChatMessagesReturn {
     messages: ChatMessage[];
     sendMessage: (content: string) => Promise<void>;
     isLoading: boolean;
-    addIncomingMessage: (data: any) => void;
+    addIncomingMessage: (data: Record<string, unknown>) => void;
 }
 
 export const useChatMessages = ({
@@ -75,11 +75,7 @@ export const useChatMessages = ({
                 isOwn: true,  // TODO: Marca como própria mensagem
             };
 
-            // TODO: Adiciona ao estado local (UI renderiza imediatamente)
-            setMessages((prev) => {
-                const updated = [...prev, optimisticMsg];
-                return updated;
-            });
+            setMessages((prev) => [...prev, optimisticMsg]);
 
             // TODO: ENVIA VIA WEBRTC (para o outro lado ver em tempo real)
             send({
@@ -106,30 +102,24 @@ export const useChatMessages = ({
     // TODO: addIncomingMessage() - Ponto de entrada do recebimento
     // Chamado por StudentWorkspacePage/ProfessorWorkspacePage quando WebSocket envia dados
     const addIncomingMessage = useCallback(
-        (data: any) => {
-            // TODO: Valida se é mensagem da atividade atual
+        (data: Record<string, unknown>) => {
             if (data.activityId !== activityIdRef.current) {
                 return;
             }
 
-            // TODO: Criar objeto ChatMessage com dados do servidor
             const incoming: ChatMessage = {
-                id: data.id,
-                activityId: data.activityId,
-                authorId: data.authorId,
-                authorName: data.authorName,
-                content: data.content,
-                sentAt: data.sentAt,
-                isOwn: data.authorId === user.id,  // TODO: Marca se é própria ou do outro
+                id: data.id as string,
+                activityId: data.activityId as string,
+                authorId: data.authorId as string,
+                authorName: data.authorName as string,
+                content: data.content as string,
+                sentAt: data.sentAt as string,
+                isOwn: data.authorId === user.id,
             };
 
-            // TODO: Adiciona ao estado (UI renderiza na "bolha do outro")
             setMessages((prev) => {
-                if (prev.some((m) => m.id === incoming.id)) {
-                    return prev;  // TODO: Evita duplicata
-                }
-                const updated = [...prev, incoming];
-                return updated;
+                if (prev.some((m) => m.id === incoming.id)) return prev;
+                return [...prev, incoming];
             });
         },
         [user.id],

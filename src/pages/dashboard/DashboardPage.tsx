@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { Header } from '@/components/layout/Header/Header';
 import { useStudents } from '@/hooks/useStudents';
 import { useLevelProfiles } from '@/hooks/useLevelProfiles';
-import { Student, ClassDay } from '@/types/student.types';
+import { ClassDay } from '@/types/student.types';
 import { formatClassDays, formatClassTime, DAY_FILTER_OPTIONS } from '@/utils/classDay.utils';
 import { NiveisTab } from '@/pages/dashboard/tabs/NiveisTab';
 import { BillingTab } from '@/pages/dashboard/tabs/BillingTab';
@@ -70,6 +70,7 @@ export const DashboardPage: React.FC = () => {
   useEffect(() => {
     fetchStudents();
     fetchLevelProfiles();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const filteredStudents = useMemo(() => {

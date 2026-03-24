@@ -91,7 +91,6 @@ export const StudentProfilePage: React.FC = () => {
     loadingActivities,
     loadingFolders,
     savingNote,
-    creatingExercise,
     fetchNotes,
     fetchActivities,
     fetchFolders,

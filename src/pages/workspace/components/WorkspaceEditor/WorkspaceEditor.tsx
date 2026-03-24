@@ -39,7 +39,7 @@ interface WorkspaceEditorProps {
  * criando um Range do início do container até a posição do cursor
  * e contando os caracteres dentro dele.
  */
-function prosePosToTextOffset(view: any, container: HTMLElement, pos: number): number {
+function prosePosToTextOffset(view: { domAtPos: (pos: number) => { node: Node; offset: number } }, container: HTMLElement, pos: number): number {
   try {
     const resolved = view.domAtPos(pos);
     const node = resolved.node;
@@ -82,7 +82,7 @@ export const WorkspaceEditor: React.FC<WorkspaceEditorProps> = ({
   const onCursorChangeRef = useRef(onCursorChange);
   onCursorChangeRef.current = onCursorChange;
 
-  const emitCursor = (e: any) => {
+  const emitCursor = (e: { view: { dom: HTMLElement; domAtPos: (pos: number) => { node: Node; offset: number } } | null; state: { selection: { from: number; to: number } } }) => {
     if (!onCursorChangeRef.current) return;
     const view = e.view;
     if (!view?.dom) return;

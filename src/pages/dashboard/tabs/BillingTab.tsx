@@ -238,10 +238,8 @@ export const BillingTab: React.FC = () => {
     error,
     paying,
     notifying,
-    updatingRateStudentId,
     fetchBilling,
     payEntry,
-    updateStudentRate,
     notifyPending,
     fetchStudentHistory,
     studentHistory,
@@ -259,15 +257,6 @@ export const BillingTab: React.FC = () => {
   } | null>(null);
   const [reportEntry, setReportEntry] = useState<BillingEntry | null>(null);
 
-  const handleUpdateRate = async (studentId: string, currentAmount: number): Promise<void> => {
-    const raw = window.prompt('Novo valor da mensalidade (R$):', currentAmount.toFixed(2));
-    if (!raw) return;
-
-    const parsed = Number(raw.replace(',', '.'));
-    if (Number.isNaN(parsed) || parsed <= 0) return;
-
-    await updateStudentRate(studentId, parsed, selectedMonth);
-  };
 
   // Called when tab mounts and whenever month changes
   useEffect(() => {

@@ -7,13 +7,13 @@ import { NotesHistoryModal } from '../NotesHistoryModal/NotesHistoryModal';
 import styles from './WorkspaceNotes.module.css';
 
 interface WorkspaceNotesProps {
-  activityTitle: string;
+  activityTitle?: string;
   studentId: string;
 }
 
 const SUCCESS_DISPLAY_MS = 3000;
 
-export const WorkspaceNotes: React.FC<WorkspaceNotesProps> = ({ activityTitle, studentId }) => {
+export const WorkspaceNotes: React.FC<WorkspaceNotesProps> = ({ activityTitle: _activityTitle, studentId }) => {
   const { user } = useAuth();
   const isTeacher = user?.role === 'TEACHER' || user?.role === 'ADMIN';
   const { saving, submitNote } = useNotes(studentId);

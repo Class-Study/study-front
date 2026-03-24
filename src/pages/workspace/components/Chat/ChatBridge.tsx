@@ -1,5 +1,6 @@
 // src/components/chat/ChatBridge.tsx
 import {useEffect} from "react";
+import React from "react";
 import {useWebRTC} from "@/contexts/WebRTCContext";
 import {useChatMessages} from "@/hooks/useChatMessages";
 import {ChatMessage} from "@/types/chat.types";
@@ -15,7 +16,7 @@ interface ChatBridgeProps {
     };
     messagesRef: React.MutableRefObject<ChatMessage[]>;
     sendMessageRef: React.MutableRefObject<(content: string) => void>;
-    addIncomingRef: React.MutableRefObject<((data: any) => void) | null>;
+    addIncomingRef: React.MutableRefObject<((data: Record<string, unknown>) => void) | null>;
     onMessagesChange: () => void;
 }
 
@@ -42,22 +43,19 @@ export const ChatBridge: React.FC<ChatBridgeProps> = ({
         send,
     });
 
-    useEffect(() => {
-        setOnData(addIncomingMessage);
-    }, [addIncomingMessage]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    useEffect(() => { setOnData(addIncomingMessage); }, [addIncomingMessage]);
 
     useEffect(() => {
         messagesRef.current = messages;
         onMessagesChange();
     }, [messages, onMessagesChange]);
 
-    useEffect(() => {
-        sendMessageRef.current = sendMessage;
-    }, [sendMessage]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    useEffect(() => { sendMessageRef.current = sendMessage; }, [sendMessage]);
 
-    useEffect(() => {
-        addIncomingRef.current = addIncomingMessage;
-    }, [addIncomingMessage]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    useEffect(() => { addIncomingRef.current = addIncomingMessage; }, [addIncomingMessage]);
 
     return null;
 };

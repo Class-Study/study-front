@@ -49,7 +49,7 @@ export interface UseWorkspaceBaseReturn {
     // Chat bridge refs — passados para <ChatBridge>
     messagesRef: React.MutableRefObject<ChatMessage[]>;
     sendMessageRef: React.MutableRefObject<(content: string) => void>;
-    addIncomingRef: React.MutableRefObject<((data: any) => void) | null>;
+    addIncomingRef: React.MutableRefObject<((data: Record<string, unknown>) => void) | null>;
 
     // Chat state — passado para <WorkspaceChat>
     messages: ChatMessage[];
@@ -125,7 +125,7 @@ export function useWorkspaceBase({
     // ── Chat bridge refs ──────────────────────────────────────────────────────
     const messagesRef = useRef<ChatMessage[]>([]);
     const sendMessageRef = useRef<(content: string) => void>(() => {});
-    const addIncomingRef = useRef<((data: any) => void) | null>(null);
+    const addIncomingRef = useRef<((data: Record<string, unknown>) => void) | null>(null);
     const [messages, setMessages] = useState<ChatMessage[]>([]);
 
     const handleMessagesChange = useCallback(() => {
@@ -141,17 +141,19 @@ export function useWorkspaceBase({
     // Aluno:     reconnectSignal=isConnected → re-registra ao reconectar
     useEffect(() => {
         if (!wsRef?.current) return;
+        const ws = wsRef.current;
 
         const onMessage = (event: MessageEvent) => {
-            let data: any;
-            try { data = JSON.parse(event.data); } catch { return; }
+            let data: Record<string, unknown>;
+            try { data = JSON.parse(event.data) as Record<string, unknown>; } catch { return; }
             if (data.type === 'chat' && addIncomingRef.current) {
                 addIncomingRef.current(data);
             }
         };
 
-        wsRef.current.addEventListener('message', onMessage);
-        return () => { wsRef.current?.removeEventListener('message', onMessage); };
+        ws.addEventListener('message', onMessage);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        return () => { ws.removeEventListener('message', onMessage); };
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [reconnectSignal]);
 

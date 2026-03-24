@@ -102,6 +102,7 @@ const StudentWorkspacePage: React.FC = () => {
         if (!ws.activeActivity && allActivities.length > 0) {
             ws.setActiveActivity(allActivities[0]);
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [ws.activeActivity, allActivities]);
 
     // Mantém atividade ativa sincronizada após reload do workspace
@@ -109,6 +110,7 @@ const StudentWorkspacePage: React.FC = () => {
         if (!ws.activeActivity) return;
         const updated = allActivities.find((a) => a.id === ws.activeActivity!.id);
         if (updated && updated !== ws.activeActivity) ws.setActiveActivity(updated);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [ws.activeActivity, allActivities]);
 
     // ── Derivados ─────────────────────────────────────────────────────────────

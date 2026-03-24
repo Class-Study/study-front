@@ -11,9 +11,9 @@ const WS_BASE = import.meta.env.VITE_WS_URL
 const WS_URL = `${WS_BASE}/api/v1/ws`;
 
 interface WSContextValue {
-    wsRef: React.MutableRefObject<WebSocket | null>; // ✅ ref estável, sem re-render
-    isConnected: boolean; // ✅ estado reativo para disparar re-renders quando WS conectar
-    sendWSMessage: (msg: any) => void;
+    wsRef: React.MutableRefObject<WebSocket | null>;
+    isConnected: boolean;
+    sendWSMessage: (msg: Record<string, unknown>) => void;
     onOpen: (callback: () => void) => void;
     onReconnect: (callback: () => void) => void;
 }
@@ -83,9 +83,10 @@ export const WSProvider: React.FC<{
         }
 
         createSocket(userId, workspaceId);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [userId, workspaceId]);
 
-    const sendWSMessage = (msg: any) => {
+    const sendWSMessage = (msg: Record<string, unknown>) => {
         if (wsRef.current?.readyState === WebSocket.OPEN) {
             wsRef.current.send(JSON.stringify(msg));
         }

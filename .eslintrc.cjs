@@ -14,5 +14,16 @@ module.exports = {
       'warn',
       { allowConstantExport: true },
     ],
+    'no-empty': ['error', { allowEmptyCatch: false }],
   },
+  overrides: [
+    {
+      // Context files export both Provider components and hooks — fast-refresh
+      // warning is expected and acceptable here.
+      files: ['src/contexts/**/*.tsx', 'src/contexts/**/*.ts'],
+      rules: {
+        'react-refresh/only-export-components': 'off',
+      },
+    },
+  ],
 }

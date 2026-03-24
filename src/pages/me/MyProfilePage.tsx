@@ -97,8 +97,8 @@ export const MyProfilePage: React.FC = () => {
     ?? student?.levelProfileName
     ?? stripLeadingOrder(student?.levelProfile?.id ?? student?.levelProfileId ?? 'Sem nivel');
   const levelTone = getLevelTone(levelCode);
-  const safeActivities = Array.isArray(activities) ? activities : [];
-  const safeNotes = Array.isArray(notes) ? notes : [];
+  const safeActivities = useMemo(() => Array.isArray(activities) ? activities : [], [activities]);
+  const safeNotes = useMemo(() => Array.isArray(notes) ? notes : [], [notes]);
 
   const exerciseActivities = useMemo(
     () => safeActivities.filter((activity) => activity.type === 'EXERCISE'),

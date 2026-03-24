@@ -3,8 +3,8 @@ import React, {createContext, useCallback, useContext, useEffect, useRef, useSta
 import {useWS} from "@/contexts/WSContext";
 
 interface WebRTCContextValue {
-    send: (data: any) => void;
-    setOnData: (fn: (data: any) => void) => void;
+    send: (data: Record<string, unknown>) => void;
+    setOnData: (fn: (data: Record<string, unknown>) => void) => void;
     /** true quando o DataChannel com o aluno está aberto (lado professor) */
     isStudentOnline: boolean;
     /** último HTML compactado recebido do aluno via DataChannel */
@@ -51,8 +51,8 @@ export const WebRTCProvider: React.FC<{
 
     const pcRef = useRef<RTCPeerConnection | null>(null);
     const channelRef = useRef<RTCDataChannel | null>(null);
-    const onDataRef = useRef<((data: any) => void) | null>(null);
-    const sendQueue = useRef<any[]>([]);
+    const onDataRef = useRef<((data: Record<string, unknown>) => void) | null>(null);
+    const sendQueue = useRef<Record<string, unknown>[]>([]);
 
     const [isStudentOnline, setIsStudentOnline] = useState(false);
     const [studentHtml, setStudentHtml] = useState<string | null>(null);
@@ -150,7 +150,9 @@ export const WebRTCProvider: React.FC<{
                     setStudentScroll({ scrollTop: data.scrollTop, scrollHeight: data.scrollHeight ?? 0, clientHeight: data.clientHeight ?? 0 });
                 }
                 onDataRef.current?.(data);
-            } catch {}
+            } catch (e) {
+                console.warn("[WebRTC] erro ao processar mensagem:", e);
+            }
         };
     }, []);
 
@@ -170,7 +172,9 @@ export const WebRTCProvider: React.FC<{
         };
 
         channel.onmessage = (e) => {
-            try { onDataRef.current?.(JSON.parse(e.data)); } catch {}
+            try { onDataRef.current?.(JSON.parse(e.data) as Record<string, unknown>); } catch (err) {
+                console.warn("[WebRTC] erro ao processar mensagem do aluno:", err);
+            }
         };
     }, []);
 
@@ -292,6 +296,7 @@ export const WebRTCProvider: React.FC<{
             setStudentScroll(null);
             setIsReconnecting(false);
         };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isConnected, workspaceId, role]);
 
     // ── Professor: auto-retry periódico quando aluno está offline ─────────────
@@ -346,7 +351,7 @@ export const WebRTCProvider: React.FC<{
         }, 10_000);
     }, [role, wsRef, sendWSMessage, cleanupPeer, createPeer, setupTeacherChannel]);
 
-    const send = (data: any) => {
+    const send = (data: Record<string, unknown>) => {
         const ch = channelRef.current;
         if (ch?.readyState === "open") {
             ch.send(JSON.stringify(data));
@@ -355,7 +360,7 @@ export const WebRTCProvider: React.FC<{
         }
     };
 
-    const setOnData = (fn: (data: any) => void) => {
+    const setOnData = (fn: (data: Record<string, unknown>) => void) => {
         onDataRef.current = fn;
     };
 
