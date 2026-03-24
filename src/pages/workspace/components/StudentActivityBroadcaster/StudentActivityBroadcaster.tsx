@@ -1,12 +1,17 @@
 import React, { useCallback, useEffect, useRef } from 'react';
 import { useWebRTC } from '@/contexts/WebRTCContext';
 import { WorkspaceActivity } from '@/types/workspace.types';
+import { CursorPosition, ScrollPosition } from '../WorkspaceEditor/WorkspaceEditor';
 
 interface StudentActivityBroadcasterProps {
     /** Atividade ativa do aluno */
     activity: WorkspaceActivity | null;
+    /** Nome do aluno (enviado com cursor para exibir no lado do professor) */
+    studentName?: string;
     /** Registra um callback que o pai pode chamar para enviar atualizações de conteúdo */
     onRegisterContentSender?: (sender: ((html: string) => void) | null) => void;
+    onRegisterCursorSender?: (sender: ((pos: CursorPosition) => void) | null) => void;
+    onRegisterScrollSender?: (sender: ((pos: ScrollPosition) => void) | null) => void;
 }
 
 /**
@@ -20,7 +25,10 @@ interface StudentActivityBroadcasterProps {
  */
 export const StudentActivityBroadcaster: React.FC<StudentActivityBroadcasterProps> = ({
     activity,
+    studentName,
     onRegisterContentSender,
+    onRegisterCursorSender,
+    onRegisterScrollSender,
 }) => {
     const { send, isChannelOpen } = useWebRTC();
     const activityRef = useRef(activity);
@@ -51,7 +59,8 @@ export const StudentActivityBroadcaster: React.FC<StudentActivityBroadcasterProp
         });
     }, [isChannelOpen, send]);
 
-    // Registra função para enviar atualizações de conteúdo (chamada pelo WorkspaceEditor onContentChange)
+    // ── Senders registráveis ──────────────────────────────────────────────────
+
     const sendContentUpdate = useCallback((html: string) => {
         const act = activityRef.current;
         if (!act) return;
@@ -63,10 +72,33 @@ export const StudentActivityBroadcaster: React.FC<StudentActivityBroadcasterProp
         });
     }, [send]);
 
+    const sendCursorUpdate = useCallback((pos: CursorPosition) => {
+        send({ type: 'cursor-update', from: pos.from, to: pos.to, userName: studentName ?? 'Aluno' });
+    }, [send, studentName]);
+
+    const sendScrollUpdate = useCallback((pos: ScrollPosition) => {
+        send({
+            type: 'scroll-update',
+            scrollTop: pos.scrollTop,
+            scrollHeight: pos.scrollHeight,
+            clientHeight: pos.clientHeight,
+        });
+    }, [send]);
+
     useEffect(() => {
         onRegisterContentSender?.(sendContentUpdate);
         return () => onRegisterContentSender?.(null);
     }, [sendContentUpdate, onRegisterContentSender]);
+
+    useEffect(() => {
+        onRegisterCursorSender?.(sendCursorUpdate);
+        return () => onRegisterCursorSender?.(null);
+    }, [sendCursorUpdate, onRegisterCursorSender]);
+
+    useEffect(() => {
+        onRegisterScrollSender?.(sendScrollUpdate);
+        return () => onRegisterScrollSender?.(null);
+    }, [sendScrollUpdate, onRegisterScrollSender]);
 
     return null;
 };

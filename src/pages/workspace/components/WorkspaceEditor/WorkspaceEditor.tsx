@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Typography from '@tiptap/extension-typography';
@@ -10,12 +10,63 @@ interface PresenceUser {
   color: string;
 }
 
+export interface CursorPosition {
+  /** Offset dentro do innerText do elemento ProseMirror */
+  from: number;
+  /** Offset dentro do innerText (end of selection) */
+  to: number;
+}
+
+export interface ScrollPosition {
+  scrollTop: number;
+  scrollHeight: number;
+  clientHeight: number;
+}
+
 interface WorkspaceEditorProps {
   activity: WorkspaceActivity | null;
   editable: boolean;
   presence?: PresenceUser[];
   onContentChange?: (html: string) => void;
+  onCursorChange?: (pos: CursorPosition) => void;
+  onScrollChange?: (pos: ScrollPosition) => void;
   headerStatus?: React.ReactNode;
+}
+
+/**
+ * Dado o container ProseMirror e uma posição do editor,
+ * calcula o offset em caracteres de texto puro (innerText)
+ * criando um Range do início do container até a posição do cursor
+ * e contando os caracteres dentro dele.
+ */
+function prosePosToTextOffset(view: any, container: HTMLElement, pos: number): number {
+  try {
+    const resolved = view.domAtPos(pos);
+    const node = resolved.node;
+    const offset = resolved.offset;
+
+    // Criar um range do início do container até o ponto do cursor
+    const range = document.createRange();
+    range.setStart(container, 0);
+
+    if (node.nodeType === Node.TEXT_NODE) {
+      range.setEnd(node, offset);
+    } else {
+      // Nó de elemento: posicionar no offset de filhos
+      if (offset < node.childNodes.length) {
+        range.setEnd(node, offset);
+      } else {
+        // Cursor no fim do elemento — posicionar depois do último filho
+        range.setEndAfter(node.lastChild ?? node);
+      }
+    }
+
+    // O texto dentro desse range é exatamente o que vem antes do cursor
+    // Usar toString() que retorna apenas texto visível (como innerText, sem tags)
+    return range.toString().length;
+  } catch {
+    return 0;
+  }
 }
 
 export const WorkspaceEditor: React.FC<WorkspaceEditorProps> = ({
@@ -23,30 +74,62 @@ export const WorkspaceEditor: React.FC<WorkspaceEditorProps> = ({
   editable,
   presence = [],
   onContentChange,
+  onCursorChange,
+  onScrollChange,
   headerStatus,
 }) => {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const onCursorChangeRef = useRef(onCursorChange);
+  onCursorChangeRef.current = onCursorChange;
+
+  const emitCursor = (e: any) => {
+    if (!onCursorChangeRef.current) return;
+    const view = e.view;
+    if (!view?.dom) return;
+
+    const { from, to } = e.state.selection;
+    const container = view.dom as HTMLElement;
+
+    onCursorChangeRef.current({
+      from: prosePosToTextOffset(view, container, from),
+      to: prosePosToTextOffset(view, container, to),
+    });
+  };
+
   const editor = useEditor({
     extensions: [StarterKit, Typography],
     content: activity?.convertedHtml ?? '',
     editable,
-    onUpdate: ({ editor: currentEditor }) => {
-      if (activity?.id) {
-        onContentChange?.(currentEditor.getHTML());
-      }
+    onUpdate: ({ editor: e }) => {
+      if (activity?.id) onContentChange?.(e.getHTML());
+    },
+    onSelectionUpdate: ({ editor: e }) => {
+      emitCursor(e);
     },
   });
 
+  // Scroll listener
   useEffect(() => {
-    if (editor && activity) {
-      editor.commands.setContent(activity.convertedHtml);
-    }
+    const el = scrollRef.current;
+    if (!el || !onScrollChange) return;
+    const handleScroll = () => {
+      onScrollChange({
+        scrollTop: el.scrollTop,
+        scrollHeight: el.scrollHeight,
+        clientHeight: el.clientHeight,
+      });
+    };
+    el.addEventListener('scroll', handleScroll, { passive: true });
+    return () => el.removeEventListener('scroll', handleScroll);
+  }, [onScrollChange]);
+
+  useEffect(() => {
+    if (editor && activity) editor.commands.setContent(activity.convertedHtml);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activity?.id]);
 
   useEffect(() => {
-    if (editor) {
-      editor.setEditable(editable);
-    }
+    if (editor) editor.setEditable(editable);
   }, [editor, editable]);
 
   if (!activity) {
@@ -67,8 +150,7 @@ export const WorkspaceEditor: React.FC<WorkspaceEditorProps> = ({
           <span className={styles.collabTag}>+ Colaborativa</span>
         )}
       </div>
-
-      <div className={styles.editorScroll}>
+      <div className={styles.editorScroll} ref={scrollRef}>
         <EditorContent editor={editor} className={styles.editorContent} />
       </div>
 

@@ -13,6 +13,10 @@ interface WebRTCContextValue {
     studentTitle: string | null;
     /** id da atividade definido pelo aluno */
     studentActivityId: string | null;
+    /** posição do cursor do aluno { from, to, userName } */
+    studentCursor: { from: number; to: number; userName: string } | null;
+    /** métricas de scroll do aluno { scrollTop, scrollHeight, clientHeight } */
+    studentScroll: { scrollTop: number; scrollHeight: number; clientHeight: number } | null;
     /** Professor pode chamar para solicitar reconexão com o aluno */
     requestReconnect: () => void;
     /** true enquanto uma tentativa de reconexão está em andamento */
@@ -28,6 +32,8 @@ const WebRTCContext = createContext<WebRTCContextValue>({
     studentHtml: null,
     studentTitle: null,
     studentActivityId: null,
+    studentCursor: null,
+    studentScroll: null,
     requestReconnect: () => {},
     isReconnecting: false,
     isChannelOpen: false,
@@ -52,6 +58,8 @@ export const WebRTCProvider: React.FC<{
     const [studentHtml, setStudentHtml] = useState<string | null>(null);
     const [studentTitle, setStudentTitle] = useState<string | null>(null);
     const [studentActivityId, setStudentActivityId] = useState<string | null>(null);
+    const [studentCursor, setStudentCursor] = useState<{ from: number; to: number; userName: string } | null>(null);
+    const [studentScroll, setStudentScroll] = useState<{ scrollTop: number; scrollHeight: number; clientHeight: number } | null>(null);
     const [isReconnecting, setIsReconnecting] = useState(false);
     const [isChannelOpen, setIsChannelOpen] = useState(false);
 
@@ -134,6 +142,12 @@ export const WebRTCProvider: React.FC<{
                     setStudentHtml(data.html);
                     if (typeof data.title === "string") setStudentTitle(data.title);
                     if (typeof data.activityId === "string") setStudentActivityId(data.activityId);
+                }
+                if (data.type === "cursor-update" && typeof data.from === "number") {
+                    setStudentCursor({ from: data.from, to: data.to ?? data.from, userName: data.userName ?? "Aluno" });
+                }
+                if (data.type === "scroll-update" && typeof data.scrollTop === "number") {
+                    setStudentScroll({ scrollTop: data.scrollTop, scrollHeight: data.scrollHeight ?? 0, clientHeight: data.clientHeight ?? 0 });
                 }
                 onDataRef.current?.(data);
             } catch {}
@@ -274,6 +288,8 @@ export const WebRTCProvider: React.FC<{
             setStudentHtml(null);
             setStudentTitle(null);
             setStudentActivityId(null);
+            setStudentCursor(null);
+            setStudentScroll(null);
             setIsReconnecting(false);
         };
     }, [isConnected, workspaceId, role]);
@@ -351,6 +367,8 @@ export const WebRTCProvider: React.FC<{
             studentHtml,
             studentTitle,
             studentActivityId,
+            studentCursor,
+            studentScroll,
             requestReconnect,
             isReconnecting,
             isChannelOpen,

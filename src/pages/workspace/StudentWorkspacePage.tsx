@@ -10,6 +10,7 @@ import {WorkspaceEditor} from './components/WorkspaceEditor/WorkspaceEditor';
 import {WorkspaceChat} from './components/WorkspaceChat/WorkspaceChat';
 import {StudentActivityBroadcaster} from './components/StudentActivityBroadcaster/StudentActivityBroadcaster';
 import {TeacherPresencePanel} from './components/TeacherPresencePanel/TeacherPresencePanel';
+import type {CursorPosition, ScrollPosition} from './components/WorkspaceEditor/WorkspaceEditor';
 import DocxPreviewEditor from '@/components/ui/DocxPreviewEditor/DocxPreviewEditor';
 import {Header} from '@/components/layout/Header/Header';
 import {WorkspaceActivity} from '@/types/workspace.types';
@@ -63,8 +64,17 @@ const StudentWorkspacePage: React.FC = () => {
 
     // Ref para enviar atualizações de conteúdo via WebRTC para o professor
     const contentSenderRef = useRef<((html: string) => void) | null>(null);
+    const cursorSenderRef = useRef<((pos: CursorPosition) => void) | null>(null);
+    const scrollSenderRef = useRef<((pos: ScrollPosition) => void) | null>(null);
+
     const handleRegisterContentSender = useCallback((sender: ((html: string) => void) | null) => {
         contentSenderRef.current = sender;
+    }, []);
+    const handleRegisterCursorSender = useCallback((sender: ((pos: CursorPosition) => void) | null) => {
+        cursorSenderRef.current = sender;
+    }, []);
+    const handleRegisterScrollSender = useCallback((sender: ((pos: ScrollPosition) => void) | null) => {
+        scrollSenderRef.current = sender;
     }, []);
 
     // ── Efeitos ───────────────────────────────────────────────────────────────
@@ -249,10 +259,11 @@ const StudentWorkspacePage: React.FC = () => {
                         onContentChange={(html) => {
                             if (ws.activeActivity?.id && ws.activeActivity.type === 'EXERCISE') {
                                 saveContent(ws.activeActivity.id, html);
-                                // Envia atualização de conteúdo para o professor via WebRTC
                                 contentSenderRef.current?.(html);
                             }
                         }}
+                        onCursorChange={(ratio) => cursorSenderRef.current?.(ratio)}
+                        onScrollChange={(ratio) => scrollSenderRef.current?.(ratio)}
                         headerStatus={saving ?
                             <span className={styles.savingIndicator}>Salvando...</span> : null}
                     />
@@ -262,7 +273,10 @@ const StudentWorkspacePage: React.FC = () => {
             {/* Broadcaster: envia info da atividade ativa para o professor via WebRTC */}
             <StudentActivityBroadcaster
                 activity={ws.activeActivity}
+                studentName={studentName}
                 onRegisterContentSender={handleRegisterContentSender}
+                onRegisterCursorSender={handleRegisterCursorSender}
+                onRegisterScrollSender={handleRegisterScrollSender}
             />
 
             {/* Painel direito: presença do professor + chat */}
