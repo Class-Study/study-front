@@ -1,3 +1,27 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# CI/CD — EduSpace Frontend
+#
+# Stages
+# ──────
+#  ci     — lint + type-check + build  (every push / PR to main)
+#  docker — build & push image to GHCR (main push only, after ci passes)
+#  deploy — SSH into EC2, pull new frontend image, restart frontend container
+#           (main push only, after docker stage passes)
+#
+# Secrets layout
+# ──────────────
+#  Organization secrets  (org → Settings → Secrets → Actions):
+#    EC2_HOST          — public IP / hostname of the EC2 instance
+#    EC2_USER          — SSH username (e.g. "ubuntu")
+#    EC2_SSH_KEY       — PEM private key contents
+#    EC2_DEPLOY_PATH   — absolute path on EC2 (optional, default: /opt/eduspace)
+#
+#  Repository secrets  (repo → Settings → Secrets → Actions):
+#    VITE_API_URL      — API base URL seen by the browser
+#                        use /api/v1 (relative) when Nginx proxies the API
+#                        use https://api.domain.com/v1 for a separate origin
+# ─────────────────────────────────────────────────────────────────────────────
+
 name: CI/CD — Frontend
 
 on:
@@ -105,33 +129,17 @@ jobs:
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     environment: production
 
-    permissions: { }
+    permissions: {}
 
     steps:
-      - name: Verify secrets are set
-        run: |
-          if [ -z "${{ secrets.EC2_HOST }}" ]; then
-            echo "❌ EC2_HOST secret is not set"
-            exit 1
-          fi
-          if [ -z "${{ secrets.EC2_USER }}" ]; then
-            echo "❌ EC2_USER secret is not set"
-            exit 1
-          fi
-          if [ -z "${{ secrets.EC2_SSH_KEY }}" ]; then
-            echo "❌ EC2_SSH_KEY secret is not set"
-            exit 1
-          fi
-          echo "✅ All required secrets are present"
-
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.2.0
         with:
-          host: ${{ secrets.EC2_HOST }}
+          host:     ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.EC2_SSH_KEY }}
-          port: 22
-          timeout: 60s
+          key:      ${{ secrets.EC2_SSH_KEY }}
+          port:     22
+          timeout:  60s
           script: |
             set -euo pipefail
 
@@ -143,13 +151,13 @@ jobs:
 
             if [ ! -d "$DEPLOY_PATH" ]; then
               echo "❌ Directory $DEPLOY_PATH does not exist on EC2"
-              echo "   Create it with: sudo mkdir -p $DEPLOY_PATH && sudo chown $USER:$USER $DEPLOY_PATH"
+              echo "   Crie com: sudo mkdir -p $DEPLOY_PATH && sudo chown $USER:$USER $DEPLOY_PATH"
               exit 1
             fi
 
             cd "$DEPLOY_PATH"
 
-            # Atualiza apenas a linha FRONT_VERSION no .env
+            # Atualiza apenas a linha FRONT_VERSION no .env (backend é dono do arquivo)
             if [ -f .env ]; then
               sed -i 's/^FRONT_VERSION=.*/FRONT_VERSION=latest/' .env
             else
@@ -171,19 +179,3 @@ jobs:
 
             echo "✅ Deploy concluído com sucesso"
 
-            # Atualiza apenas a linha FRONT_VERSION no .env (o backend é dono do arquivo completo)
-            sed -i 's/^FRONT_VERSION=.*/FRONT_VERSION=latest/' .env \
-              || echo "FRONT_VERSION=latest" >> .env
-
-            # Pull da nova imagem do frontend
-            docker compose pull frontend
-
-            # Reinicia somente o container do frontend
-            docker compose up -d --no-deps --wait frontend
-
-            # Sanity check
-            docker compose ps frontend | grep -q "running" \
-              || (echo "❌ frontend failed to start" && exit 1)
-
-            # Remove imagens antigas
-            docker image prune -f
