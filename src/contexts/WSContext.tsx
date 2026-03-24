@@ -6,7 +6,9 @@ import React, {
     useState,
 } from "react";
 
-const WS_URL = "ws://localhost:8080/api/v1/ws";
+const WS_BASE = import.meta.env.VITE_WS_URL
+  ?? `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}`;
+const WS_URL = `${WS_BASE}/api/v1/ws`;
 
 interface WSContextValue {
     wsRef: React.MutableRefObject<WebSocket | null>; // ✅ ref estável, sem re-render
