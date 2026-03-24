@@ -31,7 +31,11 @@ jobs:
           cache: "npm"
 
       - name: Install dependencies
-        run: npm ci
+        # TODO: voltar para `npm ci` após rodar `npm install` localmente
+        # e commitar o package-lock.json atualizado.
+        # O lock file está desatualizado (html2canvas e dependências transitivas
+        # foram adicionados ao package.json sem atualizar o lock file).
+        run: npm install
 
       - name: Lint
         run: npm run lint
