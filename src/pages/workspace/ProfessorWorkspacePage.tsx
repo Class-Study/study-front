@@ -4,6 +4,8 @@ import {useAuth} from '@/hooks/useAuth';
 import {useStudents} from '@/hooks/useStudents';
 import {useWorkspace} from '@/hooks/useWorkspace';
 import {useWorkspaceBase, UseWorkspaceBaseReturn} from '@/hooks/useWorkspaceBase';
+import {useRightPanelResize} from '@/hooks/useRightPanelResize';
+import {useVerticalResize} from '@/hooks/useVerticalResize';
 import {useWS} from '@/contexts/WSContext';
 import {useWebRTC} from '@/contexts/WebRTCContext';
 import {WorkspaceShell} from './components/WorkspaceShell/WorkspaceShell';
@@ -20,6 +22,10 @@ import styles from './WorkspacePage.module.css';
 interface ProfessorRightPanelProps {
     ws: UseWorkspaceBaseReturn;
     targetStudentId: string;
+    rightWidth: number;
+    onRightResizeStart: (e: React.MouseEvent) => void;
+    chatPercent: number;
+    onVerticalResizeStart: (e: React.MouseEvent) => void;
 }
 
 /**
@@ -27,7 +33,14 @@ interface ProfessorRightPanelProps {
  * Usa useWebRTC() para saber se o aluno está online e qual atividade ele definiu.
  * O chat fica desabilitado até o aluno se conectar e definir uma atividade.
  */
-const ProfessorRightPanel: React.FC<ProfessorRightPanelProps> = ({ws, targetStudentId}) => {
+const ProfessorRightPanel: React.FC<ProfessorRightPanelProps> = ({
+    ws,
+    targetStudentId,
+    rightWidth,
+    onRightResizeStart,
+    chatPercent,
+    onVerticalResizeStart,
+}) => {
     const {isStudentOnline, studentActivityId, studentTitle, requestReconnect, isReconnecting} = useWebRTC();
 
     // A atividade é definida pelo aluno via WebRTC
@@ -37,8 +50,6 @@ const ProfessorRightPanel: React.FC<ProfessorRightPanelProps> = ({ws, targetStud
     // Quando o aluno envia o activityId via WebRTC, atualiza a atividade ativa do chat
     useEffect(() => {
         if (studentActivityId) {
-            // O activityId vem do aluno — é usado pelo ChatBridge para carregar as mensagens
-            // Atualiza no useWorkspaceBase para que o ChatBridge receba
             ws.setActiveActivity((prev) => {
                 if (prev?.id === studentActivityId) return prev;
                 return {
@@ -54,8 +65,17 @@ const ProfessorRightPanel: React.FC<ProfessorRightPanelProps> = ({ws, targetStud
     }, [studentActivityId, studentTitle]);
 
     return (
-        <div className={`${styles.rightPanel} ${!ws.chatVisible ? styles.rightPanelHidden : ''}`}>
-            <div className={styles.chatSection}>
+        <div
+            data-right-panel="true"
+            className={`${styles.rightPanel} ${!ws.chatVisible ? styles.rightPanelHidden : ''}`}
+            style={ws.chatVisible ? {width: `${rightWidth}px`, minWidth: `${rightWidth}px`, flexShrink: 0} : undefined}
+        >
+            {/* Handle de resize horizontal — esquerda do painel */}
+            {ws.chatVisible && (
+                <div className={styles.rightResizeHandle} onMouseDown={onRightResizeStart} />
+            )}
+
+            <div className={styles.chatSection} style={{height: `${chatPercent}%`, flex: 'none'}}>
                 <WorkspaceChat
                     activityTitle={chatActivityTitle}
                     messages={ws.messages}
@@ -70,7 +90,11 @@ const ProfessorRightPanel: React.FC<ProfessorRightPanelProps> = ({ws, targetStud
                     isReconnecting={isReconnecting}
                 />
             </div>
-            <div className={styles.notesSection}>
+
+            {/* Handle de resize vertical — entre chat e notas */}
+            <div className={styles.verticalResizeHandle} onMouseDown={onVerticalResizeStart} />
+
+            <div className={styles.notesSection} style={{height: `${100 - chatPercent}%`, flex: 'none'}}>
                 <WorkspaceNotes
                     activityTitle={chatActivityTitle}
                     studentId={targetStudentId}
@@ -109,6 +133,19 @@ const ProfessorWorkspacePage: React.FC = () => {
         sidebarStorageKey: 'workspace.sidebar.width',
         wsRef,
         // professor não reconecta — listener registrado apenas 1 vez
+    });
+
+    // ── Resize do painel direito ───────────────────────────────────────────────
+    const {width: rightWidth, handleResizeStart: handleRightResizeStart} = useRightPanelResize({
+        storageKey: 'workspace.professor.right.width',
+        defaultWidth: 300,
+        minWidth: 200,
+        maxWidth: 600,
+    });
+
+    const {chatPercent, handleVerticalResizeStart} = useVerticalResize({
+        storageKey: 'workspace.professor.chat.percent',
+        defaultPercent: 55,
     });
 
     // ── Estado exclusivo do professor ─────────────────────────────────────────
@@ -222,7 +259,14 @@ const ProfessorWorkspacePage: React.FC = () => {
             </div>
 
             {/* Painel direito: chat + notas — usa useWebRTC internamente */}
-            <ProfessorRightPanel ws={ws} targetStudentId={targetStudentId} />
+            <ProfessorRightPanel
+                ws={ws}
+                targetStudentId={targetStudentId}
+                rightWidth={rightWidth}
+                onRightResizeStart={handleRightResizeStart}
+                chatPercent={chatPercent}
+                onVerticalResizeStart={handleVerticalResizeStart}
+            />
         </WorkspaceShell>
     );
 };

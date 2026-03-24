@@ -3,6 +3,7 @@ import {useNavigate} from 'react-router-dom';
 import {useAuth} from '@/hooks/useAuth';
 import {useMyWorkspace} from '@/hooks/useMyWorkspace';
 import {useWorkspaceBase} from '@/hooks/useWorkspaceBase';
+import {useRightPanelResize} from '@/hooks/useRightPanelResize';
 import {useWS} from '@/contexts/WSContext';
 import {WorkspaceShell} from './components/WorkspaceShell/WorkspaceShell';
 import {WorkspaceSidebar} from './components/WorkspaceSidebar/WorkspaceSidebar';
@@ -52,6 +53,14 @@ const StudentWorkspacePage: React.FC = () => {
         sidebarStorageKey: 'workspace.student.sidebar.width',
         wsRef,
         reconnectSignal: isConnected, // re-registra listener ao reconectar
+    });
+
+    // ── Resize do painel direito ───────────────────────────────────────────────
+    const {width: rightWidth, handleResizeStart: handleRightResizeStart} = useRightPanelResize({
+        storageKey: 'workspace.student.right.width',
+        defaultWidth: 300,
+        minWidth: 200,
+        maxWidth: 600,
     });
 
     // ── Estado exclusivo do aluno ─────────────────────────────────────────────
@@ -280,7 +289,14 @@ const StudentWorkspacePage: React.FC = () => {
             />
 
             {/* Painel direito: presença do professor + chat */}
-            <div className={`${styles.rightPanel} ${ws.chatVisible ? '' : styles.rightPanelHidden}`}>
+            <div
+                className={`${styles.rightPanel} ${ws.chatVisible ? '' : styles.rightPanelHidden}`}
+                style={ws.chatVisible ? {width: `${rightWidth}px`, minWidth: `${rightWidth}px`, flexShrink: 0} : undefined}
+            >
+                {/* Handle de resize horizontal — esquerda do painel */}
+                {ws.chatVisible && (
+                    <div className={styles.rightResizeHandle} onMouseDown={handleRightResizeStart} />
+                )}
                 <TeacherPresencePanel
                     teacherName={teacherName}
                     teacherOnlineApi={teacherOnline}
