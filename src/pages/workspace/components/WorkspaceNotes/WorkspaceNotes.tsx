@@ -13,7 +13,7 @@ interface WorkspaceNotesProps {
 
 const SUCCESS_DISPLAY_MS = 3000;
 
-export const WorkspaceNotes: React.FC<WorkspaceNotesProps> = ({ activityTitle: _activityTitle, studentId }) => {
+export const WorkspaceNotes: React.FC<WorkspaceNotesProps> = ({ studentId }) => {
   const { user } = useAuth();
   const isTeacher = user?.role === 'TEACHER' || user?.role === 'ADMIN';
   const { saving, submitNote } = useNotes(studentId);

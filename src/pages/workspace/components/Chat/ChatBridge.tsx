@@ -49,7 +49,7 @@ export const ChatBridge: React.FC<ChatBridgeProps> = ({
     useEffect(() => {
         messagesRef.current = messages;
         onMessagesChange();
-    }, [messages, onMessagesChange]);
+    }, [messages, messagesRef, onMessagesChange]);
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
     useEffect(() => { sendMessageRef.current = sendMessage; }, [sendMessage]);

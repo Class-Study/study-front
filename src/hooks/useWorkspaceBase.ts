@@ -152,7 +152,6 @@ export function useWorkspaceBase({
         };
 
         ws.addEventListener('message', onMessage);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
         return () => { ws.removeEventListener('message', onMessage); };
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [reconnectSignal]);
