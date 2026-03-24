@@ -134,7 +134,42 @@ jobs:
           timeout: 60s
           script: |
             set -euo pipefail
-            cd "${{ secrets.EC2_DEPLOY_PATH }}"
+
+            # EC2_DEPLOY_PATH é opcional — usa /opt/eduspace como padrão
+            DEPLOY_PATH="${{ secrets.EC2_DEPLOY_PATH }}"
+            DEPLOY_PATH="${DEPLOY_PATH:-/opt/eduspace}"
+
+            echo "📂 Deploy path: $DEPLOY_PATH"
+
+            if [ ! -d "$DEPLOY_PATH" ]; then
+              echo "❌ Directory $DEPLOY_PATH does not exist on EC2"
+              echo "   Create it with: sudo mkdir -p $DEPLOY_PATH && sudo chown $USER:$USER $DEPLOY_PATH"
+              exit 1
+            fi
+
+            cd "$DEPLOY_PATH"
+
+            # Atualiza apenas a linha FRONT_VERSION no .env
+            if [ -f .env ]; then
+              sed -i 's/^FRONT_VERSION=.*/FRONT_VERSION=latest/' .env
+            else
+              echo "FRONT_VERSION=latest" > .env
+            fi
+
+            # Pull da nova imagem do frontend
+            docker compose pull frontend
+
+            # Reinicia somente o container do frontend
+            docker compose up -d --no-deps --wait frontend
+
+            # Sanity check
+            docker compose ps frontend | grep -q "running" \
+              || (echo "❌ frontend failed to start" && exit 1)
+
+            # Remove imagens antigas
+            docker image prune -f
+
+            echo "✅ Deploy concluído com sucesso"
 
             # Atualiza apenas a linha FRONT_VERSION no .env (o backend é dono do arquivo completo)
             sed -i 's/^FRONT_VERSION=.*/FRONT_VERSION=latest/' .env \
