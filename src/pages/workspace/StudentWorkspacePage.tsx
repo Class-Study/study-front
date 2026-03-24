@@ -9,6 +9,7 @@ import {WorkspaceSidebar} from './components/WorkspaceSidebar/WorkspaceSidebar';
 import {WorkspaceEditor} from './components/WorkspaceEditor/WorkspaceEditor';
 import {WorkspaceChat} from './components/WorkspaceChat/WorkspaceChat';
 import {StudentActivityBroadcaster} from './components/StudentActivityBroadcaster/StudentActivityBroadcaster';
+import {TeacherPresencePanel} from './components/TeacherPresencePanel/TeacherPresencePanel';
 import DocxPreviewEditor from '@/components/ui/DocxPreviewEditor/DocxPreviewEditor';
 import {Header} from '@/components/layout/Header/Header';
 import {WorkspaceActivity} from '@/types/workspace.types';
@@ -266,21 +267,10 @@ const StudentWorkspacePage: React.FC = () => {
 
             {/* Painel direito: presença do professor + chat */}
             <div className={`${styles.rightPanel} ${ws.chatVisible ? '' : styles.rightPanelHidden}`}>
-                <div className={styles.teacherPresenceSection}>
-                    <span className={styles.teacherPresenceLabel}>Professor</span>
-                    <div className={styles.teacherPresenceCard}>
-                                <span
-                                    className={`${styles.teacherPresenceDot} ${teacherOnline ? styles.teacherPresenceDotOnline : styles.teacherPresenceDotOffline}`}
-                                    aria-hidden="true"
-                                />
-                        <div className={styles.teacherPresenceInfo}>
-                            <span className={styles.teacherPresenceName}>{teacherName}</span>
-                            <span className={styles.teacherPresenceStatus}>
-                                        {teacherOnline ? 'Online agora' : 'Offline'}
-                                    </span>
-                        </div>
-                    </div>
-                </div>
+                <TeacherPresencePanel
+                    teacherName={teacherName}
+                    teacherOnlineApi={teacherOnline}
+                />
                 <div className={styles.chatSection}>
                     <WorkspaceChat
                         activityTitle={ws.activeActivity?.title ?? ''}
