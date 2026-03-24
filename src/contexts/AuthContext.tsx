@@ -2,6 +2,7 @@ import React, { createContext, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AuthUser } from '@/types/auth.types';
 import authService from '@/services/api/auth.service';
+import { useTheme } from '@/contexts/ThemeContext';
 
 export interface AuthContextData {
   user: AuthUser | null;
@@ -16,12 +17,13 @@ export const AuthContext = createContext<AuthContextData | undefined>(undefined)
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const navigate = useNavigate();
+  const { applyTheme } = useTheme();
+
   const [user, setUser] = useState<AuthUser | null>(() => {
     const stored = localStorage.getItem('user');
     if (!stored) return null;
     try {
       const parsed = JSON.parse(stored);
-      // Valida que tem os campos necessários
       if (parsed?.id && parsed?.role) return parsed as AuthUser;
       return null;
     } catch {
@@ -52,6 +54,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.setItem('accessToken', accessToken);
     localStorage.setItem('refreshToken', refreshToken);
     localStorage.setItem('user', JSON.stringify(user));
+
+    // Aplica o tema salvo no banco imediatamente
+    if (user.preferenceTheme) {
+      applyTheme(user.preferenceTheme);
+    }
 
     setUser(user);
     setIsAuthenticated(true);

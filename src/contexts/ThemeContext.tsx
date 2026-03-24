@@ -1,10 +1,13 @@
-import React, { createContext, useState } from 'react';
+import React, { createContext, useState, useCallback, useContext } from 'react';
+import preferenceService from '@/services/api/preference.service';
+import { UserTheme } from '@/types/auth.types';
 
-type Theme = 'light' | 'dark';
+type Theme = UserTheme;
 
 export interface ThemeContextData {
   theme: Theme;
   toggleTheme: () => void;
+  applyTheme: (theme: Theme) => void;
 }
 
 export const ThemeContext = createContext<ThemeContextData | undefined>(undefined);
@@ -16,37 +19,49 @@ const getInitialTheme = (): Theme => {
     const stored = localStorage.getItem(STORAGE_KEY) as Theme | null;
     if (stored === 'light' || stored === 'dark') return stored;
   } catch {
-    // localStorage indisponível (SSR / iframe sandboxado)
+    // localStorage indisponível
   }
   return 'light';
+};
+
+const applyToDom = (theme: Theme): void => {
+  document.documentElement.setAttribute('data-theme', theme);
+  localStorage.setItem(STORAGE_KEY, theme);
 };
 
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [theme, setTheme] = useState<Theme>(() => {
     const initial = getInitialTheme();
-    // Aplica imediatamente no DOM para evitar flash
     document.documentElement.setAttribute('data-theme', initial);
     return initial;
   });
 
-  const toggleTheme = () => {
+  // Aplica tema localmente (sem persistir no banco — usado no login)
+  const applyTheme = useCallback((next: Theme): void => {
+    setTheme(next);
+    applyToDom(next);
+  }, []);
+
+  // Alterna o tema e persiste no banco de forma assíncrona
+  const toggleTheme = useCallback((): void => {
     setTheme((prev) => {
-      const next = prev === 'light' ? 'dark' : 'light';
-      localStorage.setItem(STORAGE_KEY, next);
-      document.documentElement.setAttribute('data-theme', next);
+      const next: Theme = prev === 'light' ? 'dark' : 'light';
+      applyToDom(next);
+      // Fire-and-forget: falha silenciosa — localStorage já foi atualizado
+      preferenceService.updateTheme(next).catch(() => {});
       return next;
     });
-  };
+  }, []);
 
   return (
-    <ThemeContext.Provider value={{ theme, toggleTheme }}>
+    <ThemeContext.Provider value={{ theme, toggleTheme, applyTheme }}>
       {children}
     </ThemeContext.Provider>
   );
 };
 
 export const useTheme = (): ThemeContextData => {
-  const context = React.useContext(ThemeContext);
+  const context = useContext(ThemeContext);
   if (!context) {
     throw new Error('useTheme must be used within ThemeProvider');
   }
