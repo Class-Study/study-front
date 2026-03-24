@@ -134,48 +134,79 @@ jobs:
     steps:
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.2.0
+        env:
+          DEPLOY_PATH:  ${{ secrets.EC2_DEPLOY_PATH || '/opt/eduspace' }}
+          GHCR_TOKEN:   ${{ secrets.GITHUB_TOKEN }}
+          GHCR_USER:    ${{ github.actor }}
         with:
           host:     ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key:      ${{ secrets.EC2_SSH_KEY }}
           port:     22
-          timeout:  60s
+          timeout:  120s
+          envs:     DEPLOY_PATH,GHCR_TOKEN,GHCR_USER
           script: |
             set -euo pipefail
 
-            # EC2_DEPLOY_PATH é opcional — usa /opt/eduspace como padrão
-            DEPLOY_PATH="${{ secrets.EC2_DEPLOY_PATH }}"
-            DEPLOY_PATH="${DEPLOY_PATH:-/opt/eduspace}"
-
-            echo "📂 Deploy path: $DEPLOY_PATH"
-
-            if [ ! -d "$DEPLOY_PATH" ]; then
-              echo "❌ Directory $DEPLOY_PATH does not exist on EC2"
-              echo "   Crie com: sudo mkdir -p $DEPLOY_PATH && sudo chown $USER:$USER $DEPLOY_PATH"
-              exit 1
+            # ── 1. Instala Docker se não estiver presente ─────────────────────
+            if ! command -v docker &>/dev/null; then
+              echo "🐳 Docker não encontrado — instalando..."
+              curl -fsSL https://get.docker.com | sudo sh
+              sudo usermod -aG docker "$USER"
+              echo "✅ Docker instalado"
+            else
+              echo "✅ Docker já instalado: $(docker --version)"
             fi
+
+            # ── 2. Instala Docker Compose plugin se não estiver presente ──────
+            if ! docker compose version &>/dev/null; then
+              echo "🐳 Docker Compose plugin não encontrado — instalando..."
+              COMPOSE_VERSION=$(curl -fsSL https://api.github.com/repos/docker/compose/releases/latest \
+                | grep '"tag_name"' | sed 's/.*"v\([^"]*\)".*/\1/')
+              sudo mkdir -p /usr/local/lib/docker/cli-plugins
+              sudo curl -fsSL \
+                "https://github.com/docker/compose/releases/download/v${COMPOSE_VERSION}/docker-compose-linux-x86_64" \
+                -o /usr/local/lib/docker/cli-plugins/docker-compose
+              sudo chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
+              echo "✅ Docker Compose instalado: $(docker compose version)"
+            else
+              echo "✅ Docker Compose já instalado: $(docker compose version)"
+            fi
+
+            # ── 3. Garante que o grupo docker está ativo na sessão atual ──────
+            # (necessário quando docker foi instalado nessa mesma execução)
+            if ! groups | grep -q docker; then
+              exec sg docker "$0" "$@" 2>/dev/null || true
+            fi
+
+            # ── 4. Cria o diretório de deploy se não existir ──────────────────
+            echo "📂 Deploy path: $DEPLOY_PATH"
+            sudo mkdir -p "$DEPLOY_PATH"
+            sudo chown "$USER":"$USER" "$DEPLOY_PATH"
 
             cd "$DEPLOY_PATH"
 
-            # Atualiza apenas a linha FRONT_VERSION no .env (backend é dono do arquivo)
+            # ── 5. Login no GHCR para poder fazer pull da imagem ─────────────
+            echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin
+
+            # ── 6. Atualiza FRONT_VERSION no .env ────────────────────────────
             if [ -f .env ]; then
               sed -i 's/^FRONT_VERSION=.*/FRONT_VERSION=latest/' .env
             else
               echo "FRONT_VERSION=latest" > .env
             fi
 
-            # Pull da nova imagem do frontend
+            # ── 7. Pull da nova imagem do frontend ───────────────────────────
             docker compose pull frontend
 
-            # Reinicia somente o container do frontend
+            # ── 8. Reinicia somente o container do frontend ───────────────────
             docker compose up -d --no-deps --wait frontend
 
-            # Sanity check
+            # ── 9. Sanity check ───────────────────────────────────────────────
             docker compose ps frontend | grep -q "running" \
               || (echo "❌ frontend failed to start" && exit 1)
 
-            # Remove imagens antigas
+            # ── 10. Remove imagens antigas ────────────────────────────────────
             docker image prune -f
 
             echo "✅ Deploy concluído com sucesso"
-
