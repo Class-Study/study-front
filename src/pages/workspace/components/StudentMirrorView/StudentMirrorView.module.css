@@ -1,0 +1,322 @@
+/* StudentMirrorView.module.css */
+
+/* ── Container principal ─────────────────────────────────────────── */
+.wrapper {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--color-bg-page);
+}
+
+/* ── Top bar com título da atividade ─────────────────────────────── */
+.topBar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 20px;
+  height: 44px;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-bg-card);
+  flex-shrink: 0;
+}
+
+.activityTitle {
+  font-family: var(--font-sans);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-text-primary);
+  margin: 0;
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.onlineBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--color-success, #22c55e);
+  background: color-mix(in srgb, var(--color-success, #22c55e) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-success, #22c55e) 30%, transparent);
+  border-radius: 20px;
+  padding: 2px 10px;
+  flex-shrink: 0;
+}
+
+.onlineBadge::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+/* ── Estado aguardando ────────────────────────────────────────────── */
+.waitingState {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 40px;
+  color: var(--color-text-tertiary);
+}
+
+.waitingIcon {
+  font-size: 40px;
+  opacity: 0.5;
+  animation: float 3s ease-in-out infinite;
+}
+
+.waitingTitle {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  margin: 0;
+}
+
+.waitingSubtitle {
+  font-size: 13px;
+  color: var(--color-text-tertiary);
+  margin: 0;
+  text-align: center;
+  max-width: 300px;
+  line-height: 1.5;
+}
+
+/* Três pontinhos de loading */
+.dots {
+  display: flex;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.dots span {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--color-text-tertiary);
+  animation: bounce 1.2s ease-in-out infinite;
+}
+
+.dots span:nth-child(2) { animation-delay: 0.2s; }
+.dots span:nth-child(3) { animation-delay: 0.4s; }
+
+/* ── Área do preview do HTML recebido ────────────────────────────── */
+.previewScroll {
+  flex: 1;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-text-tertiary) transparent;
+}
+
+.previewScroll::-webkit-scrollbar {
+  width: 4px;
+}
+
+.previewScroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.previewScroll::-webkit-scrollbar-thumb {
+  background: var(--color-text-tertiary);
+  border-radius: 999px;
+}
+
+.previewScroll::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-secondary);
+}
+
+/* Wrapper relativo para posicionar o cursor */
+.previewContentWrapper {
+  position: relative;
+}
+
+/*
+ * Estilos IDÊNTICOS ao .editorContent :global(.ProseMirror) do WorkspaceEditor
+ * para garantir que a posição do cursor bata pixel a pixel.
+ */
+.previewContent {
+  padding: 28px 44px;
+  min-height: 100%;
+  font-family: var(--font-sans);
+  font-size: 15px;
+  line-height: 1.9;
+  color: var(--color-text-primary);
+}
+
+.previewContent p {
+  margin: 0 0 10px;
+  color: var(--color-text-secondary);
+  line-height: 1.85;
+}
+
+.previewContent h1 {
+  font-family: var(--font-serif);
+  font-size: 22px;
+  color: var(--color-accent);
+  margin-bottom: 14px;
+}
+
+.previewContent h2 {
+  font-family: var(--font-serif);
+  font-size: 17px;
+  color: var(--color-text-primary);
+  margin: 18px 0 8px;
+}
+
+.previewContent h3 {
+  font-family: var(--font-sans);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin: 14px 0 6px;
+}
+
+.previewContent strong {
+  color: var(--color-text-primary);
+}
+
+.previewContent em {
+  color: var(--color-text-tertiary);
+}
+
+.previewContent ul,
+.previewContent ol {
+  padding-left: 20px;
+  margin-bottom: 10px;
+}
+
+.previewContent li {
+  margin-bottom: 4px;
+  color: var(--color-text-secondary);
+  line-height: 1.7;
+}
+
+.previewContent blockquote {
+  border-left: 3px solid var(--color-accent);
+  padding-left: 14px;
+  margin: 14px 0;
+  color: var(--color-text-tertiary);
+  font-style: italic;
+}
+
+.previewContent code {
+  background: var(--color-bg-input);
+  border-radius: 4px;
+  padding: 1px 5px;
+  font-size: 13px;
+}
+
+.previewContent pre {
+  background: var(--color-bg-input);
+  border-radius: var(--radius-md);
+  padding: 12px 16px;
+  overflow-x: auto;
+  margin-bottom: 10px;
+}
+
+/* ── Cursor remoto do aluno ──────────────────────────────────────── */
+
+/* Cursor remoto do aluno — posicionado via transform */
+.remoteCursor {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  visibility: hidden;
+  z-index: 10;
+  transition: transform 0.07s linear, opacity 0.06s ease;
+}
+
+/* Barra vertical fina (o caret) */
+.remoteCursorBar {
+  width: 1.2px;
+  height: 1.2em;
+  background: var(--color-accent, #3b82f6);
+  border-radius: 1px;
+  animation: blink 1s step-end infinite;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+/* Label com nome do aluno exibido acima do cursor */
+.remoteCursor::after {
+  content: attr(data-name);
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  white-space: nowrap;
+  font-size: 10px;
+  font-weight: 600;
+  color: white;
+  background: var(--color-accent, #3b82f6);
+  border-radius: 3px 3px 3px 0;
+  padding: 1px 5px;
+  margin-bottom: 2px;
+  line-height: 1.5;
+}
+
+
+/* ── Animations ──────────────────────────────────────────────────── */
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+
+@keyframes bounce {
+  0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
+  40% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* ── Botão de reconexão ──────────────────────────────────────────── */
+.reconnectBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  padding: 8px 18px;
+  border-radius: 8px;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-card);
+  color: var(--color-text-primary);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, opacity 0.15s;
+}
+
+.reconnectBtn:hover:not(:disabled) {
+  background: var(--color-blue);
+  border-color: var(--shadow-sm);
+  color: var(--color-text-inverse);
+}
+
+.reconnectBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.spinning {
+  animation: spin 1s linear infinite;
+}
+

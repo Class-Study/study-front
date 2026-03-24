@@ -21,15 +21,6 @@ export interface WorkspaceData {
   folders: WorkspaceFolder[];
 }
 
-export interface ChatMessage {
-  id: string;
-  authorId: string;
-  authorName: string;
-  content: string;
-  sentAt: string;
-  isOwn: boolean;
-}
-
 export interface CreateActivityRequest {
   title: string;
   type: ActivityType;

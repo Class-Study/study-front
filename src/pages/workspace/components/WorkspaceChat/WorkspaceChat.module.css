@@ -3,7 +3,17 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  min-height: 0;
+  height: 100%;
+  animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 .header {
@@ -14,6 +24,7 @@
   flex-shrink: 0;
   border-bottom: 1px solid var(--color-border);
   gap: 8px;
+  transition: all 0.25s ease-out;
 }
 
 .headerInfo {
@@ -47,10 +58,10 @@
   flex: 1;
   overflow-y: auto;
   padding: 10px 10px;
-  height: 50vh;
   display: flex;
   flex-direction: column;
   gap: 8px;
+  min-height: 0;
 }
 
 .emptyChat {
@@ -93,6 +104,69 @@
   color: var(--color-text-tertiary);
   font-family: var(--font-sans);
   padding: 0 3px;
+}
+
+.bubbleRow {
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.copyBtn {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s, background 0.15s, color 0.15s;
+  padding: 0;
+  margin-bottom: 2px;
+  position: relative;
+}
+
+.copyBtn::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: calc(100% + 5px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--color-bg-input, #1e1e1e);
+  color: var(--color-text-primary);
+  font-family: var(--font-sans);
+  font-size: 10px;
+  white-space: nowrap;
+  padding: 3px 7px;
+  border-radius: 4px;
+  border: 1px solid var(--color-border);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s;
+  z-index: 20;
+}
+
+.copyBtn:hover::after {
+  opacity: 1;
+}
+
+.copyBtnCopied {
+  color: var(--color-success, #22c55e);
+  opacity: 1 !important;
+}
+
+.messageGroup:hover .copyBtn {
+  opacity: 1;
+}
+
+.copyBtn:hover {
+  background: var(--color-bg-input);
+  color: var(--color-text-primary);
 }
 
 .bubble {
@@ -182,3 +256,75 @@
   opacity: 0.4;
   cursor: not-allowed;
 }
+
+/* ─── Disabled overlay (quando aluno não está conectado) ───────────────────── */
+
+.disabledOverlay {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 32px 20px;
+  text-align: center;
+  animation: fadeIn 0.3s ease-out;
+}
+
+.disabledIcon {
+  color: var(--color-text-tertiary);
+  opacity: 0.35;
+}
+
+.disabledText {
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  line-height: 1.4;
+}
+
+.disabledSubtext {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  color: var(--color-text-tertiary);
+  line-height: 1.5;
+  max-width: 220px;
+}
+
+.reconnectBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  padding: 6px 14px;
+  border-radius: 6px;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-card);
+  color: var(--color-text-primary);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, opacity 0.15s;
+}
+
+.reconnectBtn:hover:not(:disabled) {
+  background: var(--color-hover);
+  border-color: var(--color-primary, #3b82f6);
+  color: var(--color-primary, #3b82f6);
+}
+
+.reconnectBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.spinning {
+  animation: spin 1s linear infinite;
+}
+

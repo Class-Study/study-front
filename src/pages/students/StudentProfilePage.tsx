@@ -10,7 +10,7 @@ import { Student } from '@/types/student.types';
 import { ActivityType, StudentExerciseFolder } from '@/types/studentProfile.types';
 import { formatClassDays, formatClassTime, formatShortDate } from '@/utils/classDay.utils';
 import { ConfirmModal } from '@/components/ui/ConfirmModal/ConfirmModal';
-import { CreateExerciseModal } from './components/CreateExerciseModal/CreateExerciseModal';
+import { CreateExerciseModal } from '@/components/ui/CreateExerciseModal/CreateExerciseModal';
 import { EditStudentModal } from './components/EditStudentModal/EditStudentModal';
 import { FreeTextExerciseModal } from './components/FreeTextExerciseModal/FreeTextExerciseModal';
 import styles from './StudentProfilePage.module.css';

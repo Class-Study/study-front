@@ -1,10 +1,12 @@
 export type UserRole = 'ADMIN' | 'TEACHER' | 'STUDENT';
+export type UserTheme = 'light' | 'dark';
 
 export interface AuthUser {
   id: string;
   name: string;
   email: string;
   role: UserRole;
+  preferenceTheme?: UserTheme;
 }
 
 export interface LoginRequest {

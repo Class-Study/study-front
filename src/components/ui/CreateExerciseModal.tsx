@@ -3,8 +3,8 @@ import { ArrowLeft, Eye, PencilLine } from 'lucide-react';
 import * as mammoth from 'mammoth';
 import { Modal } from '@/components/ui/Modal/Modal';
 import DocxPreviewEditor from '@/components/ui/DocxPreviewEditor/DocxPreviewEditor';
+import styles from '@/components/ui/CreateExerciseModal/CreateExerciseModal.module.css';
 import { StudentExerciseFolder } from '@/types/studentProfile.types';
-import styles from './CreateExerciseModal.module.css';
 
 interface CreateExerciseModalProps {
   isOpen: boolean;
@@ -50,7 +50,6 @@ export const CreateExerciseModal: React.FC<CreateExerciseModalProps> = ({
   const hasPreview = useMemo(() => convertedHtml.trim().length > 0, [convertedHtml]);
   const resolvedTitle = title.trim() || (file ? titleFromFilename(file.name) : '');
 
-  // Ensure convertedHtml is cleared when the modal closes (per spec)
   useEffect(() => {
     if (!isOpen) {
       setConvertedHtml('');
@@ -61,7 +60,6 @@ export const CreateExerciseModal: React.FC<CreateExerciseModalProps> = ({
     if (!isOpen) {
       return;
     }
-
     setTitle('');
     setFolderId(selectedFolderId ?? folders[0]?.id ?? '');
     setFile(null);
@@ -79,16 +77,12 @@ export const CreateExerciseModal: React.FC<CreateExerciseModalProps> = ({
       setError('Arquivo inválido. Envie um arquivo .docx.');
       return;
     }
-
     setError('');
     setIsConverting(true);
     setIsPreviewOpen(false);
-
     try {
       const arrayBuffer = await selectedFile.arrayBuffer();
       const result = await mammoth.convertToHtml({ arrayBuffer });
-      console.log('HTML Convertido:', result.value);
-
       setFile(selectedFile);
       setConvertedHtml(result.value);
       if (!isTitleDirty) {
@@ -108,15 +102,11 @@ export const CreateExerciseModal: React.FC<CreateExerciseModalProps> = ({
     if (!folderId || !file || !hasPreview) {
       return;
     }
-
     if (!convertedHtml || convertedHtml.trim() === '') {
-      console.error('Erro: Tentando salvar com HTML vazio');
       return;
     }
-
     setIsSaving(true);
     setError('');
-
     try {
       const payload: Parameters<CreateExerciseModalProps['onSave']>[0] = {
         folderId,
@@ -125,8 +115,6 @@ export const CreateExerciseModal: React.FC<CreateExerciseModalProps> = ({
         convertedHtml,
         originalFilename: file.name,
       };
-
-      console.log('Payload criação de exercício:', payload);
       await onSave(payload);
       onClose();
     } catch {
@@ -150,7 +138,6 @@ export const CreateExerciseModal: React.FC<CreateExerciseModalProps> = ({
               <p className={styles.title}>Configure o exercício antes de enviar para o aluno.</p>
               <p className={styles.subtitle}>Faça upload do .docx, ajuste os metadados e visualize o resultado da conversão antes de criar.</p>
             </div>
-
             <div className={styles.fieldGrid}>
               <div className={styles.field}>
                 <label className={styles.label}>Pasta</label>
@@ -166,7 +153,6 @@ export const CreateExerciseModal: React.FC<CreateExerciseModalProps> = ({
                   ))}
                 </select>
               </div>
-
               <div className={styles.field}>
                 <label className={styles.label}>Título</label>
                 <input
@@ -181,7 +167,6 @@ export const CreateExerciseModal: React.FC<CreateExerciseModalProps> = ({
                 />
               </div>
             </div>
-
             <div
               className={`${styles.dropzone} ${isDragging ? styles.dropzoneActive : ''}`}
               onDragOver={(event) => {
@@ -208,7 +193,6 @@ export const CreateExerciseModal: React.FC<CreateExerciseModalProps> = ({
                 </>
               )}
             </div>
-
             <input
               ref={inputRef}
               className={styles.hiddenInput}
@@ -222,7 +206,6 @@ export const CreateExerciseModal: React.FC<CreateExerciseModalProps> = ({
                 event.target.value = '';
               }}
             />
-
             {onCreateFreeText && (
               <div className={styles.orDivider}>
                 <span className={styles.orDividerLine} />
@@ -230,7 +213,6 @@ export const CreateExerciseModal: React.FC<CreateExerciseModalProps> = ({
                 <span className={styles.orDividerLine} />
               </div>
             )}
-
             {onCreateFreeText && (
               <button
                 type="button"
@@ -241,7 +223,6 @@ export const CreateExerciseModal: React.FC<CreateExerciseModalProps> = ({
                 Criar atividade manualmente (texto livre)
               </button>
             )}
-
             {file && (
               <div className={styles.fileCard}>
                 <div>
@@ -257,9 +238,7 @@ export const CreateExerciseModal: React.FC<CreateExerciseModalProps> = ({
                 </button>
               </div>
             )}
-
             {error && <div className={styles.error}>{error}</div>}
-
             <div className={styles.actions}>
               <button
                 type="button"
@@ -301,12 +280,10 @@ export const CreateExerciseModal: React.FC<CreateExerciseModalProps> = ({
                 <ArrowLeft size={16} />
                 Voltar para edição
               </button>
-
               <div className={styles.previewMeta}>
                 <span className={styles.previewTitle}>{resolvedTitle || 'Exercício sem título'}</span>
                 {file && <span className={styles.previewFile}>{file.name}</span>}
               </div>
-
               <button
                 type="button"
                 className={styles.primaryBtn}
@@ -318,13 +295,10 @@ export const CreateExerciseModal: React.FC<CreateExerciseModalProps> = ({
                 {isSaving ? 'Criando...' : 'Criar Exercício'}
               </button>
             </div>
-
             {error && <div className={styles.error}>{error}</div>}
-
             <div className={styles.previewNotice}>
               Confira abaixo exatamente como o aluno verá o exercício antes de salvar.
             </div>
-
             <div className={styles.previewPanel}>
               <DocxPreviewEditor
                 html={convertedHtml}
@@ -340,3 +314,4 @@ export const CreateExerciseModal: React.FC<CreateExerciseModalProps> = ({
 };
 
 export default CreateExerciseModal;
+

@@ -26,7 +26,7 @@ interface WorkspaceSidebarProps {
     title: string;
   } | null>>;
   onCreateFolder: () => void;
-  onCreateWorkspace: () => void;
+  onCreateWorkspace?: () => void;
   onOpenUploadForFolder: (folderId: string) => void;
   onMoveActivity: (activityId: string, targetFolderId: string) => Promise<void>;
   readOnly?: boolean;
@@ -192,19 +192,6 @@ export const WorkspaceSidebar: React.FC<WorkspaceSidebarProps> = ({
         {/* Workspaces section */}
         <div className={styles.sectionLabel}>Workspaces</div>
 
-        {canCreateWorkspace && (
-          <button
-            type="button"
-            className={styles.addWorkspaceMinimal}
-            onClick={() => {
-              void onCreateWorkspace();
-            }}
-            title="Criar workspace em branco"
-          >
-            <span>+ Novo Workspace</span>
-          </button>
-        )}
-
         <Droppable droppableId="workspace-pool">
           {(provided) => (
             <div ref={provided.innerRef} {...provided.droppableProps}>
@@ -237,6 +224,16 @@ export const WorkspaceSidebar: React.FC<WorkspaceSidebarProps> = ({
             </div>
           )}
         </Droppable>
+
+        {canCreateWorkspace && onCreateWorkspace && (
+          <button
+            type="button"
+            className={styles.addWorkspaceMinimal}
+            onClick={onCreateWorkspace}
+          >
+            + Novo Workspace
+          </button>
+        )}
 
         {/* Exercises section */}
         <div className={styles.sectionLabel}>Exercícios</div>

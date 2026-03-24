@@ -15,10 +15,16 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    const isLoginEndpoint = error.config?.url?.includes('/auth/login');
+
+    if (error.response?.status === 401 && !isLoginEndpoint) {
+      // Preserva preferências (tema) ao limpar a sessão por token expirado
+      const theme = localStorage.getItem('eduspace-theme');
       localStorage.clear();
+      if (theme) localStorage.setItem('eduspace-theme', theme);
       window.location.href = '/login';
     }
+
     return Promise.reject(error);
   },
 );

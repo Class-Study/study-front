@@ -45,18 +45,20 @@
   font-family: var(--font-sans);
   font-size: 12px;
   cursor: pointer;
-  transition: all 0.15s;
+  transition: all 0.25s ease-out;
 }
 
 .chatToggleBtn:hover {
   border-color: var(--color-accent);
   color: var(--color-text-primary);
+  background: var(--color-bg-card);
 }
 
 .chatToggleBtnActive {
   background: rgba(45, 138, 93, 0.12);
   border-color: var(--color-accent);
   color: var(--color-accent);
+  box-shadow: 0 0 0 2px rgba(45, 138, 93, 0.08);
 }
 
 
@@ -76,6 +78,28 @@
   overflow: hidden;
 }
 
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideOutRight {
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+}
+
 .rightPanel {
   width: 300px;
   flex-shrink: 0;
@@ -84,19 +108,71 @@
   border-left: 1px solid var(--color-border);
   background: var(--color-bg-card);
   overflow: hidden;
+  min-height: 0;
+  animation: slideInRight 0.3s ease-out;
+  transition: opacity 0.3s ease-out, border-left 0.3s ease-out;
+  position: relative;
 }
 
+/* Handle de resize horizontal na borda esquerda do painel direito */
+.rightResizeHandle {
+  position: absolute;
+  top: 0;
+  left: -3px;
+  width: 6px;
+  height: 100%;
+  cursor: col-resize;
+  z-index: 10;
+  transition: background 0.15s;
+}
+
+.rightResizeHandle:hover,
+.rightResizeHandle:active {
+  background: rgba(45, 138, 93, 0.18);
+}
+
+/* Handle de resize vertical entre chat e notas (professor) */
+.verticalResizeHandle {
+  height: 6px;
+  flex-shrink: 0;
+  cursor: row-resize;
+  background: transparent;
+  border-top: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border);
+  transition: background 0.15s;
+  position: relative;
+  z-index: 5;
+}
+
+.verticalResizeHandle:hover,
+.verticalResizeHandle:active {
+  background: rgba(45, 138, 93, 0.18);
+}
+
+
 .rightPanelHidden {
-  display: none;
+  animation: slideOutRight 0.3s ease-out;
+  width: 0;
+  border-left: none;
+  min-width: 0;
+  opacity: 0;
+  pointer-events: none;
 }
 
 .chatSection {
-  flex: 1;
   display: flex;
   flex-direction: column;
   border-bottom: 1px solid var(--color-border);
   min-height: 0;
   overflow: hidden;
+}
+
+.notesSection {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+  height: 100%;
 }
 
 .teacherPresenceSection {
@@ -164,10 +240,6 @@
   color: var(--color-text-secondary);
 }
 
-.notesSection {
-  height: 40vh;
-  flex-shrink: 0;
-}
 
 .loadingState,
 .errorState {
@@ -214,7 +286,7 @@
   font-size: 24px;
   font-weight: 600;
   border: none;
-  border-bottom: 1px solid var(--color-border-secondary, var(--color-border));
+  border-bottom: 1px solid var(--color-border, var(--color-border));
   outline: none;
   padding-bottom: 10px;
   color: var(--color-text-primary);
@@ -223,7 +295,7 @@
 }
 
 .workspaceTitleInput:focus {
-  border-color: var(--color-primary, var(--color-accent));
+  border-color: var(--color-text-primary, var(--color-accent));
 }
 
 .workspaceActions {
@@ -263,17 +335,46 @@
   min-height: 0;
 }
 
-@media (max-width: 900px) {
-  .workspaceContainer {
-    padding: 20px;
-  }
+/* ── Activity Picker Bar (professor) ──────────────────────────────────────── */
+.activityPickerBar {
+  display: flex;
+  align-items: center;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-bg-card);
+  flex-shrink: 0;
+}
 
-  .workspaceHeaderRow {
-    flex-direction: column;
-    align-items: stretch;
-  }
+.activityPickerBtn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-page);
+  color: var(--color-text-primary);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
 
-  .workspaceActions {
-    justify-content: flex-end;
-  }
+.activityPickerBtn:hover {
+  background: var(--color-accent-hover);
+  border-color: var(--color-border);
+}
+
+.activityPickerCurrent {
+  display: inline-block;
+  max-width: 240px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 1px 8px;
+  border-radius: 10px;
+  background: var(--color-accent, #eff6ff);
+  color: var(--color-text-primary, #3b82f6);
+  font-size: 12px;
+  font-weight: 400;
 }

@@ -1,9 +1,9 @@
 import React, {
-  createContext,
-  useContext,
-  useEffect,
-  useRef,
-  useState,
+    createContext,
+    useContext,
+    useEffect,
+    useRef,
+    useState,
 } from "react";
 
 const WS_BASE = import.meta.env.VITE_WS_URL
@@ -11,104 +11,103 @@ const WS_BASE = import.meta.env.VITE_WS_URL
 const WS_URL = `${WS_BASE}/api/v1/ws`;
 
 interface WSContextValue {
-  ws: WebSocket | null;
-  sendWSMessage: (msg: any) => void;
-  onOpen: (callback: () => void) => void;
-  onReconnect: (callback: () => void) => void;
+    wsRef: React.MutableRefObject<WebSocket | null>; // ✅ ref estável, sem re-render
+    isConnected: boolean; // ✅ estado reativo para disparar re-renders quando WS conectar
+    sendWSMessage: (msg: any) => void;
+    onOpen: (callback: () => void) => void;
+    onReconnect: (callback: () => void) => void;
 }
 
 const WSContext = createContext<WSContextValue>({
-  ws: null,
-  sendWSMessage: () => {},
-  onOpen: () => {},
-  onReconnect: () => {},
+    wsRef: { current: null },
+    isConnected: false,
+    sendWSMessage: () => {},
+    onOpen: () => {},
+    onReconnect: () => {},
 });
 
 export const WSProvider: React.FC<{
-  children: React.ReactNode;
-  userId?: string;
-  workspaceId?: string;
+    children: React.ReactNode;
+    userId?: string;
+    workspaceId?: string;
 }> = ({ children, userId, workspaceId }) => {
-  const [ws, setWs] = useState<WebSocket | null>(null);
-  const wsRef = useRef<WebSocket | null>(null);
-  const onOpenCallbackRef = useRef<(() => void) | null>(null);
-  const onReconnectCallbackRef = useRef<(() => void) | null>(null);
-  const isFirstConnectionRef = useRef(true);
+    const wsRef = useRef<WebSocket | null>(null);
+    const [isConnected, setIsConnected] = useState(false);
+    const onOpenCallbackRef = useRef<(() => void) | null>(null);
+    const onReconnectCallbackRef = useRef<(() => void) | null>(null);
+    const isFirstConnectionRef = useRef(true);
 
-  const createSocket = (uid: string, wsId: string) => {
-    const socket = new window.WebSocket(
-      `${WS_URL}?userId=${uid}&workspaceId=${wsId}`,
-    );
-    wsRef.current = socket;
+    const createSocket = (uid: string, wsId: string) => {
+        const socket = new window.WebSocket(
+            `${WS_URL}?userId=${uid}&workspaceId=${wsId}`,
+        );
+        wsRef.current = socket;
 
-    socket.onopen = () => {
-      socket.send(JSON.stringify({ type: "join", userId: uid, workspaceId: wsId }));
-      setWs(socket);
-      // Dispara o callback de onOpen se estiver registrado
-      onOpenCallbackRef.current?.();
-      // Só dispara onReconnect se não for a primeira conexão
-      if (!isFirstConnectionRef.current) {
-        onReconnectCallbackRef.current?.();
-      }
-      isFirstConnectionRef.current = false;
+        socket.onopen = () => {
+            socket.send(JSON.stringify({ type: "join", userId: uid, workspaceId: wsId }));
+
+            setIsConnected(true); // ✅ dispara re-render nos componentes que usam isConnected
+            onOpenCallbackRef.current?.();
+
+            if (!isFirstConnectionRef.current) {
+                onReconnectCallbackRef.current?.();
+            }
+            isFirstConnectionRef.current = false;
+        };
+
+        socket.onclose = () => {
+            wsRef.current = null;
+            setIsConnected(false); // ✅ atualiza estado reativo
+            setTimeout(() => {
+                if (wsRef.current === null) {
+                    createSocket(uid, wsId);
+                }
+            }, 2000);
+        };
+
+        socket.onerror = (err) => {
+            console.error("[WSContext] Erro na conexão:", err);
+        };
     };
 
-    socket.onclose = () => {
-      wsRef.current = null;
-      setWs(null);
-
-      setTimeout(() => {
-        if (wsRef.current === null) {
-          createSocket(uid, wsId);
+    useEffect(() => {
+        if (!userId || !workspaceId) {
+            return;
         }
-      }, 2000);
+
+        if (
+            wsRef.current?.readyState === WebSocket.OPEN ||
+            wsRef.current?.readyState === WebSocket.CONNECTING
+        ) {
+            return;
+        }
+
+        createSocket(userId, workspaceId);
+    }, [userId, workspaceId]);
+
+    const sendWSMessage = (msg: any) => {
+        if (wsRef.current?.readyState === WebSocket.OPEN) {
+            wsRef.current.send(JSON.stringify(msg));
+        }
     };
 
-    socket.onerror = (err) => {
-      console.error("[WS] Erro na conexão:", err);
+    const onOpen = (callback: () => void) => {
+        if (wsRef.current?.readyState === WebSocket.OPEN) {
+            callback();
+        } else {
+            onOpenCallbackRef.current = callback;
+        }
     };
-  };
 
-  useEffect(() => {
-    if (!userId || !workspaceId) return;
-    if (
-      wsRef.current?.readyState === WebSocket.OPEN ||
-      wsRef.current?.readyState === WebSocket.CONNECTING
-    ) return;
-
-    createSocket(userId, workspaceId);
-
-    return () => {
-      // Não fecha no cleanup — deixa o socket vivo entre re-renders
+    const onReconnect = (callback: () => void) => {
+        onReconnectCallbackRef.current = callback;
     };
-  }, [userId, workspaceId]);
 
-  const sendWSMessage = (msg: any) => {
-    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-      wsRef.current.send(JSON.stringify(msg));
-    }
-  };
-
-
-  // Registra um callback que será chamado quando o WS abrir (ou imediatamente se já estiver aberto)
-  const onOpen = (callback: () => void) => {
-    if (wsRef.current?.readyState === WebSocket.OPEN) {
-      callback(); // já está aberto, dispara imediatamente
-    } else {
-      onOpenCallbackRef.current = callback;
-    }
-  };
-
-  // Registra callback para reconexão (chamado toda vez que reconectar)
-  const onReconnect = (callback: () => void) => {
-    onReconnectCallbackRef.current = callback;
-  };
-
-  return (
-    <WSContext.Provider value={{ ws, sendWSMessage, onOpen, onReconnect }}>
-      {children}
-    </WSContext.Provider>
-  );
+    return (
+        <WSContext.Provider value={{ wsRef, isConnected, sendWSMessage, onOpen, onReconnect }}>
+            {children}
+        </WSContext.Provider>
+    );
 };
 
 export const useWS = () => useContext(WSContext);

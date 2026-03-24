@@ -96,7 +96,7 @@
   color: var(--color-text-inverse) !important;
   border-radius: 8px;
   white-space: nowrap;
-  padding: 0.3rem 1rem;
+  padding: 0.3rem;
 }
 
 /* Avatar */

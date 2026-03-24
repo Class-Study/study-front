@@ -1,484 +1,316 @@
-import { WSProvider, useWS } from "@/contexts/WSContext";
-import React, { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { Header } from "@/components/layout/Header/Header";
-import DocxPreviewEditor from "@/components/ui/DocxPreviewEditor/DocxPreviewEditor";
-import { useAuth } from "@/hooks/useAuth";
-import { useMyWorkspace } from "@/hooks/useMyWorkspace";
-import { useSnapshot } from "@/hooks/useSnapshot";
-import { WorkspaceSidebar } from "./components/WorkspaceSidebar/WorkspaceSidebar";
-import { WorkspaceEditor } from "./components/WorkspaceEditor/WorkspaceEditor";
-import { WorkspaceChat } from "./components/WorkspaceChat/WorkspaceChat";
-import {
-  ChatMessage,
-  WorkspaceActivity,
-  WorkspaceData,
-  WorkspaceFolder,
-} from "@/types/workspace.types";
-import styles from "./WorkspacePage.module.css";
+import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
+import {useNavigate} from 'react-router-dom';
+import {useAuth} from '@/hooks/useAuth';
+import {useMyWorkspace} from '@/hooks/useMyWorkspace';
+import {useWorkspaceBase} from '@/hooks/useWorkspaceBase';
+import {useRightPanelResize} from '@/hooks/useRightPanelResize';
+import {useWS} from '@/contexts/WSContext';
+import {WorkspaceShell} from './components/WorkspaceShell/WorkspaceShell';
+import {WorkspaceSidebar} from './components/WorkspaceSidebar/WorkspaceSidebar';
+import {WorkspaceEditor} from './components/WorkspaceEditor/WorkspaceEditor';
+import {WorkspaceChat} from './components/WorkspaceChat/WorkspaceChat';
+import {StudentActivityBroadcaster} from './components/StudentActivityBroadcaster/StudentActivityBroadcaster';
+import {TeacherPresencePanel} from './components/TeacherPresencePanel/TeacherPresencePanel';
+import type {CursorPosition, ScrollPosition} from './components/WorkspaceEditor/WorkspaceEditor';
+import DocxPreviewEditor from '@/components/ui/DocxPreviewEditor/DocxPreviewEditor';
+import {Header} from '@/components/layout/Header/Header';
+import {WorkspaceActivity} from '@/types/workspace.types';
+import styles from './WorkspacePage.module.css';
 
-const MOCK_CHAT: ChatMessage[] = [
-  {
-    id: "1",
-    authorId: "teacher",
-    authorName: "Professor",
-    content:
-      "Oi! Pode comecar este exercicio e me chamar aqui no chat se precisar.",
-    sentAt: "10:00",
-    isOwn: false,
-  },
-];
+/* ─── Student Workspace ───────────────────────────────────────────────────── */
 
-const SIDEBAR_MIN_WIDTH = 200;
-const SIDEBAR_MAX_WIDTH = 450;
-const SIDEBAR_WIDTH_STORAGE_KEY = "workspace.student.sidebar.width";
+const StudentWorkspacePage: React.FC = () => {
+    const navigate = useNavigate();
+    const {user} = useAuth();
+    const {wsRef, isConnected} = useWS();
 
-interface StudentWorkspacePageInnerProps {
-  userId: string;
-  studentId: string;
-  studentName: string;
-  teacherName: string;
-  teacherOnline: boolean;
-  saving: boolean;
-  workspace: WorkspaceData;
-  workspaceActivities: WorkspaceActivity[];
-  exerciseFolders: WorkspaceFolder[];
-  saveContent: (activityId: string, html: string) => void;
-  moveActivity: (
-    activityId: string,
-    targetFolderId: string,
-  ) => Promise<boolean>;
-}
+    // ── Dados específicos do aluno ────────────────────────────────────────────
+    const {
+        workspace,
+        studentId,
+        studentName,
+        teacherId,
+        teacherName,
+        teacherOnline,
+        loading,
+        error,
+        accessDenied,
+        saving,
+        saveContent,
+        moveActivity,
+        workspaceActivities,
+        exerciseFolders,
+        fetchWorkspace,
+    } = useMyWorkspace();
 
-const StudentWorkspacePageInner: React.FC<StudentWorkspacePageInnerProps> = ({
-  userId,
-  studentId,
-  studentName,
-  teacherName,
-  teacherOnline,
-  saving,
-  workspace,
-  workspaceActivities,
-  exerciseFolders,
-  saveContent,
-  moveActivity,
-}) => {
-  const { ws, sendWSMessage, onReconnect } = useWS();
+    const allActivities = useMemo(
+        () => workspace?.folders.flatMap((f) => f.activities) ?? [],
+        [workspace],
+    );
 
-  const [activeActivity, setActiveActivity] =
-    useState<WorkspaceActivity | null>(null);
-  const [sidebarWidth, setSidebarWidth] = useState<number>(() => {
-    if (typeof window === "undefined") return 240;
-    const raw = window.localStorage.getItem(SIDEBAR_WIDTH_STORAGE_KEY);
-    const parsed = Number(raw);
-    if (Number.isNaN(parsed)) return 240;
-    return Math.min(SIDEBAR_MAX_WIDTH, Math.max(SIDEBAR_MIN_WIDTH, parsed));
-  });
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [chatVisible, setChatVisible] = useState(true);
-  const [messages, setMessages] = useState<ChatMessage[]>(MOCK_CHAT);
-  const [isEditingNewWorkspace, setIsEditingNewWorkspace] = useState(false);
-  const [newWorkspaceTitle, setNewWorkspaceTitle] = useState(
-    `Novo Workspace - ${new Date().toLocaleDateString("pt-BR")}`,
-  );
-  const [newWorkspaceContent, setNewWorkspaceContent] = useState("<p></p>");
-  const [workspaceDraftFeedback, setWorkspaceDraftFeedback] = useState<
-    string | null
-  >(null);
-  const bodyRef = useRef<HTMLDivElement | null>(null);
-  const isResizingRef = useRef(false);
+    // ── Hook pai — toda lógica compartilhada ──────────────────────────────────
+    const ws = useWorkspaceBase({
+        sidebarStorageKey: 'workspace.student.sidebar.width',
+        wsRef,
+        reconnectSignal: isConnected, // re-registra listener ao reconectar
+    });
 
-  const allActivities = useMemo(
-    () => workspace.folders.flatMap((folder) => folder.activities),
-    [workspace],
-  );
+    // ── Resize do painel direito ───────────────────────────────────────────────
+    const {width: rightWidth, handleResizeStart: handleRightResizeStart} = useRightPanelResize({
+        storageKey: 'workspace.student.right.width',
+        defaultWidth: 300,
+        minWidth: 200,
+        maxWidth: 600,
+    });
 
-  // ─── Snapshot collaboration ───────────────────────────────────────────────
-  const { html, ready, notifyChange } = useSnapshot({
-    activityId: activeActivity?.id ?? "",
-    initialHtml: activeActivity?.convertedHtml,
-    onSnapshot: (base64) => {
-      if (!activeActivity?.id || activeActivity.type !== "EXERCISE") return;
-      sendWSMessage({
-        type: "snapshot",
-        snapshot: base64,
-        userId,
-        workspaceId: studentId,
-        activityId: activeActivity.id,
-      });
-    },
-  });
+    // ── Estado exclusivo do aluno ─────────────────────────────────────────────
+    const [isEditingNewWorkspace, setIsEditingNewWorkspace] = useState(false);
+    const [newWorkspaceTitle, setNewWorkspaceTitle] = useState(
+        `Novo Workspace - ${new Date().toLocaleDateString('pt-BR')}`,
+    );
+    const [newWorkspaceContent, setNewWorkspaceContent] = useState('<p></p>');
+    const [workspaceDraftFeedback, setWorkspaceDraftFeedback] = useState<string | null>(null);
 
-  // ─── Envia snapshot ao conectar e ao reconectar ───────────────────────────
-  const htmlRef = useRef(html);
-  htmlRef.current = html;
+    // Ref para enviar atualizações de conteúdo via WebRTC para o professor
+    const contentSenderRef = useRef<((html: string) => void) | null>(null);
+    const cursorSenderRef = useRef<((pos: CursorPosition) => void) | null>(null);
+    const scrollSenderRef = useRef<((pos: ScrollPosition) => void) | null>(null);
 
-  useEffect(() => {
-    if (!ready || !onReconnect) return;
-    if (!activeActivity || activeActivity.type !== "EXERCISE") return;
+    const handleRegisterContentSender = useCallback((sender: ((html: string) => void) | null) => {
+        contentSenderRef.current = sender;
+    }, []);
+    const handleRegisterCursorSender = useCallback((sender: ((pos: CursorPosition) => void) | null) => {
+        cursorSenderRef.current = sender;
+    }, []);
+    const handleRegisterScrollSender = useCallback((sender: ((pos: ScrollPosition) => void) | null) => {
+        scrollSenderRef.current = sender;
+    }, []);
 
-    const sendSnapshot = async () => {
-      if (!ws || ws.readyState !== WebSocket.OPEN) return;
-      if (!htmlRef.current) return;
-      const { compressSnapshot } = await import("@/utils/snapshot");
-      const base64 = await compressSnapshot(htmlRef.current);
-      sendWSMessage({
-        type: "snapshot",
-        snapshot: base64,
-        userId,
-        workspaceId: studentId,
-        activityId: activeActivity.id,
-      });
+    // ── Efeitos ───────────────────────────────────────────────────────────────
+    useEffect(() => {
+        void fetchWorkspace();
+    }, [fetchWorkspace]);
+
+    useEffect(() => {
+        if (accessDenied) {
+            navigate('/account-inactive', {replace: true});
+        }
+    }, [accessDenied, navigate]);
+
+    // Auto-seleciona primeira atividade
+    useEffect(() => {
+        if (!ws.activeActivity && allActivities.length > 0) {
+            ws.setActiveActivity(allActivities[0]);
+        }
+    }, [ws.activeActivity, allActivities]);
+
+    // Mantém atividade ativa sincronizada após reload do workspace
+    useEffect(() => {
+        if (!ws.activeActivity) return;
+        const updated = allActivities.find((a) => a.id === ws.activeActivity!.id);
+        if (updated && updated !== ws.activeActivity) ws.setActiveActivity(updated);
+    }, [ws.activeActivity, allActivities]);
+
+    // ── Derivados ─────────────────────────────────────────────────────────────
+    const workspaceId = studentId && teacherId
+        ? `${studentId}-${teacherId}`
+        : null;
+
+    const breadcrumbItems = [
+        {label: 'Meu Perfil', path: '/me'},
+        {label: studentName || user?.name || 'Aluno', path: '/me'},
+        {label: 'Workspace'},
+    ];
+
+    const userForChat = useMemo(
+        () => ({
+            id: user?.id ?? '',
+            name: user?.name ?? '',
+            email: user?.email ?? '',
+            role: user?.role,
+        }),
+        [user?.id, user?.name, user?.email, user?.role],
+    );
+
+    // ── Handlers exclusivos ───────────────────────────────────────────────────
+    const handleSelectActivity = (activity: WorkspaceActivity): void => {
+        setIsEditingNewWorkspace(false);
+        setWorkspaceDraftFeedback(null);
+        ws.setActiveActivity(activity);
     };
 
-    sendSnapshot();
-    onReconnect(sendSnapshot);
-  }, [ready, activeActivity?.id, ws]);
-
-  // ─── Sincroniza activeActivity com atualizações do workspace ─────────────
-  useEffect(() => {
-    if (!activeActivity && allActivities.length > 0) {
-      setActiveActivity(allActivities[0]);
-    }
-  }, [activeActivity, allActivities]);
-
-  useEffect(() => {
-    if (!activeActivity) return;
-    const updatedActivity = allActivities.find(
-      (a) => a.id === activeActivity.id,
-    );
-    if (updatedActivity && updatedActivity !== activeActivity) {
-      setActiveActivity(updatedActivity);
-    }
-  }, [activeActivity, allActivities]);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    window.localStorage.setItem(
-      SIDEBAR_WIDTH_STORAGE_KEY,
-      String(sidebarWidth),
-    );
-  }, [sidebarWidth]);
-
-  const handleSendMessage = (content: string): void => {
-    const newMsg: ChatMessage = {
-      id: crypto.randomUUID(),
-      authorId: userId,
-      authorName: studentName || "Voce",
-      content,
-      sentAt: new Date().toLocaleTimeString("pt-BR", {
-        hour: "2-digit",
-        minute: "2-digit",
-      }),
-      isOwn: true,
+    const handleCreateWorkspace = (): void => {
+        setIsEditingNewWorkspace(true);
+        setWorkspaceDraftFeedback(null);
+        if (!newWorkspaceTitle.trim()) {
+            setNewWorkspaceTitle(`Novo Workspace - ${new Date().toLocaleDateString('pt-BR')}`);
+        }
     };
-    setMessages((prev) => [...prev, newMsg]);
-  };
 
-  const handleSelectActivity = (activity: WorkspaceActivity): void => {
-    setIsEditingNewWorkspace(false);
-    setWorkspaceDraftFeedback(null);
-    setActiveActivity(activity);
-  };
-
-  const handleCreateWorkspace = (): void => {
-    setIsEditingNewWorkspace(true);
-    setWorkspaceDraftFeedback(null);
-    if (!newWorkspaceTitle.trim()) {
-      setNewWorkspaceTitle(
-        `Novo Workspace - ${new Date().toLocaleDateString("pt-BR")}`,
-      );
-    }
-  };
-
-  const handleWorkspaceDraftSave = (): void => {
-    setWorkspaceDraftFeedback("Rascunho salvo localmente.");
-  };
-
-  const handleCloseWorkspaceDraft = (): void => {
-    setIsEditingNewWorkspace(false);
-    setWorkspaceDraftFeedback(null);
-  };
-
-  const handleMoveActivity = async (
-    activityId: string,
-    targetFolderId: string,
-  ): Promise<void> => {
-    const moved = await moveActivity(activityId, targetFolderId);
-    if (!moved) alert("Nao foi possivel mover a atividade. Tente novamente.");
-  };
-
-  const stopResizing = (): void => {
-    isResizingRef.current = false;
-    window.removeEventListener("mousemove", handleSidebarResize);
-    window.removeEventListener("mouseup", stopResizing);
-    document.body.style.cursor = "";
-    document.body.style.userSelect = "";
-  };
-
-  const handleSidebarResize = (event: MouseEvent): void => {
-    if (!isResizingRef.current) return;
-    const containerLeft = bodyRef.current?.getBoundingClientRect().left ?? 0;
-    const nextWidth = Math.min(
-      SIDEBAR_MAX_WIDTH,
-      Math.max(SIDEBAR_MIN_WIDTH, event.clientX - containerLeft),
-    );
-    setSidebarWidth(nextWidth);
-  };
-
-  const handleSidebarResizeStart = (): void => {
-    if (sidebarCollapsed) setSidebarCollapsed(false);
-    isResizingRef.current = true;
-    document.body.style.cursor = "col-resize";
-    document.body.style.userSelect = "none";
-    window.addEventListener("mousemove", handleSidebarResize);
-    window.addEventListener("mouseup", stopResizing);
-  };
-
-  useEffect(() => {
-    return () => {
-      window.removeEventListener("mousemove", handleSidebarResize);
-      window.removeEventListener("mouseup", stopResizing);
+    const handleMoveActivity = async (activityId: string, targetFolderId: string): Promise<void> => {
+        const moved = await moveActivity(activityId, targetFolderId);
+        if (!moved) alert('Nao foi possivel mover a atividade. Tente novamente.');
     };
-  }, []);
 
-  const breadcrumbItems = [
-    { label: "Meu Perfil", path: "/me" },
-    { label: studentName || "Aluno", path: "/me" },
-    { label: "Workspace" },
-  ];
+    // ── Loading / Error ───────────────────────────────────────────────────────
+    if (loading) {
+        return (
+            <div className={styles.page}>
+                <Header breadcrumbItems={breadcrumbItems}/>
+                <div className={styles.loadingState}>Carregando workspace...</div>
+            </div>
+        );
+    }
 
-  return (
-    <div className={styles.page} data-student-id={studentId}>
-      <Header breadcrumbItems={breadcrumbItems} />
+    if (error) {
+        return (
+            <div className={styles.page}>
+                <Header breadcrumbItems={breadcrumbItems}/>
+                <div className={styles.errorState}>{error}</div>
+            </div>
+        );
+    }
 
-      <div className={styles.toolbar}>
-        {sidebarCollapsed && (
-          <button
-            type="button"
-            className={styles.expandSidebarBtn}
-            onClick={() => setSidebarCollapsed(false)}
-            title="Expandir sidebar"
-          >
-            ▶
-          </button>
-        )}
-        <button
-          type="button"
-          className={`${styles.chatToggleBtn} ${chatVisible ? styles.chatToggleBtnActive : ""}`}
-          onClick={() => setChatVisible((v) => !v)}
+    // ── Render ────────────────────────────────────────────────────────────────
+    return (
+        <WorkspaceShell
+            userId={user?.id}
+            workspaceId={workspaceId}
+            role="student"
+            breadcrumbItems={breadcrumbItems}
+            activityId={ws.activeActivity?.id ?? null}
+            userForChat={userForChat}
+            messagesRef={ws.messagesRef}
+            sendMessageRef={ws.sendMessageRef}
+            addIncomingRef={ws.addIncomingRef}
+            onMessagesChange={ws.handleMessagesChange}
+            sidebarCollapsed={ws.sidebarCollapsed}
+            setSidebarCollapsed={ws.setSidebarCollapsed}
+            chatVisible={ws.chatVisible}
+            setChatVisible={ws.setChatVisible}
+            bodyRef={ws.bodyRef}
+            pageProps={{'data-student-id': studentId} as React.HTMLAttributes<HTMLDivElement>}
         >
-          ⇌ Chat
-        </button>
-      </div>
+            {/* Sidebar */}
+            <WorkspaceSidebar
+                folders={exerciseFolders}
+                workspaces={workspaceActivities}
+                activeActivityId={ws.activeActivity?.id ?? null}
+                width={ws.sidebarWidth}
+                onSelectActivity={handleSelectActivity}
+                collapsed={ws.sidebarCollapsed}
+                onToggleCollapse={() => ws.setSidebarCollapsed((p) => !p)}
+                onResizeStart={ws.handleSidebarResizeStart}
+                newItemForm={null}
+                onChangeNewItemForm={() => {
+                }}
+                onCreateFolder={() => {
+                }}
+                onCreateWorkspace={handleCreateWorkspace}
+                onOpenUploadForFolder={() => {
+                }}
+                onMoveActivity={handleMoveActivity}
+                readOnly={true}
+                allowCreate={false}
+                allowMove={true}
+                allowWorkspaceMove={false}
+                allowCreateWorkspace={true}
+                allowCreateFolder={false}
+                allowUploadToFolder={false}
+            />
 
-      <div className={styles.body} ref={bodyRef}>
-        <WorkspaceSidebar
-          folders={exerciseFolders}
-          workspaces={workspaceActivities}
-          activeActivityId={activeActivity?.id ?? null}
-          width={sidebarWidth}
-          onSelectActivity={handleSelectActivity}
-          collapsed={sidebarCollapsed}
-          onToggleCollapse={() => setSidebarCollapsed((prev) => !prev)}
-          onResizeStart={handleSidebarResizeStart}
-          newItemForm={null}
-          onChangeNewItemForm={() => {}}
-          onCreateFolder={() => {}}
-          onCreateWorkspace={handleCreateWorkspace}
-          onOpenUploadForFolder={() => {}}
-          onMoveActivity={handleMoveActivity}
-          readOnly={true}
-          allowCreate={false}
-          allowMove={true}
-          allowWorkspaceMove={false}
-          allowCreateWorkspace={true}
-          allowCreateFolder={false}
-          allowUploadToFolder={false}
-        />
+            {/* Área do editor — modo rascunho ou atividade */}
+            <div className={styles.editorArea}>
+                {isEditingNewWorkspace ? (
+                    <div className={styles.workspaceContainer}>
+                        <div className={styles.workspaceHeaderRow}>
+                            <input
+                                className={styles.workspaceTitleInput}
+                                placeholder="Titulo do Workspace..."
+                                value={newWorkspaceTitle}
+                                onChange={(e) => setNewWorkspaceTitle(e.target.value)}
+                            />
+                            <div className={styles.workspaceActions}>
+                                <button
+                                    type="button"
+                                    className={styles.workspaceSecondaryBtn}
+                                    onClick={() => {
+                                        setIsEditingNewWorkspace(false);
+                                        setWorkspaceDraftFeedback(null);
+                                    }}
+                                >
+                                    Fechar
+                                </button>
+                                <button
+                                    type="button"
+                                    className={styles.workspacePrimaryBtn}
+                                    onClick={() => setWorkspaceDraftFeedback('Rascunho salvo localmente.')}
+                                >
+                                    Salvar
+                                </button>
+                            </div>
+                        </div>
+                        {workspaceDraftFeedback && (
+                            <span className={styles.workspaceFeedback}>{workspaceDraftFeedback}</span>
+                        )}
+                        <div className={styles.workspaceEditorBody}>
+                            <DocxPreviewEditor
+                                html={newWorkspaceContent}
+                                editable={true}
+                                onChange={setNewWorkspaceContent}
+                            />
+                        </div>
+                    </div>
+                ) : (
+                    <WorkspaceEditor
+                        activity={ws.activeActivity}
+                        editable={ws.activeActivity?.type === 'EXERCISE'}
+                        onContentChange={(html) => {
+                            if (ws.activeActivity?.id && ws.activeActivity.type === 'EXERCISE') {
+                                saveContent(ws.activeActivity.id, html);
+                                contentSenderRef.current?.(html);
+                            }
+                        }}
+                        onCursorChange={(ratio) => cursorSenderRef.current?.(ratio)}
+                        onScrollChange={(ratio) => scrollSenderRef.current?.(ratio)}
+                        headerStatus={saving ?
+                            <span className={styles.savingIndicator}>Salvando...</span> : null}
+                    />
+                )}
+            </div>
 
-        <div className={styles.editorArea}>
-          {isEditingNewWorkspace ? (
-            <div className={styles.workspaceContainer}>
-              <div className={styles.workspaceHeaderRow}>
-                <input
-                  className={styles.workspaceTitleInput}
-                  placeholder="Titulo do Workspace..."
-                  value={newWorkspaceTitle}
-                  onChange={(event) => setNewWorkspaceTitle(event.target.value)}
+            {/* Broadcaster: envia info da atividade ativa para o professor via WebRTC */}
+            <StudentActivityBroadcaster
+                activity={ws.activeActivity}
+                studentName={studentName}
+                onRegisterContentSender={handleRegisterContentSender}
+                onRegisterCursorSender={handleRegisterCursorSender}
+                onRegisterScrollSender={handleRegisterScrollSender}
+            />
+
+            {/* Painel direito: presença do professor + chat */}
+            <div
+                className={`${styles.rightPanel} ${ws.chatVisible ? '' : styles.rightPanelHidden}`}
+                style={ws.chatVisible ? {width: `${rightWidth}px`, minWidth: `${rightWidth}px`, flexShrink: 0} : undefined}
+            >
+                {/* Handle de resize horizontal — esquerda do painel */}
+                {ws.chatVisible && (
+                    <div className={styles.rightResizeHandle} onMouseDown={handleRightResizeStart} />
+                )}
+                <TeacherPresencePanel
+                    teacherName={teacherName}
+                    teacherOnlineApi={teacherOnline}
                 />
-                <div className={styles.workspaceActions}>
-                  <button
-                    type="button"
-                    className={styles.workspaceSecondaryBtn}
-                    onClick={handleCloseWorkspaceDraft}
-                  >
-                    Fechar
-                  </button>
-                  <button
-                    type="button"
-                    className={styles.workspacePrimaryBtn}
-                    onClick={handleWorkspaceDraftSave}
-                  >
-                    Salvar
-                  </button>
+                <div className={styles.chatSection}>
+                    <WorkspaceChat
+                        activityTitle={ws.activeActivity?.title ?? ''}
+                        messages={ws.messages}
+                        onSendMessage={ws.handleSendMessage}
+                    />
                 </div>
-              </div>
-
-              {workspaceDraftFeedback && (
-                <span className={styles.workspaceFeedback}>
-                  {workspaceDraftFeedback}
-                </span>
-              )}
-
-              <div className={styles.workspaceEditorBody}>
-                <DocxPreviewEditor
-                  html={newWorkspaceContent}
-                  editable={true}
-                  onChange={(html) => setNewWorkspaceContent(html)}
-                />
-              </div>
             </div>
-          ) : (
-            <WorkspaceEditor
-              activity={activeActivity}
-              editable={activeActivity?.type === "EXERCISE"}
-              html={html}
-              onContentChange={notifyChange}
-              onCursorChange={(from, to) => {
-                if (!activeActivity?.id) return;
-                sendWSMessage({
-                  type: "cursor",
-                  activityId: activeActivity.id,
-                  from,
-                  to,
-                  userName: studentName || "Aluno",
-                  userId,
-                  workspaceId: studentId,
-                });
-              }}
-              headerStatus={
-                saving ? (
-                  <span className={styles.savingIndicator}>Salvando...</span>
-                ) : null
-              }
-            />
-          )}
-        </div>
-
-        <div
-          className={`${styles.rightPanel} ${chatVisible ? "" : styles.rightPanelHidden}`}
-        >
-          <div className={styles.teacherPresenceSection}>
-            <span className={styles.teacherPresenceLabel}>Professor</span>
-            <div className={styles.teacherPresenceCard}>
-              <span
-                className={`${styles.teacherPresenceDot} ${
-                  teacherOnline
-                    ? styles.teacherPresenceDotOnline
-                    : styles.teacherPresenceDotOffline
-                }`}
-                aria-hidden="true"
-              />
-              <div className={styles.teacherPresenceInfo}>
-                <span className={styles.teacherPresenceName}>
-                  {teacherName}
-                </span>
-                <span className={styles.teacherPresenceStatus}>
-                  {teacherOnline ? "Online agora" : "Offline"}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <div className={styles.chatSection}>
-            <WorkspaceChat
-              activityTitle={activeActivity?.title ?? ""}
-              messages={messages}
-              onSendMessage={handleSendMessage}
-            />
-          </div>
-        </div>
-      </div>
-    </div>
-  );
+        </WorkspaceShell>
+    );
 };
 
-// ─── Camada 2: aguarda carregamento, monta WSProvider com dados prontos ───────
-
-const StudentWorkspacePageContent: React.FC = () => {
-  const navigate = useNavigate();
-  const { user } = useAuth();
-  const {
-    workspace,
-    studentId,
-    studentName,
-    teacherName,
-    teacherOnline,
-    loading,
-    error,
-    accessDenied,
-    saving,
-    fetchWorkspace,
-    saveContent,
-    moveActivity,
-    workspaceActivities,
-    exerciseFolders,
-  } = useMyWorkspace();
-
-  const breadcrumbItems = [
-    { label: "Meu Perfil", path: "/me" },
-    { label: studentName || user?.name || "Aluno", path: "/me" },
-    { label: "Workspace" },
-  ];
-
-  useEffect(() => {
-    if (accessDenied) navigate("/account-inactive", { replace: true });
-  }, [accessDenied, navigate]);
-
-  useEffect(() => {
-    void fetchWorkspace();
-  }, [fetchWorkspace]);
-
-  if (loading) {
-    return (
-      <div className={styles.page}>
-        <Header breadcrumbItems={breadcrumbItems} />
-        <div className={styles.loadingState}>Carregando workspace...</div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className={styles.page}>
-        <Header breadcrumbItems={breadcrumbItems} />
-        <div className={styles.errorState}>{error}</div>
-      </div>
-    );
-  }
-
-  if (!workspace || !studentId || !user?.id) return null;
-
-  return (
-    <WSProvider userId={user.id} workspaceId={studentId}>
-      <StudentWorkspacePageInner
-        userId={user.id}
-        studentId={studentId}
-        studentName={studentName}
-        teacherName={teacherName}
-        teacherOnline={teacherOnline}
-        saving={saving}
-        workspace={workspace}
-        workspaceActivities={workspaceActivities}
-        exerciseFolders={exerciseFolders}
-        saveContent={saveContent}
-        moveActivity={moveActivity}
-      />
-    </WSProvider>
-  );
-};
-
-const StudentWorkspacePage: React.FC = () => <StudentWorkspacePageContent />;
-
-export default StudentWorkspacePage;
+export {StudentWorkspacePage};

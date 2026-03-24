@@ -1,148 +1,136 @@
-import React, { useEffect, useRef } from "react";
-import { useEditor, EditorContent } from "@tiptap/react";
-import StarterKit from "@tiptap/starter-kit";
-import Typography from "@tiptap/extension-typography";
-import { Extension } from "@tiptap/core";
-import { Plugin, PluginKey } from "prosemirror-state";
-import { Decoration, DecorationSet } from "prosemirror-view";
-import { WorkspaceActivity } from "@/types/workspace.types";
-import styles from "./WorkspaceEditor.module.css";
+import React, { useEffect, useRef } from 'react';
+import { useEditor, EditorContent } from '@tiptap/react';
+import StarterKit from '@tiptap/starter-kit';
+import Typography from '@tiptap/extension-typography';
+import { WorkspaceActivity } from '@/types/workspace.types';
+import styles from './WorkspaceEditor.module.css';
 
 interface PresenceUser {
   name: string;
   color: string;
 }
 
+export interface CursorPosition {
+  /** Offset dentro do innerText do elemento ProseMirror */
+  from: number;
+  /** Offset dentro do innerText (end of selection) */
+  to: number;
+}
+
+export interface ScrollPosition {
+  scrollTop: number;
+  scrollHeight: number;
+  clientHeight: number;
+}
+
 interface WorkspaceEditorProps {
   activity: WorkspaceActivity | null;
   editable: boolean;
-  html?: string;
   presence?: PresenceUser[];
-  currentUserName?: string;
   onContentChange?: (html: string) => void;
-  onCursorChange?: (from: number, to: number) => void;
-  remoteCursor?: { from: number; to: number; userName: string } | null;
+  onCursorChange?: (pos: CursorPosition) => void;
+  onScrollChange?: (pos: ScrollPosition) => void;
   headerStatus?: React.ReactNode;
+}
+
+/**
+ * Dado o container ProseMirror e uma posição do editor,
+ * calcula o offset em caracteres de texto puro (innerText)
+ * criando um Range do início do container até a posição do cursor
+ * e contando os caracteres dentro dele.
+ */
+function prosePosToTextOffset(view: any, container: HTMLElement, pos: number): number {
+  try {
+    const resolved = view.domAtPos(pos);
+    const node = resolved.node;
+    const offset = resolved.offset;
+
+    // Criar um range do início do container até o ponto do cursor
+    const range = document.createRange();
+    range.setStart(container, 0);
+
+    if (node.nodeType === Node.TEXT_NODE) {
+      range.setEnd(node, offset);
+    } else {
+      // Nó de elemento: posicionar no offset de filhos
+      if (offset < node.childNodes.length) {
+        range.setEnd(node, offset);
+      } else {
+        // Cursor no fim do elemento — posicionar depois do último filho
+        range.setEndAfter(node.lastChild ?? node);
+      }
+    }
+
+    // O texto dentro desse range é exatamente o que vem antes do cursor
+    // Usar toString() que retorna apenas texto visível (como innerText, sem tags)
+    return range.toString().length;
+  } catch {
+    return 0;
+  }
 }
 
 export const WorkspaceEditor: React.FC<WorkspaceEditorProps> = ({
   activity,
   editable,
-  html,
   presence = [],
   onContentChange,
   onCursorChange,
-  remoteCursor,
+  onScrollChange,
   headerStatus,
 }) => {
-  const cursorDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const lastActivityIdRef = useRef<string | null>(null);
-  const remoteCursorRef = useRef(remoteCursor);
-  remoteCursorRef.current = remoteCursor;
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const onCursorChangeRef = useRef(onCursorChange);
+  onCursorChangeRef.current = onCursorChange;
 
-  const RemoteCursorExtension = useRef(
-    Extension.create({
-      name: "remoteCursor",
-      addProseMirrorPlugins() {
-        return [
-          new Plugin({
-            key: new PluginKey("remoteCursor"),
-            props: {
-              decorations(state) {
-                const cursor = remoteCursorRef.current;
-                if (!cursor) return DecorationSet.empty;
-                const { from, to, userName } = cursor;
-                const size = state.doc.content.size;
-                const safeFrom = Math.min(Math.max(from, 0), size);
-                const safeTo = Math.min(Math.max(to, 0), size);
-                const widget = Decoration.widget(safeFrom, () => {
-                  const el = document.createElement("span");
-                  el.className = styles.remoteCursor;
-                  el.setAttribute("data-name", userName);
-                  return el;
-                });
-                const decos: Decoration[] = [widget];
-                if (safeTo > safeFrom) {
-                  decos.push(
-                    Decoration.inline(safeFrom, safeTo, {
-                      class: styles.remoteCursorSelection,
-                    }),
-                  );
-                }
-                return DecorationSet.create(state.doc, decos);
-              },
-            },
-          }),
-        ];
-      },
-    }),
-  ).current;
+  const emitCursor = (e: any) => {
+    if (!onCursorChangeRef.current) return;
+    const view = e.view;
+    if (!view?.dom) return;
+
+    const { from, to } = e.state.selection;
+    const container = view.dom as HTMLElement;
+
+    onCursorChangeRef.current({
+      from: prosePosToTextOffset(view, container, from),
+      to: prosePosToTextOffset(view, container, to),
+    });
+  };
 
   const editor = useEditor({
-    extensions: [StarterKit, Typography, RemoteCursorExtension],
+    extensions: [StarterKit, Typography],
+    content: activity?.convertedHtml ?? '',
     editable,
-    content: html ?? activity?.convertedHtml ?? "",
-    onUpdate: ({ editor }) => {
-      onContentChange?.(editor.getHTML());
-      const { from, to } = editor.state.selection;
-
-      // Converte posição ProseMirror para offset de texto plano
-      const textOffset = editor.state.doc.textBetween(0, from, "").length;
-      onCursorChange?.(textOffset, textOffset);
+    onUpdate: ({ editor: e }) => {
+      if (activity?.id) onContentChange?.(e.getHTML());
     },
-    onSelectionUpdate: ({ editor, transaction }) => {
-      if (!editable) return;
-      const isPointerSelection = transaction.getMeta("pointer");
-      if (!isPointerSelection) return;
-
-      const { from } = editor.state.selection;
-      const textOffset = editor.state.doc.textBetween(0, from, "").length;
-
-      if (cursorDebounceRef.current) clearTimeout(cursorDebounceRef.current);
-      cursorDebounceRef.current = setTimeout(() => {
-        onCursorChange?.(textOffset, textOffset);
-      }, 100);
+    onSelectionUpdate: ({ editor: e }) => {
+      emitCursor(e);
     },
   });
+
+  // Scroll listener
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el || !onScrollChange) return;
+    const handleScroll = () => {
+      onScrollChange({
+        scrollTop: el.scrollTop,
+        scrollHeight: el.scrollHeight,
+        clientHeight: el.clientHeight,
+      });
+    };
+    el.addEventListener('scroll', handleScroll, { passive: true });
+    return () => el.removeEventListener('scroll', handleScroll);
+  }, [onScrollChange]);
+
+  useEffect(() => {
+    if (editor && activity) editor.commands.setContent(activity.convertedHtml);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activity?.id]);
 
   useEffect(() => {
     if (editor) editor.setEditable(editable);
   }, [editor, editable]);
-
-  useEffect(() => {
-    if (!editor) return;
-    const content = html ?? activity?.convertedHtml;
-    if (!content) return;
-
-    const isActivityChange = activity?.id !== lastActivityIdRef.current;
-    lastActivityIdRef.current = activity?.id ?? null;
-
-    if (isActivityChange || !editable) {
-      if (editor.getHTML() === content) return;
-
-      queueMicrotask(() => {
-        // Preserva a seleção atual antes do setContent
-        const { from, to } = editor.state.selection;
-        const docSize = editor.state.doc.content.size;
-
-        editor.commands.setContent(content);
-
-        // Restaura a seleção após o setContent se as posições ainda forem válidas
-        const newDocSize = editor.state.doc.content.size;
-        if (from <= newDocSize && to <= newDocSize) {
-          editor.commands.setTextSelection({ from, to });
-        }
-      });
-    }
-  }, [html, activity?.id, editable]);
-
-  // Força re-render das decorações quando cursor remoto muda
-  useEffect(() => {
-    if (!editor) return;
-    editor.view.dispatch(
-      editor.state.tr.setMeta("remoteCursorUpdate", remoteCursor),
-    );
-  }, [editor, remoteCursor]);
 
   if (!activity) {
     return (
@@ -158,12 +146,11 @@ export const WorkspaceEditor: React.FC<WorkspaceEditorProps> = ({
       <div className={styles.topBar}>
         <h2 className={styles.activityTitle}>{activity.title}</h2>
         {headerStatus}
-        {activity.type === "WORKSPACE" && (
+        {activity.type === 'WORKSPACE' && (
           <span className={styles.collabTag}>+ Colaborativa</span>
         )}
       </div>
-
-      <div className={styles.editorScroll}>
+      <div className={styles.editorScroll} ref={scrollRef}>
         <EditorContent editor={editor} className={styles.editorContent} />
       </div>
 
