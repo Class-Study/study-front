@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Send, WifiOff } from 'lucide-react';
+import { Send, WifiOff, RefreshCw } from 'lucide-react';
 import { ChatMessage } from '@/types/chat.types';
 import styles from './WorkspaceChat.module.css';
 
@@ -11,6 +11,10 @@ interface WorkspaceChatProps {
   disabled?: boolean;
   /** Optional message to show when disabled */
   disabledMessage?: string;
+  /** Callback para tentar reconectar */
+  onReconnect?: () => void;
+  /** true enquanto reconexão está em andamento */
+  isReconnecting?: boolean;
 }
 
 export const WorkspaceChat: React.FC<WorkspaceChatProps> = ({
@@ -19,6 +23,8 @@ export const WorkspaceChat: React.FC<WorkspaceChatProps> = ({
   onSendMessage,
   disabled = false,
   disabledMessage,
+  onReconnect,
+  isReconnecting = false,
 }) => {
   const [draft, setDraft] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -64,6 +70,17 @@ export const WorkspaceChat: React.FC<WorkspaceChatProps> = ({
           <span className={styles.disabledSubtext}>
             O chat será habilitado quando a conexão com o aluno for estabelecida e uma atividade estiver ativa.
           </span>
+          {onReconnect && (
+            <button
+              type="button"
+              className={styles.reconnectBtn}
+              onClick={onReconnect}
+              disabled={isReconnecting}
+            >
+              <RefreshCw size={13} className={isReconnecting ? styles.spinning : ''} />
+              {isReconnecting ? 'Reconectando...' : 'Tentar reconectar'}
+            </button>
+          )}
         </div>
       ) : (
         <>
@@ -74,9 +91,9 @@ export const WorkspaceChat: React.FC<WorkspaceChatProps> = ({
                 <span className={styles.emptyChatText}>Nenhuma mensagem ainda</span>
               </div>
             ) : (
-              messages.map((msg) => (
+              messages.map((msg, i) => (
                 <div
-                  key={msg.id}
+                  key={msg.id ? `${msg.id}-${i}` : `msg-${i}`}
                   className={`${styles.messageGroup} ${msg.isOwn ? styles.messageGroupOwn : ''}`}
                 >
                   {!msg.isOwn && (

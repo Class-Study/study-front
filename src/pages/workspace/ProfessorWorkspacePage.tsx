@@ -28,7 +28,7 @@ interface ProfessorRightPanelProps {
  * O chat fica desabilitado até o aluno se conectar e definir uma atividade.
  */
 const ProfessorRightPanel: React.FC<ProfessorRightPanelProps> = ({ws, targetStudentId}) => {
-    const {isStudentOnline, studentActivityId, studentTitle} = useWebRTC();
+    const {isStudentOnline, studentActivityId, studentTitle, requestReconnect, isReconnecting} = useWebRTC();
 
     // A atividade é definida pelo aluno via WebRTC
     const chatActivityTitle = studentTitle ?? ws.activeActivity?.title ?? '';
@@ -66,6 +66,8 @@ const ProfessorRightPanel: React.FC<ProfessorRightPanelProps> = ({ws, targetStud
                             ? 'Aguardando conexão com o aluno...'
                             : 'Aguardando o aluno selecionar uma atividade...'
                     }
+                    onReconnect={!isStudentOnline ? requestReconnect : undefined}
+                    isReconnecting={isReconnecting}
                 />
             </div>
             <div className={styles.notesSection}>

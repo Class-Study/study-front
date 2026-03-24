@@ -22,14 +22,13 @@ export const StudentActivityBroadcaster: React.FC<StudentActivityBroadcasterProp
     activity,
     onRegisterContentSender,
 }) => {
-    const { send } = useWebRTC();
+    const { send, isChannelOpen } = useWebRTC();
     const activityRef = useRef(activity);
     activityRef.current = activity;
 
-    // Envia info da atividade ao trocar
+    // Envia info da atividade ao trocar de atividade
     useEffect(() => {
         if (!activity) return;
-
         send({
             type: 'html-update',
             activityId: activity.id,
@@ -37,6 +36,20 @@ export const StudentActivityBroadcaster: React.FC<StudentActivityBroadcasterProp
             html: activity.convertedHtml,
         });
     }, [activity?.id, send]);
+
+    // Re-envia quando o canal abre (reconexão do professor)
+    useEffect(() => {
+        if (!isChannelOpen) return;
+        const act = activityRef.current;
+        if (!act) return;
+        console.log('[WebRTC] Canal aberto — re-enviando atividade ao professor');
+        send({
+            type: 'html-update',
+            activityId: act.id,
+            title: act.title,
+            html: act.convertedHtml,
+        });
+    }, [isChannelOpen, send]);
 
     // Registra função para enviar atualizações de conteúdo (chamada pelo WorkspaceEditor onContentChange)
     const sendContentUpdate = useCallback((html: string) => {
@@ -57,6 +70,3 @@ export const StudentActivityBroadcaster: React.FC<StudentActivityBroadcasterProp
 
     return null;
 };
-
-
-
