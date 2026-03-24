@@ -213,3 +213,61 @@
   font-size: 11px;
   color: var(--color-text-tertiary);
 }
+
+
+.remoteCursor {
+  position: relative;
+  border-left: 2px solid #3B8BD4;
+  margin-left: -1px;
+  pointer-events: none;
+}
+
+.remoteCursor::after {
+  content: attr(data-name);
+  position: absolute;
+  top: -20px;
+  left: -1px;
+  background: #3B8BD4;
+  color: white;
+  font-size: 11px;
+  padding: 1px 5px;
+  border-radius: 3px;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.remoteCursorSelection {
+  background: rgba(59, 139, 212, 0.2);
+}
+
+.content {
+  padding: 24px;
+  line-height: 1.7;
+  font-size: 16px;
+  color: #e5e7eb;
+  max-width: 700px;
+  margin: 0 auto;
+
+  /* Estilos que o TipTap aplica automaticamente */
+  word-wrap: break-word;
+  white-space: pre-wrap;
+  -webkit-font-variant-ligatures: none;
+  font-variant-ligatures: none;
+  font-feature-settings: "liga" 0;
+  outline: none;
+}
+
+/* Força parágrafos sem margem extra como o TipTap */
+.content p:first-child {
+  margin-top: 0;
+}
+
+.content p:last-child {
+  margin-bottom: 0;
+}
+
+/* Listas ordenadas */
+.content ol {
+  padding-left: 20px;
+  margin-bottom: 14px;
+}
