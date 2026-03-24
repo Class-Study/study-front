@@ -1,7 +1,35 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Send, WifiOff, RefreshCw } from 'lucide-react';
+import { Send, WifiOff, RefreshCw, Copy, Check } from 'lucide-react';
 import { ChatMessage } from '@/types/chat.types';
 import styles from './WorkspaceChat.module.css';
+
+/** Botão de copiar com feedback visual */
+const CopyButton: React.FC<{ content: string }> = ({ content }) => {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async (e: React.MouseEvent): Promise<void> => {
+    e.stopPropagation();
+    try {
+      await navigator.clipboard.writeText(content);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1800);
+    } catch {
+      // fallback silencioso
+    }
+  };
+
+  return (
+    <button
+      type="button"
+      className={`${styles.copyBtn} ${copied ? styles.copyBtnCopied : ''}`}
+      onClick={handleCopy}
+      data-tooltip={copied ? 'Copiado!' : 'Copiar'}
+    >
+      {copied ? <Check size={11} /> : <Copy size={11} />}
+    </button>
+  );
+};
+
 
 interface WorkspaceChatProps {
   activityTitle: string;
@@ -101,8 +129,12 @@ export const WorkspaceChat: React.FC<WorkspaceChatProps> = ({
                     {!msg.isOwn && (
                       <span className={styles.authorName}>{msg.authorName}</span>
                     )}
-                    <div className={`${styles.bubble} ${msg.isOwn ? styles.bubbleOwn : styles.bubbleOther}`}>
-                      {msg.content}
+                    <div className={styles.bubbleRow}>
+                      {msg.isOwn && <CopyButton content={msg.content} />}
+                      <div className={`${styles.bubble} ${msg.isOwn ? styles.bubbleOwn : styles.bubbleOther}`}>
+                        {msg.content}
+                      </div>
+                      {!msg.isOwn && <CopyButton content={msg.content} />}
                     </div>
                     <span className={`${styles.sentAt} ${msg.isOwn ? styles.sentAtOwn : ''}`}>
                       {msg.sentAt}

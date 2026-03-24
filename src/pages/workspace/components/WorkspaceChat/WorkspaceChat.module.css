@@ -106,6 +106,69 @@
   padding: 0 3px;
 }
 
+.bubbleRow {
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.copyBtn {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s, background 0.15s, color 0.15s;
+  padding: 0;
+  margin-bottom: 2px;
+  position: relative;
+}
+
+.copyBtn::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: calc(100% + 5px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--color-bg-input, #1e1e1e);
+  color: var(--color-text-primary);
+  font-family: var(--font-sans);
+  font-size: 10px;
+  white-space: nowrap;
+  padding: 3px 7px;
+  border-radius: 4px;
+  border: 1px solid var(--color-border);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s;
+  z-index: 20;
+}
+
+.copyBtn:hover::after {
+  opacity: 1;
+}
+
+.copyBtnCopied {
+  color: var(--color-success, #22c55e);
+  opacity: 1 !important;
+}
+
+.messageGroup:hover .copyBtn {
+  opacity: 1;
+}
+
+.copyBtn:hover {
+  background: var(--color-bg-input);
+  color: var(--color-text-primary);
+}
+
 .bubble {
   padding: 7px 10px;
   border-radius: 10px;

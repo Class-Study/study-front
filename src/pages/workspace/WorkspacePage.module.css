@@ -286,7 +286,7 @@
   font-size: 24px;
   font-weight: 600;
   border: none;
-  border-bottom: 1px solid var(--color-border-secondary, var(--color-border));
+  border-bottom: 1px solid var(--color-border, var(--color-border));
   outline: none;
   padding-bottom: 10px;
   color: var(--color-text-primary);
@@ -295,7 +295,7 @@
 }
 
 .workspaceTitleInput:focus {
-  border-color: var(--color-primary, var(--color-accent));
+  border-color: var(--color-text-primary, var(--color-accent));
 }
 
 .workspaceActions {
@@ -361,8 +361,8 @@
 }
 
 .activityPickerBtn:hover {
-  background: var(--color-hover);
-  border-color: var(--color-primary);
+  background: var(--color-accent-hover);
+  border-color: var(--color-border);
 }
 
 .activityPickerCurrent {
@@ -373,8 +373,8 @@
   white-space: nowrap;
   padding: 1px 8px;
   border-radius: 10px;
-  background: var(--color-primary-light, #eff6ff);
-  color: var(--color-primary, #3b82f6);
+  background: var(--color-accent, #eff6ff);
+  color: var(--color-text-primary, #3b82f6);
   font-size: 12px;
   font-weight: 400;
 }
