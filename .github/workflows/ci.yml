@@ -32,6 +32,7 @@ on:
 
 env:
   REGISTRY:   ghcr.io
+  # github.repository é sempre lowercase no GHCR — garante compatibilidade
   IMAGE_NAME: ${{ github.repository_owner }}/study-front
 
 jobs:
@@ -206,33 +207,36 @@ jobs:
             cd "$DEPLOY_PATH"
 
             # ── 4. Grava .env ─────────────────────────────────────────────────
+            # Docker exige nomes de imagem em lowercase
+            GHCR_OWNER_LOWER=$(echo "$GHCR_OWNER" | tr '[:upper:]' '[:lower:]')
+
             if [ -f .env ]; then
               sed -i 's/^FRONT_VERSION=.*/FRONT_VERSION=latest/' .env
               grep -q "^GHCR_OWNER=" .env \
-                && sed -i "s/^GHCR_OWNER=.*/GHCR_OWNER=${GHCR_OWNER}/" .env \
-                || echo "GHCR_OWNER=${GHCR_OWNER}" >> .env
+                && sed -i "s/^GHCR_OWNER=.*/GHCR_OWNER=${GHCR_OWNER_LOWER}/" .env \
+                || echo "GHCR_OWNER=${GHCR_OWNER_LOWER}" >> .env
             else
-              printf "FRONT_VERSION=latest\nGHCR_OWNER=%s\n" "$GHCR_OWNER" > .env
+              printf "FRONT_VERSION=latest\nGHCR_OWNER=%s\n" "$GHCR_OWNER_LOWER" > .env
             fi
 
             # ── 5. Login no GHCR ──────────────────────────────────────────────
             echo "$GHCR_TOKEN" | sudo docker login ghcr.io -u "$GHCR_USER" --password-stdin
 
             # ── 6. Pull + sobe nginx e frontend ───────────────────────────────
-            sudo docker compose -f docker-compose.front.yml pull frontend
-            sudo docker compose -f docker-compose.front.yml up -d
+            sudo GHCR_OWNER="$GHCR_OWNER_LOWER" docker compose -f docker-compose.front.yml pull frontend
+            sudo GHCR_OWNER="$GHCR_OWNER_LOWER" docker compose -f docker-compose.front.yml up -d
 
-            # ── 7. Aguarda containers subirem (até 30s) ───────────────────────
+            # ── 7. Aguarda containers subirem ─────────────────────────────────
             echo "⏳ Aguardando containers..."
             sleep 5
-            sudo docker compose -f docker-compose.front.yml ps
+            sudo GHCR_OWNER="$GHCR_OWNER_LOWER" docker compose -f docker-compose.front.yml ps
 
             # ── 8. Sanity check ───────────────────────────────────────────────
-            RUNNING=$(sudo docker compose -f docker-compose.front.yml ps --status running 2>/dev/null | grep -c "Up\|running" || true)
+            RUNNING=$(sudo GHCR_OWNER="$GHCR_OWNER_LOWER" docker compose -f docker-compose.front.yml ps --status running 2>/dev/null | grep -c "Up\|running" || true)
             if [ "$RUNNING" -lt 2 ]; then
               echo "❌ Containers não subiram corretamente:"
-              sudo docker compose -f docker-compose.front.yml ps
-              sudo docker compose -f docker-compose.front.yml logs --tail=20
+              sudo GHCR_OWNER="$GHCR_OWNER_LOWER" docker compose -f docker-compose.front.yml ps
+              sudo GHCR_OWNER="$GHCR_OWNER_LOWER" docker compose -f docker-compose.front.yml logs --tail=20
               exit 1
             fi
 
