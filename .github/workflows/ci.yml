@@ -28,13 +28,16 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "22"
-          cache: "npm"
+
+      - name: Cache node_modules
+        uses: actions/cache@v4
+        with:
+          path: node_modules
+          key: node-modules-${{ runner.os }}-${{ hashFiles('package.json') }}
+          restore-keys: |
+            node-modules-${{ runner.os }}-
 
       - name: Install dependencies
-        # TODO: voltar para `npm ci` após rodar `npm install` localmente
-        # e commitar o package-lock.json atualizado.
-        # O lock file está desatualizado (html2canvas e dependências transitivas
-        # foram adicionados ao package.json sem atualizar o lock file).
         run: npm install
 
       - name: Lint
