@@ -1,23 +1,4 @@
-# ─────────────────────────────────────────────────────────────────────────────
-# CI/CD — EduSpace Frontend
-#
-# Pipeline stages
-# ───────────────
-#  ci    — lint + type-check + build (every push / PR to main)
-#  docker — build & push image to GHCR (main branch only, after ci passes)
-#  deploy — SSH into EC2 and run `docker compose pull && docker compose up -d`
-#           (main branch only, after docker stage passes)
-#
-# Required GitHub secrets
-# ───────────────────────
-#  EC2_HOST        — public IP or hostname of the EC2 instance
-#  EC2_USER        — SSH username (typically "ubuntu" for Ubuntu AMIs)
-#  EC2_SSH_KEY     — contents of the EC2 SSH private key (PEM format)
-#  EC2_DEPLOY_PATH — absolute path on EC2 where docker-compose.yml lives
-#                    (e.g. /opt/eduspace)
-# ─────────────────────────────────────────────────────────────────────────────
-
-name: CI/CD
+name: CI/CD — Frontend
 
 on:
   push:
@@ -26,10 +7,11 @@ on:
     branches: [main]
 
 env:
-  REGISTRY: ghcr.io
+  REGISTRY:   ghcr.io
   IMAGE_NAME: ${{ github.repository_owner }}/study-front
 
 jobs:
+
   # ── 1. Lint, type-check, build ──────────────────────────────────────────────
   ci:
     name: CI — lint & build
@@ -37,6 +19,8 @@ jobs:
 
     permissions:
       contents: read
+
+    steps:
       - name: Checkout
         uses: actions/checkout@v4
 
@@ -55,9 +39,9 @@ jobs:
       - name: Type-check & build
         run: npm run build
         env:
-          VITE_API_URL: /api/v1
+          VITE_API_URL: ${{ secrets.VITE_API_URL || '/api/v1' }}
 
-  # ── 2. Build & push Docker image ────────────────────────────────────────────
+  # ── 2. Build & push Docker image to GHCR ────────────────────────────────────
   docker:
     name: Docker — build & push
     runs-on: ubuntu-latest
@@ -99,14 +83,14 @@ jobs:
         with:
           context: .
           push: true
-          tags: ${{ steps.meta.outputs.tags }}
+          tags:   ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
-            VITE_API_URL=/api/v1
+            VITE_API_URL=${{ secrets.VITE_API_URL || '/api/v1' }}
           cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-to:   type=gha,mode=max
 
-  # ── 3. Deploy to EC2 ────────────────────────────────────────────────────────
+  # ── 3. Deploy frontend to EC2 ────────────────────────────────────────────────
   deploy:
     name: Deploy — EC2
     runs-on: ubuntu-latest
@@ -115,21 +99,31 @@ jobs:
     environment: production
 
     permissions: {}
-      - name: Deploy via SSH
+
+    steps:
+      - name: Deploy frontend via SSH
         uses: appleboy/ssh-action@v1.2.0
         with:
-          host: ${{ secrets.EC2_HOST }}
+          host:     ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.EC2_SSH_KEY }}
+          key:      ${{ secrets.EC2_SSH_KEY }}
           script: |
-            set -e
-            cd ${{ secrets.EC2_DEPLOY_PATH }}
+            set -euo pipefail
+            cd "${{ secrets.EC2_DEPLOY_PATH }}"
 
-            # Pull the latest frontend image
+            # Atualiza apenas a linha FRONT_VERSION no .env (o backend é dono do arquivo completo)
+            sed -i 's/^FRONT_VERSION=.*/FRONT_VERSION=latest/' .env \
+              || echo "FRONT_VERSION=latest" >> .env
+
+            # Pull da nova imagem do frontend
             docker compose pull frontend
 
-            # Restart only the frontend and nginx containers (zero-downtime for infra)
-            docker compose up -d --no-deps frontend nginx
+            # Reinicia somente o container do frontend
+            docker compose up -d --no-deps --wait frontend
 
-            # Remove unused images to save disk space
+            # Sanity check
+            docker compose ps frontend | grep -q "running" \
+              || (echo "❌ frontend failed to start" && exit 1)
+
+            # Remove imagens antigas
             docker image prune -f
