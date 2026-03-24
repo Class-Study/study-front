@@ -91,22 +91,24 @@ export const WorkspaceChat: React.FC<WorkspaceChatProps> = ({
                 <span className={styles.emptyChatText}>Nenhuma mensagem ainda</span>
               </div>
             ) : (
-              messages.map((msg, i) => (
-                <div
-                  key={msg.id ? `${msg.id}-${i}` : `msg-${i}`}
-                  className={`${styles.messageGroup} ${msg.isOwn ? styles.messageGroupOwn : ''}`}
-                >
-                  {!msg.isOwn && (
-                    <span className={styles.authorName}>{msg.authorName}</span>
-                  )}
-                  <div className={`${styles.bubble} ${msg.isOwn ? styles.bubbleOwn : styles.bubbleOther}`}>
-                    {msg.content}
+              messages
+                .filter((msg) => !!msg.content && msg.content.trim() !== "")
+                .map((msg, i) => (
+                  <div
+                    key={msg.id ? `${msg.id}-${i}` : `msg-${i}`}
+                    className={`${styles.messageGroup} ${msg.isOwn ? styles.messageGroupOwn : ''}`}
+                  >
+                    {!msg.isOwn && (
+                      <span className={styles.authorName}>{msg.authorName}</span>
+                    )}
+                    <div className={`${styles.bubble} ${msg.isOwn ? styles.bubbleOwn : styles.bubbleOther}`}>
+                      {msg.content}
+                    </div>
+                    <span className={`${styles.sentAt} ${msg.isOwn ? styles.sentAtOwn : ''}`}>
+                      {msg.sentAt}
+                    </span>
                   </div>
-                  <span className={`${styles.sentAt} ${msg.isOwn ? styles.sentAtOwn : ''}`}>
-                    {msg.sentAt}
-                  </span>
-                </div>
-              ))
+                ))
             )}
             <div ref={messagesEndRef} />
           </div>
