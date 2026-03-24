@@ -5,8 +5,8 @@
 # ──────
 #  ci     — lint + type-check + build  (every push / PR to main)
 #  docker — build & push image to GHCR (main push only, after ci passes)
-#  deploy — SSH into EC2, pull new frontend image, restart frontend container
-#           (main push only, after docker stage passes)
+#  deploy — copia arquivos para EC2, instala Docker se necessário,
+#           sobe nginx + frontend  (main push only, after docker passes)
 #
 # Secrets layout
 # ──────────────
@@ -17,9 +17,9 @@
 #    EC2_DEPLOY_PATH   — absolute path on EC2 (optional, default: /opt/eduspace)
 #
 #  Repository secrets  (repo → Settings → Secrets → Actions):
-#    VITE_API_URL      — API base URL seen by the browser
-#                        use /api/v1 (relative) when Nginx proxies the API
-#                        use https://api.domain.com/v1 for a separate origin
+#    VITE_API_URL      — API base URL vista pelo browser
+#                        use /api/v1 (relativo) quando Nginx faz proxy da API
+#                        use https://api.domain.com/v1 para origem separada
 # ─────────────────────────────────────────────────────────────────────────────
 
 name: CI/CD — Frontend
@@ -129,38 +129,56 @@ jobs:
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     environment: production
 
-    permissions: {}
+    permissions:
+      contents: read
 
     steps:
-      - name: Deploy via SSH
-        uses: appleboy/ssh-action@v1.2.0
-        env:
-          DEPLOY_PATH:  ${{ secrets.EC2_DEPLOY_PATH || '/opt/eduspace' }}
-          GHCR_TOKEN:   ${{ secrets.GITHUB_TOKEN }}
-          GHCR_USER:    ${{ github.actor }}
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # ── Copia arquivos de configuração para a EC2 via SCP ──────────────────
+      - name: Copy config files to EC2
+        uses: appleboy/scp-action@v0.1.7
         with:
           host:     ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key:      ${{ secrets.EC2_SSH_KEY }}
           port:     22
-          timeout:  120s
-          envs:     DEPLOY_PATH,GHCR_TOKEN,GHCR_USER
+          source:   "docker-compose.front.yml,nginx/nginx.conf,nginx/conf.d/locations.conf"
+          target:   /tmp/eduspace-deploy
+
+      # ── Instala Docker, organiza arquivos e sobe os containers ────────────
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.2.0
+        env:
+          DEPLOY_PATH:   ${{ secrets.EC2_DEPLOY_PATH || '/opt/eduspace' }}
+          GHCR_TOKEN:    ${{ secrets.GITHUB_TOKEN }}
+          GHCR_USER:     ${{ github.actor }}
+          GHCR_OWNER:    ${{ github.repository_owner }}
+          FRONT_VERSION: latest
+        with:
+          host:     ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key:      ${{ secrets.EC2_SSH_KEY }}
+          port:     22
+          timeout:  180s
+          envs:     DEPLOY_PATH,GHCR_TOKEN,GHCR_USER,GHCR_OWNER,FRONT_VERSION
           script: |
             set -euo pipefail
 
-            # ── 1. Instala Docker se não estiver presente ─────────────────────
+            # ── 1. Instala Docker se necessário ───────────────────────────────
             if ! command -v docker &>/dev/null; then
-              echo "🐳 Docker não encontrado — instalando..."
+              echo "🐳 Instalando Docker..."
               curl -fsSL https://get.docker.com | sudo sh
               sudo usermod -aG docker "$USER"
               echo "✅ Docker instalado"
             else
-              echo "✅ Docker já instalado: $(docker --version)"
+              echo "✅ Docker: $(docker --version)"
             fi
 
-            # ── 2. Instala Docker Compose plugin se não estiver presente ──────
-            if ! docker compose version &>/dev/null; then
-              echo "🐳 Docker Compose plugin não encontrado — instalando..."
+            # ── 2. Instala Docker Compose plugin se necessário ────────────────
+            if ! sudo docker compose version &>/dev/null; then
+              echo "🐳 Instalando Docker Compose..."
               COMPOSE_VERSION=$(curl -fsSL https://api.github.com/repos/docker/compose/releases/latest \
                 | grep '"tag_name"' | sed 's/.*"v\([^"]*\)".*/\1/')
               sudo mkdir -p /usr/local/lib/docker/cli-plugins
@@ -168,45 +186,57 @@ jobs:
                 "https://github.com/docker/compose/releases/download/v${COMPOSE_VERSION}/docker-compose-linux-x86_64" \
                 -o /usr/local/lib/docker/cli-plugins/docker-compose
               sudo chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
-              echo "✅ Docker Compose instalado: $(docker compose version)"
+              echo "✅ Docker Compose instalado"
             else
-              echo "✅ Docker Compose já instalado: $(docker compose version)"
+              echo "✅ Docker Compose: $(sudo docker compose version)"
             fi
 
-            # ── 3. Garante que o grupo docker está ativo na sessão atual ──────
-            # (necessário quando docker foi instalado nessa mesma execução)
-            if ! groups | grep -q docker; then
-              exec sg docker "$0" "$@" 2>/dev/null || true
-            fi
-
-            # ── 4. Cria o diretório de deploy se não existir ──────────────────
+            # ── 3. Organiza diretório de deploy ───────────────────────────────
             echo "📂 Deploy path: $DEPLOY_PATH"
-            sudo mkdir -p "$DEPLOY_PATH"
-            sudo chown "$USER":"$USER" "$DEPLOY_PATH"
+            sudo mkdir -p "$DEPLOY_PATH/nginx/conf.d"
+            sudo chown -R "$USER":"$USER" "$DEPLOY_PATH"
+
+            # O scp-action copia mantendo a estrutura de pastas dentro de /tmp/eduspace-deploy
+            SRC=/tmp/eduspace-deploy
+            cp "$SRC/docker-compose.front.yml"        "$DEPLOY_PATH/docker-compose.front.yml"
+            cp "$SRC/nginx/nginx.conf"                 "$DEPLOY_PATH/nginx/nginx.conf"
+            cp "$SRC/nginx/conf.d/locations.conf"      "$DEPLOY_PATH/nginx/conf.d/locations.conf"
+            rm -rf "$SRC"
 
             cd "$DEPLOY_PATH"
 
-            # ── 5. Login no GHCR para poder fazer pull da imagem ─────────────
-            echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin
-
-            # ── 6. Atualiza FRONT_VERSION no .env ────────────────────────────
+            # ── 4. Grava .env ─────────────────────────────────────────────────
             if [ -f .env ]; then
               sed -i 's/^FRONT_VERSION=.*/FRONT_VERSION=latest/' .env
+              grep -q "^GHCR_OWNER=" .env \
+                && sed -i "s/^GHCR_OWNER=.*/GHCR_OWNER=${GHCR_OWNER}/" .env \
+                || echo "GHCR_OWNER=${GHCR_OWNER}" >> .env
             else
-              echo "FRONT_VERSION=latest" > .env
+              printf "FRONT_VERSION=latest\nGHCR_OWNER=%s\n" "$GHCR_OWNER" > .env
             fi
 
-            # ── 7. Pull da nova imagem do frontend ───────────────────────────
-            docker compose pull frontend
+            # ── 5. Login no GHCR ──────────────────────────────────────────────
+            echo "$GHCR_TOKEN" | sudo docker login ghcr.io -u "$GHCR_USER" --password-stdin
 
-            # ── 8. Reinicia somente o container do frontend ───────────────────
-            docker compose up -d --no-deps --wait frontend
+            # ── 6. Pull + sobe nginx e frontend ───────────────────────────────
+            sudo docker compose -f docker-compose.front.yml pull frontend
+            sudo docker compose -f docker-compose.front.yml up -d
 
-            # ── 9. Sanity check ───────────────────────────────────────────────
-            docker compose ps frontend | grep -q "running" \
-              || (echo "❌ frontend failed to start" && exit 1)
+            # ── 7. Aguarda containers subirem (até 30s) ───────────────────────
+            echo "⏳ Aguardando containers..."
+            sleep 5
+            sudo docker compose -f docker-compose.front.yml ps
 
-            # ── 10. Remove imagens antigas ────────────────────────────────────
-            docker image prune -f
+            # ── 8. Sanity check ───────────────────────────────────────────────
+            RUNNING=$(sudo docker compose -f docker-compose.front.yml ps --status running 2>/dev/null | grep -c "Up\|running" || true)
+            if [ "$RUNNING" -lt 2 ]; then
+              echo "❌ Containers não subiram corretamente:"
+              sudo docker compose -f docker-compose.front.yml ps
+              sudo docker compose -f docker-compose.front.yml logs --tail=20
+              exit 1
+            fi
 
-            echo "✅ Deploy concluído com sucesso"
+            # ── 9. Limpa imagens antigas ──────────────────────────────────────
+            sudo docker image prune -f
+
+            echo "✅ Deploy concluído — nginx + frontend rodando na porta 80"
