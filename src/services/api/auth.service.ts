@@ -7,19 +7,26 @@ interface AuthServiceLogin {
   refreshToken: string;
 }
 
+const parseTokens = (headers: Record<string, string>): { accessToken: string; refreshToken: string } => {
+  // Backend envia X-Access-Token e X-Refresh-Token (axios normaliza para lowercase)
+  const accessToken = (headers['x-access-token'] ?? headers['authorization'] ?? '')
+    .replace('Bearer ', '')
+    .trim();
+  const refreshToken = (headers['x-refresh-token'] ?? '').trim();
+  return { accessToken, refreshToken };
+};
+
 const authService = {
-  login: async (data: LoginRequest): Promise<AuthServiceLogin> => {
-    const response = await api.post<LoginApiResponse>('/auth/login', data);
-    // Axios normaliza headers de response para lowercase
-    const accessToken = (response.headers['authorization'] ?? '')
-      .replace('Bearer ', '')
-      .trim();
-    const refreshToken = (response.headers['x-refresh-token'] ?? '').trim();
+  loginTeacher: async (data: LoginRequest): Promise<AuthServiceLogin> => {
+    const response = await api.post<LoginApiResponse>('/auth/login/teacher', data);
+    const { accessToken, refreshToken } = parseTokens(response.headers as Record<string, string>);
+    return { user: response.data.user, accessToken, refreshToken };
+  },
 
-    // user está dentro de response.data.user
-    const user = response.data.user;
-
-    return { user, accessToken, refreshToken };
+  loginStudent: async (data: LoginRequest): Promise<AuthServiceLogin> => {
+    const response = await api.post<LoginApiResponse>('/auth/login/student', data);
+    const { accessToken, refreshToken } = parseTokens(response.headers as Record<string, string>);
+    return { user: response.data.user, accessToken, refreshToken };
   },
 
   logout: async (refreshToken: string): Promise<void> => {

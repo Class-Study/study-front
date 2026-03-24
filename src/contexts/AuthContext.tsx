@@ -1,4 +1,4 @@
-import React, { createContext, useState, useEffect } from 'react';
+import React, { createContext, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AuthUser } from '@/types/auth.types';
 import authService from '@/services/api/auth.service';
@@ -7,7 +7,8 @@ export interface AuthContextData {
   user: AuthUser | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  isLoginLoading: boolean;
+  login: (email: string, password: string, role: 'teacher' | 'student') => Promise<void>;
   logout: () => void;
 }
 
@@ -28,58 +29,54 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   });
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(Boolean(user));
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoginLoading, setIsLoginLoading] = useState(false);
 
-  // Finaliza hidratação inicial do contexto
-  useEffect(() => {
-    setIsLoading(false);
-  }, []);
-
-  const login = async (email: string, password: string) => {
-    setIsLoading(true);
+  const login = async (email: string, password: string, role: 'teacher' | 'student') => {
+    setIsLoginLoading(true);
+    let result: Awaited<ReturnType<typeof authService.loginTeacher>> | null = null;
     try {
-      const { user, accessToken, refreshToken } = await authService.login({
-        email,
-        password,
-      });
-
-      // Validar que o token foi recebido corretamente
-      if (!accessToken || !accessToken.trim()) {
-        throw new Error('Token não recebido do servidor');
-      }
-
-      // Salva no localStorage
-      localStorage.setItem('accessToken', accessToken);
-      localStorage.setItem('refreshToken', refreshToken);
-      localStorage.setItem('user', JSON.stringify(user));
-
-      // Atualiza estado
-      setUser(user);
-      setIsAuthenticated(true);
-
-      // Redireciona conforme role
-      if (user.role === 'STUDENT') {
-        navigate('/me');
-      } else {
-        navigate('/dashboard'); // TEACHER e ADMIN
-      }
+      const credentials = { email, password };
+      result = role === 'student'
+        ? await authService.loginStudent(credentials)
+        : await authService.loginTeacher(credentials);
     } finally {
-      setIsLoading(false);
+      setIsLoginLoading(false);
+    }
+
+    const { user, accessToken, refreshToken } = result!;
+
+    if (!accessToken?.trim()) {
+      throw new Error('Token não recebido do servidor');
+    }
+
+    localStorage.setItem('accessToken', accessToken);
+    localStorage.setItem('refreshToken', refreshToken);
+    localStorage.setItem('user', JSON.stringify(user));
+
+    setUser(user);
+    setIsAuthenticated(true);
+
+    if (user.role === 'STUDENT') {
+      navigate('/me');
+    } else {
+      navigate('/dashboard');
     }
   };
 
   const logout = async () => {
-    setIsLoading(true);
     try {
       const refreshToken = localStorage.getItem('refreshToken');
       if (refreshToken) {
         await authService.logout(refreshToken);
       }
     } finally {
+      // Preserva preferências do usuário (tema) ao limpar a sessão
+      const theme = localStorage.getItem('eduspace-theme');
       localStorage.clear();
+      if (theme) localStorage.setItem('eduspace-theme', theme);
+
       setUser(null);
       setIsAuthenticated(false);
-      setIsLoading(false);
       navigate('/login');
     }
   };
@@ -89,7 +86,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       value={{
         user,
         isAuthenticated,
-        isLoading,
+        isLoading: false,
+        isLoginLoading,
         login,
         logout,
       }}

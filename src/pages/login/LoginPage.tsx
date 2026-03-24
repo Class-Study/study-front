@@ -29,7 +29,7 @@ const modeConfig = {
 };
 
 export const LoginPage: React.FC = () => {
-  const { login, isLoading } = useAuth();
+  const { login, isLoginLoading } = useAuth();
 
   const [mode, setMode] = useState<UserMode>('teacher');
   const [formData, setFormData] = useState<LoginFormData>({
@@ -50,21 +50,18 @@ export const LoginPage: React.FC = () => {
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
+    setFormData((prev) => ({ ...prev, [name]: value }));
+    // Limpa o erro ao usuário começar a digitar novamente
+    if (error) setError(null);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
 
     try {
-      await login(formData.email, formData.password);
-      // Navigation is handled by the auth context based on user role
+      await login(formData.email, formData.password, mode);
     } catch {
-      setError('Email ou senha inválidos');
+      setError('Email ou senha inválidos. Verifique suas credenciais.');
     }
   };
 
@@ -128,7 +125,7 @@ export const LoginPage: React.FC = () => {
             type="submit"
             variant="primary"
             size="lg"
-            loading={isLoading}
+            loading={isLoginLoading}
             className={`${styles.submitButton} ${styles[mode]}`}
           >
             {currentConfig.buttonText}
