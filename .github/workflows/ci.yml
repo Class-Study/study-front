@@ -153,7 +153,7 @@ jobs:
         uses: appleboy/ssh-action@v1.2.0
         env:
           DEPLOY_PATH:   ${{ secrets.EC2_DEPLOY_PATH || '/opt/eduspace' }}
-          GHCR_TOKEN:    ${{ secrets.GITHUB_TOKEN }}
+          GHCR_TOKEN:    ${{ secrets.GHCR_PAT || secrets.GITHUB_TOKEN }}
           GHCR_USER:     ${{ github.actor }}
           GHCR_OWNER:    ${{ github.repository_owner }}
           FRONT_VERSION: latest
