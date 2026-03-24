@@ -27,3 +27,8 @@ dist-ssr
 .env
 .env.local
 .env.*.local
+
+# TLS certificates (never commit private keys or cert files)
+nginx/certs/*.pem
+nginx/certs/*.crt
+nginx/certs/*.key
