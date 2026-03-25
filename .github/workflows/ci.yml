@@ -3,10 +3,10 @@
 #
 # Stages
 # ──────
-#  ci     — lint + type-check + build  (every push / PR to main)
-#  docker — build & push image to GHCR (main push only, after ci passes)
-#  deploy — copia arquivos para EC2, instala Docker se necessário,
-#           sobe nginx + frontend  (main push only, after docker passes)
+#  ci      — lint + type-check + build  (every push / PR to main)
+#  docker  — build & push image to GHCR (main push only, after ci passes)
+#  prepare — prepara EC2: Docker + Compose  (prepare-machine.yaml)
+#  deploy  — copia configs, sobe nginx + frontend
 #
 # Secrets layout
 # ──────────────
@@ -14,12 +14,14 @@
 #    EC2_HOST          — public IP / hostname of the EC2 instance
 #    EC2_USER          — SSH username (e.g. "ubuntu")
 #    EC2_SSH_KEY       — PEM private key contents
-#    EC2_DEPLOY_PATH   — absolute path on EC2 (optional, default: /opt/eduspace)
+#    EC2_DEPLOY_PATH   — absolute path on EC2 (default: /opt/eduspace/frontend)
 #
 #  Repository secrets  (repo → Settings → Secrets → Actions):
 #    VITE_API_URL      — API base URL vista pelo browser
 #                        use /api/v1 (relativo) quando Nginx faz proxy da API
 #                        use https://api.domain.com/v1 para origem separada
+#    GHCR_PAT          — Personal Access Token com read:packages (opcional;
+#                        usado se o GITHUB_TOKEN não tiver permissão de pull)
 # ─────────────────────────────────────────────────────────────────────────────
 
 name: CI/CD — Frontend
@@ -32,7 +34,7 @@ on:
 
 env:
   REGISTRY:   ghcr.io
-  # github.repository é sempre lowercase no GHCR — garante compatibilidade
+  # github.repository_owner é sempre lowercase no GHCR — garante compatibilidade
   IMAGE_NAME: ${{ github.repository_owner }}/study-front
 
 jobs:
@@ -122,11 +124,19 @@ jobs:
           cache-from: type=gha
           cache-to:   type=gha,mode=max
 
-  # ── 3. Deploy frontend to EC2 ────────────────────────────────────────────────
+  # ── 3. Prepara a EC2 (Docker + Compose) ─────────────────────────────────────
+  prepare:
+    name: Prepare — máquina EC2
+    needs: docker
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    uses: ./.github/workflows/prepare-machine.yaml
+    secrets: inherit
+
+  # ── 4. Deploy frontend to EC2 ────────────────────────────────────────────────
   deploy:
     name: Deploy — EC2
     runs-on: ubuntu-latest
-    needs: docker
+    needs: [docker, prepare]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     environment: production
 
@@ -149,11 +159,11 @@ jobs:
           source:   "docker-compose.front.yml,nginx/nginx.conf,nginx/conf.d/locations.conf"
           target:   /tmp/eduspace-deploy
 
-      # ── Instala Docker, organiza arquivos e sobe os containers ────────────
+      # ── Organiza arquivos e sobe os containers ────────────────────────────
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.2.0
         env:
-          DEPLOY_PATH:   ${{ secrets.EC2_DEPLOY_PATH || '/opt/eduspace' }}
+          DEPLOY_PATH:   ${{ secrets.EC2_DEPLOY_PATH || '/opt/eduspace/frontend' }}
           GHCR_TOKEN:    ${{ secrets.GHCR_PAT || secrets.GITHUB_TOKEN }}
           GHCR_USER:     ${{ github.actor }}
           GHCR_OWNER:    ${{ github.repository_owner }}
@@ -168,36 +178,13 @@ jobs:
           script: |
             set -euo pipefail
 
-            # ── 1. Instala Docker se necessário ───────────────────────────────
-            if ! command -v docker &>/dev/null; then
-              echo "🐳 Instalando Docker..."
-              curl -fsSL https://get.docker.com | sudo sh
-              sudo usermod -aG docker "$USER"
-              echo "✅ Docker instalado"
-            else
-              echo "✅ Docker: $(docker --version)"
-            fi
-
-            # ── 2. Instala Docker Compose plugin se necessário ────────────────
-            if ! sudo docker compose version &>/dev/null; then
-              echo "🐳 Instalando Docker Compose..."
-              COMPOSE_VERSION=$(curl -fsSL https://api.github.com/repos/docker/compose/releases/latest \
-                | grep '"tag_name"' | sed 's/.*"v\([^"]*\)".*/\1/')
-              sudo mkdir -p /usr/local/lib/docker/cli-plugins
-              sudo curl -fsSL \
-                "https://github.com/docker/compose/releases/download/v${COMPOSE_VERSION}/docker-compose-linux-x86_64" \
-                -o /usr/local/lib/docker/cli-plugins/docker-compose
-              sudo chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
-              echo "✅ Docker Compose instalado"
-            else
-              echo "✅ Docker Compose: $(sudo docker compose version)"
-            fi
-
-            # ── 3. Organiza diretório de deploy ───────────────────────────────
+            # ── 1. Organiza diretório de deploy ───────────────────────────────
+            # (Docker e Docker Compose já instalados pelo job prepare)
             echo "📂 Deploy path: $DEPLOY_PATH"
             sudo mkdir -p "$DEPLOY_PATH/nginx/conf.d"
             sudo chown -R "$USER":"$USER" "$DEPLOY_PATH"
 
+            # ── 2. Copia configs do staging para o diretório de deploy ────────
             # O scp-action copia mantendo a estrutura de pastas dentro de /tmp/eduspace-deploy
             SRC=/tmp/eduspace-deploy
             cp "$SRC/docker-compose.front.yml"        "$DEPLOY_PATH/docker-compose.front.yml"
@@ -207,7 +194,7 @@ jobs:
 
             cd "$DEPLOY_PATH"
 
-            # ── 4. Grava .env ─────────────────────────────────────────────────
+            # ── 3. Grava .env ─────────────────────────────────────────────────
             # Docker exige nomes de imagem em lowercase
             GHCR_OWNER_LOWER=$(echo "$GHCR_OWNER" | tr '[:upper:]' '[:lower:]')
 
@@ -220,19 +207,19 @@ jobs:
               printf "FRONT_VERSION=latest\nGHCR_OWNER=%s\n" "$GHCR_OWNER_LOWER" > .env
             fi
 
-            # ── 5. Login no GHCR ──────────────────────────────────────────────
+            # ── 4. Login no GHCR ──────────────────────────────────────────────
             echo "$GHCR_TOKEN" | sudo docker login ghcr.io -u "$GHCR_USER" --password-stdin
 
-            # ── 6. Pull + sobe nginx e frontend ───────────────────────────────
+            # ── 5. Pull + sobe nginx e frontend ───────────────────────────────
             sudo GHCR_OWNER="$GHCR_OWNER_LOWER" docker compose -f docker-compose.front.yml pull frontend
             sudo GHCR_OWNER="$GHCR_OWNER_LOWER" docker compose -f docker-compose.front.yml up -d
 
-            # ── 7. Aguarda containers subirem ─────────────────────────────────
+            # ── 6. Aguarda containers subirem ─────────────────────────────────
             echo "⏳ Aguardando containers..."
             sleep 5
             sudo GHCR_OWNER="$GHCR_OWNER_LOWER" docker compose -f docker-compose.front.yml ps
 
-            # ── 8. Sanity check ───────────────────────────────────────────────
+            # ── 7. Sanity check ───────────────────────────────────────────────
             RUNNING=$(sudo GHCR_OWNER="$GHCR_OWNER_LOWER" docker compose -f docker-compose.front.yml ps --status running 2>/dev/null | grep -c "Up\|running" || true)
             if [ "$RUNNING" -lt 2 ]; then
               echo "❌ Containers não subiram corretamente:"
@@ -241,7 +228,7 @@ jobs:
               exit 1
             fi
 
-            # ── 9. Limpa imagens antigas ──────────────────────────────────────
+            # ── 8. Limpa imagens antigas ──────────────────────────────────────
             sudo docker image prune -f
 
             echo "✅ Deploy concluído — nginx + frontend rodando na porta 80"
