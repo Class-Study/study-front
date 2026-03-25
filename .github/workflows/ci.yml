@@ -161,7 +161,7 @@ jobs:
 
       # ── Organiza arquivos e sobe os containers ────────────────────────────
       - name: Deploy via SSH
-        uses: appleboy/ssh-action@v1.2.0
+        uses: appleboy/ssh-action@v1.0.3
         env:
           DEPLOY_PATH:   ${{ secrets.EC2_DEPLOY_PATH || '/opt/eduspace/frontend' }}
           GHCR_TOKEN:    ${{ secrets.GHCR_PAT || secrets.GITHUB_TOKEN }}

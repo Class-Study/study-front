@@ -57,7 +57,7 @@ jobs:
 
     steps:
       - name: Preparar máquina via SSH
-        uses: appleboy/ssh-action@v1.2.0
+        uses: appleboy/ssh-action@v1.0.3
         env:
           DEPLOY_PATH: ${{ secrets.EC2_DEPLOY_PATH }}
         with:
