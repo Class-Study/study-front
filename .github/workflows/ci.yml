@@ -148,87 +148,105 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # ── Copia arquivos de configuração para a EC2 via SCP ──────────────────
-      - name: Copy config files to EC2
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host:     ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}
-          key:      ${{ secrets.EC2_SSH_KEY }}
-          port:     22
-          source:   "docker-compose.front.yml,nginx/nginx.conf,nginx/conf.d/locations.conf"
-          target:   /tmp/eduspace-deploy
-
-      # ── Organiza arquivos e sobe os containers ────────────────────────────
-      - name: Deploy via SSH
-        uses: appleboy/ssh-action@v1.0.3
+      # ── 1. Configura chave SSH ────────────────────────────────────────────────
+      # ⚠️  Secret via env: — NÃO usar echo "${{ secrets.EC2_SSH_KEY }}" inline
+      - name: Configurar chave SSH
         env:
-          DEPLOY_PATH:   ${{ secrets.EC2_DEPLOY_PATH || '/opt/eduspace/frontend' }}
-          GHCR_TOKEN:    ${{ secrets.GHCR_PAT || secrets.GITHUB_TOKEN }}
-          GHCR_USER:     ${{ github.actor }}
+          SSH_KEY:  ${{ secrets.EC2_SSH_KEY }}
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/ec2_key
+          chmod 600 ~/.ssh/ec2_key
+          ssh-keyscan -H "$EC2_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+
+      # ── 2. Copia arquivos de configuração para EC2 ────────────────────────────
+      - name: Copiar arquivos de configuração para EC2
+        env:
+          EC2_USER:    ${{ secrets.EC2_USER }}
+          EC2_HOST:    ${{ secrets.EC2_HOST }}
+          DEPLOY_PATH: ${{ secrets.EC2_DEPLOY_PATH }}
+        run: |
+          # Garante estrutura de diretórios na EC2
+          ssh -i ~/.ssh/ec2_key \
+              -o StrictHostKeyChecking=no \
+              -o ConnectTimeout=30 \
+              "$EC2_USER@$EC2_HOST" \
+              "sudo mkdir -p '$DEPLOY_PATH/nginx/conf.d' && \
+               sudo chown -R \$USER:\$USER '$DEPLOY_PATH'"
+
+          # Copia cada arquivo individualmente via scp nativo
+          scp -i ~/.ssh/ec2_key -o StrictHostKeyChecking=no -o ConnectTimeout=30 \
+              docker-compose.front.yml \
+              "$EC2_USER@$EC2_HOST:$DEPLOY_PATH/docker-compose.front.yml"
+
+          scp -i ~/.ssh/ec2_key -o StrictHostKeyChecking=no -o ConnectTimeout=30 \
+              nginx/nginx.conf \
+              "$EC2_USER@$EC2_HOST:$DEPLOY_PATH/nginx/nginx.conf"
+
+          scp -i ~/.ssh/ec2_key -o StrictHostKeyChecking=no -o ConnectTimeout=30 \
+              nginx/conf.d/locations.conf \
+              "$EC2_USER@$EC2_HOST:$DEPLOY_PATH/nginx/conf.d/locations.conf"
+
+      # ── 3. Executa deploy via SSH nativo ──────────────────────────────────────
+      - name: Deploy via SSH
+        env:
+          EC2_USER:      ${{ secrets.EC2_USER }}
+          EC2_HOST:      ${{ secrets.EC2_HOST }}
+          DEPLOY_PATH:   ${{ secrets.EC2_DEPLOY_PATH }}
+          GHCR_TOKEN:    ${{ secrets.GITHUB_TOKEN }}
+          GHCR_ACTOR:    ${{ github.actor }}
           GHCR_OWNER:    ${{ github.repository_owner }}
           FRONT_VERSION: latest
-        with:
-          host:     ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}
-          key:      ${{ secrets.EC2_SSH_KEY }}
-          port:     22
-          timeout:  180s
-          envs:     DEPLOY_PATH,GHCR_TOKEN,GHCR_USER,GHCR_OWNER,FRONT_VERSION
-          script: |
+        run: |
+          ssh -i ~/.ssh/ec2_key \
+              -o StrictHostKeyChecking=no \
+              -o ConnectTimeout=30 \
+              -o ServerAliveInterval=30 \
+              -o ServerAliveCountMax=20 \
+              "$EC2_USER@$EC2_HOST" \
+              "DEPLOY_PATH='$DEPLOY_PATH' \
+               GHCR_TOKEN='$GHCR_TOKEN' \
+               GHCR_ACTOR='$GHCR_ACTOR' \
+               GHCR_OWNER='$GHCR_OWNER' \
+               FRONT_VERSION='$FRONT_VERSION' \
+               bash -s" << 'SSHEOF'
             set -euo pipefail
-
-            # ── 1. Organiza diretório de deploy ───────────────────────────────
-            # (Docker e Docker Compose já instalados pelo job prepare)
-            echo "📂 Deploy path: $DEPLOY_PATH"
-            sudo mkdir -p "$DEPLOY_PATH/nginx/conf.d"
-            sudo chown -R "$USER":"$USER" "$DEPLOY_PATH"
-
-            # ── 2. Copia configs do staging para o diretório de deploy ────────
-            # O scp-action copia mantendo a estrutura de pastas dentro de /tmp/eduspace-deploy
-            SRC=/tmp/eduspace-deploy
-            cp "$SRC/docker-compose.front.yml"        "$DEPLOY_PATH/docker-compose.front.yml"
-            cp "$SRC/nginx/nginx.conf"                 "$DEPLOY_PATH/nginx/nginx.conf"
-            cp "$SRC/nginx/conf.d/locations.conf"      "$DEPLOY_PATH/nginx/conf.d/locations.conf"
-            rm -rf "$SRC"
-
             cd "$DEPLOY_PATH"
 
-            # ── 3. Grava .env ─────────────────────────────────────────────────
-            # Docker exige nomes de imagem em lowercase
+            # GHCR exige nome em lowercase
             GHCR_OWNER_LOWER=$(echo "$GHCR_OWNER" | tr '[:upper:]' '[:lower:]')
 
+            # Atualiza .env
             if [ -f .env ]; then
-              sed -i 's/^FRONT_VERSION=.*/FRONT_VERSION=latest/' .env
-              grep -q "^GHCR_OWNER=" .env \
-                && sed -i "s/^GHCR_OWNER=.*/GHCR_OWNER=${GHCR_OWNER_LOWER}/" .env \
-                || echo "GHCR_OWNER=${GHCR_OWNER_LOWER}" >> .env
+              sed -i "s|^FRONT_VERSION=.*|FRONT_VERSION=${FRONT_VERSION}|" .env
+              if grep -q "^GHCR_OWNER=" .env; then
+                sed -i "s|^GHCR_OWNER=.*|GHCR_OWNER=${GHCR_OWNER_LOWER}|" .env
+              else
+                echo "GHCR_OWNER=${GHCR_OWNER_LOWER}" >> .env
+              fi
             else
-              printf "FRONT_VERSION=latest\nGHCR_OWNER=%s\n" "$GHCR_OWNER_LOWER" > .env
+              printf "FRONT_VERSION=%s\nGHCR_OWNER=%s\n" "$FRONT_VERSION" "$GHCR_OWNER_LOWER" > .env
             fi
 
-            # ── 4. Login no GHCR ──────────────────────────────────────────────
-            echo "$GHCR_TOKEN" | sudo docker login ghcr.io -u "$GHCR_USER" --password-stdin
+            # Login no GHCR
+            echo "${GHCR_TOKEN}" | sudo docker login ghcr.io -u "${GHCR_ACTOR}" --password-stdin
 
-            # ── 5. Pull + sobe nginx e frontend ───────────────────────────────
-            sudo GHCR_OWNER="$GHCR_OWNER_LOWER" docker compose -f docker-compose.front.yml pull frontend
-            sudo GHCR_OWNER="$GHCR_OWNER_LOWER" docker compose -f docker-compose.front.yml up -d
+            # Pull + sobe frontend e nginx
+            sudo docker compose -f docker-compose.front.yml pull frontend
+            sudo docker compose -f docker-compose.front.yml up -d --remove-orphans
 
-            # ── 6. Aguarda containers subirem ─────────────────────────────────
-            echo "⏳ Aguardando containers..."
-            sleep 5
-            sudo GHCR_OWNER="$GHCR_OWNER_LOWER" docker compose -f docker-compose.front.yml ps
-
-            # ── 7. Sanity check ───────────────────────────────────────────────
-            RUNNING=$(sudo GHCR_OWNER="$GHCR_OWNER_LOWER" docker compose -f docker-compose.front.yml ps --status running 2>/dev/null | grep -c "Up\|running" || true)
+            # Sanity check
+            sleep 10
+            RUNNING=$(sudo docker compose -f docker-compose.front.yml ps --status running 2>/dev/null | grep -c "Up\|running" || true)
             if [ "$RUNNING" -lt 2 ]; then
               echo "❌ Containers não subiram corretamente:"
-              sudo GHCR_OWNER="$GHCR_OWNER_LOWER" docker compose -f docker-compose.front.yml ps
-              sudo GHCR_OWNER="$GHCR_OWNER_LOWER" docker compose -f docker-compose.front.yml logs --tail=20
+              sudo docker compose -f docker-compose.front.yml ps
+              sudo docker compose -f docker-compose.front.yml logs --tail=30
               exit 1
             fi
 
-            # ── 8. Limpa imagens antigas ──────────────────────────────────────
+            # Limpeza
             sudo docker image prune -f
-
-            echo "✅ Deploy concluído — nginx + frontend rodando na porta 80"
+            echo "✅ Deploy do frontend concluído — nginx + frontend rodando na porta 80"
+SSHEOF

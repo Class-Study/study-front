@@ -8,8 +8,8 @@
 #  • Cria diretório de deploy (com subpasta nginx/conf.d) e ajusta permissões
 #  • Se tudo já estiver pronto → exit 0 imediato (sem ações)
 #
-# NOTA: NÃO sobe nenhum container — responsabilidade do job deploy.
-#       NÃO envia arquivos — feito pelo job deploy via base64/SSH.
+# ⚠️  Usa SSH nativo do runner (openssh-client) em vez de appleboy/ssh-action
+#     para evitar o container Docker intermediário que causava travamento.
 #
 # Como usar em outro workflow
 # ───────────────────────────
@@ -56,18 +56,33 @@ jobs:
     environment: production
 
     steps:
-      - name: Preparar máquina via SSH
-        uses: appleboy/ssh-action@v1.0.3
+      # ── Configura chave SSH no runner ───────────────────────────────────────
+      # ⚠️  Secret passado via env: para preservar quebras de linha da chave PEM
+      #     NÃO usar echo "${{ secrets.EC2_SSH_KEY }}" inline — quebra a chave
+      - name: Configurar chave SSH
         env:
+          SSH_KEY:  ${{ secrets.EC2_SSH_KEY }}
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/ec2_key
+          chmod 600 ~/.ssh/ec2_key
+          ssh-keyscan -H "$EC2_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+
+      # ── Instala dependências na EC2 via SSH nativo ──────────────────────────
+      - name: Preparar máquina via SSH
+        env:
+          EC2_USER:    ${{ secrets.EC2_USER }}
+          EC2_HOST:    ${{ secrets.EC2_HOST }}
           DEPLOY_PATH: ${{ secrets.EC2_DEPLOY_PATH }}
-        with:
-          host:     ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}
-          key:      ${{ secrets.EC2_SSH_KEY }}
-          port:     22
-          timeout:  300s
-          envs:     DEPLOY_PATH
-          script: |
+        run: |
+          ssh -i ~/.ssh/ec2_key \
+              -o StrictHostKeyChecking=no \
+              -o ConnectTimeout=30 \
+              -o ServerAliveInterval=30 \
+              -o ServerAliveCountMax=20 \
+              "$EC2_USER@$EC2_HOST" \
+              "DEPLOY_PATH='$DEPLOY_PATH' bash -s" << 'SSHEOF'
             set -euo pipefail
 
             echo "════════════════════════════════════════"
@@ -90,8 +105,6 @@ jobs:
             # ── Atalho: tudo pronto, nada a fazer ────────────────────────────
             if [ "$SKIP_DOCKER" = "true" ] && [ "$SKIP_COMPOSE" = "true" ]; then
               echo "🚀 Máquina já está 100% preparada — nenhuma ação necessária."
-
-              # Garante que o diretório existe mesmo no atalho
               sudo mkdir -p "$DEPLOY_PATH/nginx/conf.d"
               sudo chown -R "$USER":"$USER" "$DEPLOY_PATH"
               exit 0
@@ -152,3 +165,5 @@ jobs:
             echo "════════════════════════════════════════"
             echo ""
             echo "✅ Máquina pronta para deploy do frontend!"
+SSHEOF
+
