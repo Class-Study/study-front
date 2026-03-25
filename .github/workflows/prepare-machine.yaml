@@ -1,17 +1,35 @@
 # ─────────────────────────────────────────────────────────────────────────────
-# prepare-machine.yaml — Workflow reutilizável para preparar a EC2
+# Workflow reutilizável — Preparação da máquina EC2 (Frontend)
 #
-# Responsabilidade: instalar Docker e Docker Compose de forma idempotente.
-# NÃO sobe nenhum container — isso é responsabilidade do job deploy.
+# Responsabilidades
+# ─────────────────
+#  • Instala Docker (engine + CLI) e Docker Compose plugin  [idempotente]
+#  • Instala utilitários essenciais (wget, curl, jq…)       [idempotente]
+#  • Cria diretório de deploy (com subpasta nginx/conf.d) e ajusta permissões
+#  • Se tudo já estiver pronto → exit 0 imediato (sem ações)
 #
-# Chamado por:
-#   deploy.yaml (workflow_call) → job prepare
-#   GitHub Actions UI            (workflow_dispatch) → execução manual
+# NOTA: NÃO sobe nenhum container — responsabilidade do job deploy.
+#       NÃO envia arquivos — feito pelo job deploy via base64/SSH.
+#
+# Como usar em outro workflow
+# ───────────────────────────
+#   jobs:
+#     prepare:
+#       uses: ./.github/workflows/prepare-machine.yaml
+#       secrets: inherit
+#
+# Secrets obrigatórios
+# ────────────────────
+#   EC2_HOST        — IP / hostname da instância
+#   EC2_USER        — usuário SSH  (ex: ubuntu)
+#   EC2_SSH_KEY     — chave PEM completa
+#   EC2_DEPLOY_PATH — caminho absoluto na EC2  (ex: /opt/eduspace/frontend)
 # ─────────────────────────────────────────────────────────────────────────────
 
-name: Prepare — EC2 Machine
+name: Prepare Machine — EC2 (Frontend)
 
 on:
+  # ── Pode ser chamado por outros workflows ───────────────────────────────────
   workflow_call:
     secrets:
       EC2_HOST:
@@ -21,117 +39,116 @@ on:
       EC2_SSH_KEY:
         required: true
       EC2_DEPLOY_PATH:
-        required: false
+        required: true
 
+  # ── Pode ser executado manualmente (útil para provisionar uma EC2 nova) ─────
   workflow_dispatch:
     inputs:
-      force:
-        description: "Forçar reinstalação mesmo se já estiver instalado"
+      reason:
+        description: "Motivo da execução manual"
         required: false
-        default: "false"
+        default: "Provisionar / atualizar dependências da EC2"
 
 jobs:
   prepare:
-    name: Prepare — EC2 Machine
+    name: Prepare — instala dependências na EC2
     runs-on: ubuntu-latest
+    environment: production
 
     steps:
-      - name: Prepare EC2 via SSH
+      - name: Preparar máquina via SSH
         uses: appleboy/ssh-action@v1.2.0
         env:
-          DEPLOY_PATH: ${{ secrets.EC2_DEPLOY_PATH || '/opt/eduspace/frontend' }}
+          DEPLOY_PATH: ${{ secrets.EC2_DEPLOY_PATH }}
         with:
           host:     ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key:      ${{ secrets.EC2_SSH_KEY }}
           port:     22
-          timeout:  180s
+          timeout:  300s
           envs:     DEPLOY_PATH
           script: |
             set -euo pipefail
 
-            # ── Flags de estado ───────────────────────────────────────────────
+            echo "════════════════════════════════════════"
+            echo " EduSpace — Preparação da máquina EC2"
+            echo "       (Frontend + Nginx)"
+            echo "════════════════════════════════════════"
+
+            # ── Pré-verificação: checa o que já está pronto ───────────────────
             SKIP_DOCKER=false
             SKIP_COMPOSE=false
 
-            # ── Verifica o que já está instalado ──────────────────────────────
-            if command -v docker &>/dev/null; then
-              SKIP_DOCKER=true
-            fi
+            command -v docker &>/dev/null             && SKIP_DOCKER=true
+            sudo docker compose version &>/dev/null   && SKIP_COMPOSE=true
 
-            if sudo docker compose version &>/dev/null 2>&1; then
-              SKIP_COMPOSE=true
-            fi
-
-            # ── Tabela de status ──────────────────────────────────────────────
-            echo ""
-            echo "🔍 Verificando o que já está instalado/rodando..."
-            if [ "$SKIP_DOCKER" = "true" ]; then
-              echo "  Docker         : ✅ já instalado ($(docker --version))"
-            else
-              echo "  Docker         : ⚙️  será instalado"
-            fi
-
-            if [ "$SKIP_COMPOSE" = "true" ]; then
-              echo "  Docker Compose : ✅ já instalado ($(sudo docker compose version))"
-            else
-              echo "  Docker Compose : ⚙️  será instalado"
-            fi
+            echo "🔍 Verificando o que já está instalado..."
+            echo "  Docker         : $([ "$SKIP_DOCKER"  = "true" ] && echo "✅ já instalado" || echo "⚙️  será instalado")"
+            echo "  Docker Compose : $([ "$SKIP_COMPOSE" = "true" ] && echo "✅ já instalado" || echo "⚙️  será instalado")"
             echo ""
 
-            # ── Atalho total: máquina 100% preparada ──────────────────────────
+            # ── Atalho: tudo pronto, nada a fazer ────────────────────────────
             if [ "$SKIP_DOCKER" = "true" ] && [ "$SKIP_COMPOSE" = "true" ]; then
               echo "🚀 Máquina já está 100% preparada — nenhuma ação necessária."
 
-              # Garante que o diretório de deploy existe mesmo no atalho
-              if [ ! -d "$DEPLOY_PATH" ]; then
-                sudo mkdir -p "$DEPLOY_PATH/nginx/conf.d"
-                sudo chown -R "$USER":"$USER" "$DEPLOY_PATH"
-                echo "📂 Diretório de deploy criado: $DEPLOY_PATH"
-              fi
+              # Garante que o diretório existe mesmo no atalho
+              sudo mkdir -p "$DEPLOY_PATH/nginx/conf.d"
+              sudo chown -R "$USER":"$USER" "$DEPLOY_PATH"
               exit 0
             fi
 
-            # ── Atualiza pacotes apenas se necessário ─────────────────────────
+            # ── 1. Atualiza pacotes base (apenas se algo precisa ser instalado) ─
             echo "📦 Atualizando lista de pacotes..."
-            sudo apt-get update -qq
+            sudo apt-get update -y -q
 
-            # ── Instala utilitários básicos ────────────────────────────────────
-            sudo apt-get install -y -qq curl ca-certificates gnupg lsb-release
+            echo "🔧 Instalando utilitários (wget, curl, gnupg, unzip, jq)..."
+            sudo apt-get install -y -q \
+              wget curl gnupg lsb-release ca-certificates \
+              unzip jq net-tools
 
-            # ── 1. Instala Docker ─────────────────────────────────────────────
+            # ── 2. Instala Docker Engine ──────────────────────────────────────
             if [ "$SKIP_DOCKER" = "false" ]; then
-              echo "🐳 Instalando Docker..."
+              echo "🐳 Instalando Docker Engine..."
               curl -fsSL https://get.docker.com | sudo sh
               sudo usermod -aG docker "$USER"
-              sudo systemctl enable docker
-              sudo systemctl start docker
-              echo "✅ Docker instalado: $(docker --version)"
+              echo "✅ Docker instalado: $(sudo docker --version)"
+            else
+              echo "⏭️  Docker — já instalado, pulando."
             fi
 
-            # ── 2. Instala Docker Compose plugin ──────────────────────────────
+            # ── 3. Instala Docker Compose plugin ─────────────────────────────
             if [ "$SKIP_COMPOSE" = "false" ]; then
               echo "🐳 Instalando Docker Compose plugin..."
-              COMPOSE_VERSION=$(curl -fsSL https://api.github.com/repos/docker/compose/releases/latest \
+              COMPOSE_VER=$(curl -fsSL https://api.github.com/repos/docker/compose/releases/latest \
                 | grep '"tag_name"' | sed 's/.*"v\([^"]*\)".*/\1/')
               sudo mkdir -p /usr/local/lib/docker/cli-plugins
               sudo curl -fsSL \
-                "https://github.com/docker/compose/releases/download/v${COMPOSE_VERSION}/docker-compose-linux-x86_64" \
+                "https://github.com/docker/compose/releases/download/v${COMPOSE_VER}/docker-compose-linux-x86_64" \
                 -o /usr/local/lib/docker/cli-plugins/docker-compose
               sudo chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
               echo "✅ Docker Compose instalado: $(sudo docker compose version)"
+            else
+              echo "⏭️  Docker Compose — já instalado, pulando."
             fi
 
-            # ── 3. Cria diretório de deploy ───────────────────────────────────
-            echo "📂 Preparando diretório de deploy: $DEPLOY_PATH"
+            # ── 4. Garante que o serviço Docker está ativo ────────────────────
+            if ! sudo systemctl is-active --quiet docker; then
+              echo "🚀 Iniciando serviço Docker..."
+              sudo systemctl enable docker
+              sudo systemctl start  docker
+            fi
+
+            # ── 5. Cria diretório de deploy ───────────────────────────────────
+            echo "📁 Criando diretório de deploy: $DEPLOY_PATH"
             sudo mkdir -p "$DEPLOY_PATH/nginx/conf.d"
             sudo chown -R "$USER":"$USER" "$DEPLOY_PATH"
 
             # ── Resumo final ──────────────────────────────────────────────────
             echo ""
-            echo "✅ Máquina preparada com sucesso!"
-            echo "  Docker         : $(docker --version)"
+            echo "════════════════════════════════════════"
+            echo "  Docker         : $(sudo docker --version)"
             echo "  Docker Compose : $(sudo docker compose version)"
-            echo "  Deploy path    : $DEPLOY_PATH"
+            echo "  Diretório      : $DEPLOY_PATH"
+            echo "════════════════════════════════════════"
             echo ""
-
+            echo "✅ Máquina pronta para deploy do frontend!"
