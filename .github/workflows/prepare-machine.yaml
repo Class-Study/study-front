@@ -165,5 +165,5 @@ jobs:
             echo "════════════════════════════════════════"
             echo ""
             echo "✅ Máquina pronta para deploy do frontend!"
-SSHEOF
+          SSHEOF
 
