@@ -65,6 +65,6 @@ jobs:
         uses: peter-evans/repository-dispatch@v3
         with:
           token: ${{ secrets.DEPLOY_TOKEN }}
-          repository: Class-Study/study-core
+          repository: Class-Study/study-front
           event-type: deploy
           client-payload: '{"service": "frontend"}'
