@@ -1,12 +1,8 @@
 # ─────────────────────────────────────────────────────────────────────────────
-# docker-compose.front.yml — Stack somente do Frontend
+# docker-compose.front.yml — Frontend
 #
-# Usado pelo pipeline de CI/CD do frontend quando o backend ainda não está
-# disponível na máquina, ou quando o front precisa subir de forma independente.
-#
-# Serviços:
-#   nginx    — reverse-proxy na porta 80 (sem SSL por enquanto)
-#   frontend — React SPA servido pelo nginx:alpine interno
+# O nginx reverse-proxy já roda na infra (study-core).
+# Este compose sobe apenas o container do frontend.
 #
 # Uso:
 #   docker compose -f docker-compose.front.yml up -d
@@ -14,23 +10,8 @@
 
 services:
 
-  # ── Nginx reverse-proxy ──────────────────────────────────────────────────────
-  nginx:
-    image: nginx:1.27-alpine
-    ports:
-      - "80:80"
-    volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./nginx/conf.d:/etc/nginx/conf.d:ro
-    depends_on:
-      frontend:
-        condition: service_started
-    restart: unless-stopped
-
-  # ── Frontend (React SPA) ─────────────────────────────────────────────────────
   frontend:
     image: ghcr.io/${GHCR_OWNER:-class-study}/study-front:${FRONT_VERSION:-latest}
     restart: unless-stopped
 
 volumes: {}
-
