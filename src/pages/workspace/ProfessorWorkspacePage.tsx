@@ -284,7 +284,7 @@ const ProfessorWorkspacePage: React.FC = () => {
             }
         >
             <div className={styles.editorArea}>
-                <StudentMirrorView activity={ws.activeActivity} />
+                <StudentMirrorView activity={ws.activeActivity} timer={timer} />
             </div>
 
             {/* Painel direito: chat + notas — usa useWebRTC internamente */}

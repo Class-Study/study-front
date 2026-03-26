@@ -1,14 +1,16 @@
 import React, { useEffect, useRef } from 'react';
-import { RefreshCw } from 'lucide-react';
+import { RefreshCw, CalendarClock } from 'lucide-react';
 import { useWebRTC } from '@/contexts/WebRTCContext';
 import { WorkspaceActivity } from '@/types/workspace.types';
+import { ClassTimerState } from '@/hooks/useClassTimer';
 import styles from './StudentMirrorView.module.css';
 
 interface StudentMirrorViewProps {
     activity: WorkspaceActivity | null;
+    timer: ClassTimerState;
 }
 
-export const StudentMirrorView: React.FC<StudentMirrorViewProps> = ({ activity }) => {
+export const StudentMirrorView: React.FC<StudentMirrorViewProps> = ({ activity, timer }) => {
     const {
         isStudentOnline,
         studentHtml,
@@ -125,6 +127,26 @@ export const StudentMirrorView: React.FC<StudentMirrorViewProps> = ({ activity }
 
     /* ── Aluno offline ──────────────────────────────────────────────── */
     if (!isStudentOnline) {
+        // Fora do horário de aula
+        if (!timer.isClassTime) {
+            return (
+                <div className={styles.wrapper}>
+                    <div className={styles.waitingState}>
+                        <CalendarClock size={36} className={styles.waitingIconSvg} />
+                        <p className={styles.waitingTitle}>
+                            {timer.isEnded ? 'Aula encerrada' : 'Fora do horário de aula'}
+                        </p>
+                        <p className={styles.waitingSubtitle}>
+                            {timer.isEnded
+                                ? 'A aula de hoje já foi encerrada.'
+                                : timer.nextLabel || 'Nenhuma aula agendada para hoje.'}
+                        </p>
+                    </div>
+                </div>
+            );
+        }
+
+        // Dentro do horário — aguardando conexão
         return (
             <div className={styles.wrapper}>
                 <div className={styles.waitingState}>

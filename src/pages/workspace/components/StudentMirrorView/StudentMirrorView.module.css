@@ -74,6 +74,11 @@
   animation: float 3s ease-in-out infinite;
 }
 
+.waitingIconSvg {
+  opacity: 0.45;
+  color: var(--color-text-tertiary);
+}
+
 .waitingTitle {
   font-size: 16px;
   font-weight: 600;
