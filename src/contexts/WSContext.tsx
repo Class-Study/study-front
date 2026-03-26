@@ -6,8 +6,13 @@ import React, {
     useState,
 } from "react";
 
-const WS_BASE = import.meta.env.VITE_WS_URL
-  ?? `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}`;
+// 1. VITE_WS_URL explícito (ex: ws://localhost:8080)
+// 2. Derivado do VITE_API_URL (http://localhost:8080/api/v1 → ws://localhost:8080)
+// 3. Fallback: mesmo host do front (só funciona com proxy/produção)
+const WS_BASE =
+    import.meta.env.VITE_WS_URL ??
+    import.meta.env.VITE_API_URL?.replace(/^https/, 'wss').replace(/^http/, 'ws').replace(/\/api\/.*$/, '') ??
+    `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}`;
 const WS_URL = `${WS_BASE}/api/v1/ws`;
 
 interface WSContextValue {
