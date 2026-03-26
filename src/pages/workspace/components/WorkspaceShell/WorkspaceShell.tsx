@@ -42,6 +42,9 @@ export interface WorkspaceShellProps {
      */
     topBar?: React.ReactNode;
 
+    /** Timer de aula exibido na toolbar (lado esquerdo, após o botão expand) */
+    timerSlot?: React.ReactNode;
+
     /** Atributo extra no div.page (ex: data-student-id) */
     pageProps?: React.HTMLAttributes<HTMLDivElement>;
 }
@@ -66,6 +69,7 @@ export const WorkspaceShell: React.FC<WorkspaceShellProps> = ({
     bodyRef,
     children,
     topBar,
+    timerSlot,
     pageProps = {},
 }) => {
     return (
@@ -98,6 +102,7 @@ export const WorkspaceShell: React.FC<WorkspaceShellProps> = ({
                                 ▶
                             </button>
                         )}
+                        {timerSlot && <div style={{ marginRight: 'auto' }}>{timerSlot}</div>}
                         <button
                             type="button"
                             className={`${styles.chatToggleBtn} ${chatVisible ? styles.chatToggleBtnActive : ''}`}

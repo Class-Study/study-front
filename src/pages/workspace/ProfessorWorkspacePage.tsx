@@ -8,6 +8,8 @@ import {useRightPanelResize} from '@/hooks/useRightPanelResize';
 import {useVerticalResize} from '@/hooks/useVerticalResize';
 import {useWS} from '@/contexts/WSContext';
 import {useWebRTC} from '@/contexts/WebRTCContext';
+import {useClassTimer, ClassTimerState} from '@/hooks/useClassTimer';
+import {ClassTimer} from './components/ClassTimer/ClassTimer';
 import {WorkspaceShell} from './components/WorkspaceShell/WorkspaceShell';
 import {StudentMirrorView} from './components/StudentMirrorView/StudentMirrorView';
 import {WorkspaceChat} from './components/WorkspaceChat/WorkspaceChat';
@@ -26,6 +28,7 @@ interface ProfessorRightPanelProps {
     onRightResizeStart: (e: React.MouseEvent) => void;
     chatPercent: number;
     onVerticalResizeStart: (e: React.MouseEvent) => void;
+    timer: ClassTimerState;
 }
 
 /**
@@ -40,12 +43,26 @@ const ProfessorRightPanel: React.FC<ProfessorRightPanelProps> = ({
     onRightResizeStart,
     chatPercent,
     onVerticalResizeStart,
+    timer,
 }) => {
     const {isStudentOnline, studentActivityId, studentTitle, requestReconnect, isReconnecting} = useWebRTC();
 
-    // A atividade é definida pelo aluno via WebRTC
     const chatActivityTitle = studentTitle ?? ws.activeActivity?.title ?? '';
     const chatDisabled = !isStudentOnline || !studentActivityId;
+
+    // Mensagem de espera: fora do horário mostra próxima aula, dentro mostra status da conexão
+    const disabledMessage = (() => {
+        if (!timer.isClassTime) {
+            return timer.isEnded
+                ? 'Aula encerrada.'
+                : (timer.nextLabel || 'Fora do horário de aula.');
+        }
+        if (!isStudentOnline) return 'Aguardando conexão com o aluno...';
+        return 'Aguardando o aluno selecionar uma atividade...';
+    })();
+
+    // Só exibe botão de reconexão se estiver no horário e o aluno estiver offline
+    const showReconnect = timer.isClassTime && !isStudentOnline;
 
     // Quando o aluno envia o activityId via WebRTC, atualiza a atividade ativa do chat
     useEffect(() => {
@@ -82,12 +99,8 @@ const ProfessorRightPanel: React.FC<ProfessorRightPanelProps> = ({
                     messages={ws.messages}
                     onSendMessage={ws.handleSendMessage}
                     disabled={chatDisabled}
-                    disabledMessage={
-                        !isStudentOnline
-                            ? 'Aguardando conexão com o aluno...'
-                            : 'Aguardando o aluno selecionar uma atividade...'
-                    }
-                    onReconnect={!isStudentOnline ? requestReconnect : undefined}
+                    disabledMessage={disabledMessage}
+                    onReconnect={showReconnect ? requestReconnect : undefined}
                     isReconnecting={isReconnecting}
                 />
             </div>
@@ -152,6 +165,9 @@ const ProfessorWorkspacePage: React.FC = () => {
     // ── Estado exclusivo do professor ─────────────────────────────────────────
     const [studentName, setStudentName] = useState('');
     const [activityPickerOpen, setActivityPickerOpen] = useState(false);
+    const [classDays, setClassDays] = useState<string[]>([]);
+    const [classTime, setClassTime] = useState('');
+    const [classDuration, setClassDuration] = useState(0);
 
     // ── Efeitos ───────────────────────────────────────────────────────────────
     useEffect(() => {
@@ -170,7 +186,12 @@ const ProfessorWorkspacePage: React.FC = () => {
             return;
         }
         getStudentById(targetStudentId)
-            .then((s) => setStudentName(s.name))
+            .then((s) => {
+                setStudentName(s.name);
+                setClassDays(s.classDays ?? []);
+                setClassTime(s.classTime ?? '');
+                setClassDuration(s.classDuration ?? 0);
+            })
             .catch(() => {});
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isStudent, targetStudentId]);
@@ -180,6 +201,11 @@ const ProfessorWorkspacePage: React.FC = () => {
     const workspaceId = targetStudentId && teacherId
         ? `${targetStudentId}-${teacherId}`
         : null;
+
+    // ── Cronômetro de aula ────────────────────────────────────────────────────
+    const timer = useClassTimer(classDays, classTime, classDuration);
+    // Só conecta ao WebRTC quando estiver dentro do horário de aula
+    const activeWorkspaceId = timer.isClassTime ? workspaceId : null;
 
     const breadcrumbItems = [
         {label: isStudent ? 'Meu Perfil' : 'Dashboard', path: isStudent ? '/student/profile' : '/dashboard'},
@@ -208,7 +234,7 @@ const ProfessorWorkspacePage: React.FC = () => {
     return (
         <WorkspaceShell
             userId={user?.id}
-            workspaceId={workspaceId}
+            workspaceId={activeWorkspaceId}
             role="teacher"
             breadcrumbItems={breadcrumbItems}
             activityId={ws.activeActivity?.id ?? null}
@@ -222,6 +248,7 @@ const ProfessorWorkspacePage: React.FC = () => {
             chatVisible={ws.chatVisible}
             setChatVisible={ws.setChatVisible}
             bodyRef={ws.bodyRef}
+            timerSlot={<ClassTimer timer={timer} />}
             topBar={
                 <>
                     {/* Modal de seleção de atividade */}
@@ -268,6 +295,7 @@ const ProfessorWorkspacePage: React.FC = () => {
                 onRightResizeStart={handleRightResizeStart}
                 chatPercent={chatPercent}
                 onVerticalResizeStart={handleVerticalResizeStart}
+                timer={timer}
             />
         </WorkspaceShell>
     );

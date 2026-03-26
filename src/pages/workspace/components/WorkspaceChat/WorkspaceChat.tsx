@@ -35,10 +35,17 @@ interface WorkspaceChatProps {
   activityTitle: string;
   messages: ChatMessage[];
   onSendMessage: (content: string) => void;
-  /** When true, chat is disabled (e.g. student not connected) */
+  /** Oculta todo o chat e exibe overlay (ex: professor aguardando aluno) */
   disabled?: boolean;
-  /** Optional message to show when disabled */
+  /** Mensagem principal do overlay quando disabled=true */
   disabledMessage?: string;
+  /**
+   * Desabilita apenas o input mas mantém o histórico visível
+   * (ex: aluno fora do horário de aula)
+   */
+  inputDisabled?: boolean;
+  /** Texto exibido no lugar do input quando inputDisabled=true */
+  inputDisabledMessage?: string;
   /** Callback para tentar reconectar */
   onReconnect?: () => void;
   /** true enquanto reconexão está em andamento */
@@ -51,6 +58,8 @@ export const WorkspaceChat: React.FC<WorkspaceChatProps> = ({
   onSendMessage,
   disabled = false,
   disabledMessage,
+  inputDisabled = false,
+  inputDisabledMessage,
   onReconnect,
   isReconnecting = false,
 }) => {
@@ -95,19 +104,21 @@ export const WorkspaceChat: React.FC<WorkspaceChatProps> = ({
           <span className={styles.disabledText}>
             {disabledMessage || 'Chat indisponível'}
           </span>
-          <span className={styles.disabledSubtext}>
-            O chat será habilitado quando a conexão com o aluno for estabelecida e uma atividade estiver ativa.
-          </span>
           {onReconnect && (
-            <button
-              type="button"
-              className={styles.reconnectBtn}
-              onClick={onReconnect}
-              disabled={isReconnecting}
-            >
-              <RefreshCw size={13} className={isReconnecting ? styles.spinning : ''} />
-              {isReconnecting ? 'Reconectando...' : 'Tentar reconectar'}
-            </button>
+            <>
+              <span className={styles.disabledSubtext}>
+                O chat será habilitado quando a conexão com o aluno for estabelecida e uma atividade estiver ativa.
+              </span>
+              <button
+                type="button"
+                className={styles.reconnectBtn}
+                onClick={onReconnect}
+                disabled={isReconnecting}
+              >
+                <RefreshCw size={13} className={isReconnecting ? styles.spinning : ''} />
+                {isReconnecting ? 'Reconectando...' : 'Tentar reconectar'}
+              </button>
+            </>
           )}
         </div>
       ) : (
@@ -120,7 +131,7 @@ export const WorkspaceChat: React.FC<WorkspaceChatProps> = ({
               </div>
             ) : (
               messages
-                .filter((msg) => !!msg.content && msg.content.trim() !== "")
+                .filter((msg) => !!msg.content && msg.content.trim() !== '')
                 .map((msg, i) => (
                   <div
                     key={msg.id ? `${msg.id}-${i}` : `msg-${i}`}
@@ -145,24 +156,30 @@ export const WorkspaceChat: React.FC<WorkspaceChatProps> = ({
             <div ref={messagesEndRef} />
           </div>
 
-          <div className={styles.inputRow}>
-            <textarea
-              className={styles.input}
-              placeholder="Mensagem..."
-              value={draft}
-              onChange={(e) => setDraft(e.target.value)}
-              onKeyDown={handleKeyDown}
-              rows={1}
-            />
-            <button
-              type="button"
-              className={styles.sendBtn}
-              onClick={handleSend}
-              disabled={!draft.trim()}
-            >
-              <Send size={14} />
-            </button>
-          </div>
+          {inputDisabled ? (
+            <div className={styles.inputDisabled}>
+              {inputDisabledMessage || 'Chat desabilitado no momento.'}
+            </div>
+          ) : (
+            <div className={styles.inputRow}>
+              <textarea
+                className={styles.input}
+                placeholder="Mensagem..."
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                onKeyDown={handleKeyDown}
+                rows={1}
+              />
+              <button
+                type="button"
+                className={styles.sendBtn}
+                onClick={handleSend}
+                disabled={!draft.trim()}
+              >
+                <Send size={14} />
+              </button>
+            </div>
+          )}
         </>
       )}
     </div>

@@ -32,6 +32,9 @@ export const useMyWorkspace = () => {
   const [teacherId, setTeacherId] = useState('');
   const [teacherName, setTeacherName] = useState('Professor');
   const [teacherOnline, setTeacherOnline] = useState(false);
+  const [classDays, setClassDays] = useState<string[]>([]);
+  const [classTime, setClassTime] = useState('');
+  const [classDuration, setClassDuration] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [accessDenied, setAccessDenied] = useState(false);
@@ -60,6 +63,9 @@ export const useMyWorkspace = () => {
       setStudentId(me.id);
       setStudentName(me.name);
       setTeacherId(me.teacherId ?? me.teacher?.id ?? '');
+      setClassDays(me.classDays ?? []);
+      setClassTime(me.classTime ?? '');
+      setClassDuration(me.classDuration ?? 0);
       updateTeacherInfo(me);
 
       setWorkspace({
@@ -238,6 +244,9 @@ export const useMyWorkspace = () => {
     teacherId,
     teacherName,
     teacherOnline,
+    classDays,
+    classTime,
+    classDuration,
     workspaceActivities,
     exerciseFolders,
     loading,

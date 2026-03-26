@@ -5,6 +5,8 @@ import {useMyWorkspace} from '@/hooks/useMyWorkspace';
 import {useWorkspaceBase} from '@/hooks/useWorkspaceBase';
 import {useRightPanelResize} from '@/hooks/useRightPanelResize';
 import {useWS} from '@/contexts/WSContext';
+import {useClassTimer} from '@/hooks/useClassTimer';
+import {ClassTimer} from './components/ClassTimer/ClassTimer';
 import {WorkspaceShell} from './components/WorkspaceShell/WorkspaceShell';
 import {WorkspaceSidebar} from './components/WorkspaceSidebar/WorkspaceSidebar';
 import {WorkspaceEditor} from './components/WorkspaceEditor/WorkspaceEditor';
@@ -32,6 +34,9 @@ const StudentWorkspacePage: React.FC = () => {
         teacherId,
         teacherName,
         teacherOnline,
+        classDays,
+        classTime,
+        classDuration,
         loading,
         error,
         accessDenied,
@@ -118,6 +123,11 @@ const StudentWorkspacePage: React.FC = () => {
         ? `${studentId}-${teacherId}`
         : null;
 
+    // ── Cronômetro de aula ────────────────────────────────────────────────────
+    const timer = useClassTimer(classDays, classTime, classDuration);
+    // Só conecta ao WebRTC quando estiver dentro do horário de aula
+    const activeWorkspaceId = timer.isClassTime ? workspaceId : null;
+
     const breadcrumbItems = [
         {label: 'Meu Perfil', path: '/me'},
         {label: studentName || user?.name || 'Aluno', path: '/me'},
@@ -177,7 +187,7 @@ const StudentWorkspacePage: React.FC = () => {
     return (
         <WorkspaceShell
             userId={user?.id}
-            workspaceId={workspaceId}
+            workspaceId={activeWorkspaceId}
             role="student"
             breadcrumbItems={breadcrumbItems}
             activityId={ws.activeActivity?.id ?? null}
@@ -191,6 +201,7 @@ const StudentWorkspacePage: React.FC = () => {
             chatVisible={ws.chatVisible}
             setChatVisible={ws.setChatVisible}
             bodyRef={ws.bodyRef}
+            timerSlot={<ClassTimer timer={timer} />}
             pageProps={{'data-student-id': studentId} as React.HTMLAttributes<HTMLDivElement>}
         >
             {/* Sidebar */}
@@ -308,6 +319,12 @@ const StudentWorkspacePage: React.FC = () => {
                         activityTitle={ws.activeActivity?.title ?? ''}
                         messages={ws.messages}
                         onSendMessage={ws.handleSendMessage}
+                        inputDisabled={!timer.isClassTime}
+                        inputDisabledMessage={
+                            timer.isEnded
+                                ? 'Aula encerrada.'
+                                : (timer.nextLabel || 'Fora do horário de aula.')
+                        }
                     />
                 </div>
             </div>
