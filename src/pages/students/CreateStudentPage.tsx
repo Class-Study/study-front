@@ -8,6 +8,7 @@ import { useLevelProfiles } from '@/hooks/useLevelProfiles';
 import studentService from '@/services/api/student.service';
 import { ClassDay, CreateStudentRequest } from '@/types/student.types';
 import { DAY_FILTER_OPTIONS } from '@/utils/classDay.utils';
+import { StudentCredentialsModal } from '@/pages/students/components/StudentCredentials/StudentCredentialsModal.tsx';
 import styles from './CreateStudentPage.module.css';
 
 interface FormData {
@@ -84,6 +85,7 @@ export const CreateStudentPage: React.FC = () => {
   const [errors, setErrors] = useState<FormErrors>({});
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
+  const [credentials, setCredentials] = useState<{ email: string; password: string } | null>(null);
 
   useEffect(() => {
     fetchLevelProfiles();
@@ -232,8 +234,8 @@ export const CreateStudentPage: React.FC = () => {
         startDate: form.startDate,
       };
 
-      await studentService.create(payload);
-      navigate('/dashboard');
+      const password = await studentService.create(payload);
+      setCredentials({ email: form.email.trim(), password });
     } catch (err: unknown) {
       const apiErr = err as ApiError;
       const status = apiErr.response?.status;
@@ -588,6 +590,14 @@ export const CreateStudentPage: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {credentials && (
+        <StudentCredentialsModal
+          email={credentials.email}
+          password={credentials.password}
+          onClose={() => navigate('/dashboard')}
+        />
+      )}
     </div>
   );
 };

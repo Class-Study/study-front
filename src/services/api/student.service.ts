@@ -42,8 +42,9 @@ const studentService = {
     return normalizeStudent(data);
   },
 
-  create: async (payload: CreateStudentRequest): Promise<void> => {
-    await api.post('/students', payload);
+  create: async (payload: CreateStudentRequest): Promise<string> => {
+    const { data } = await api.post<string>('/students', payload);
+    return data;
   },
 
   update: async (
