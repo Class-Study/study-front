@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { ArrowLeft } from 'lucide-react';
 import { IMaskInput } from 'react-imask';
 import Swal from 'sweetalert2';
 import { useNavigate } from 'react-router-dom';
@@ -86,7 +87,6 @@ export const CreateStudentPage: React.FC = () => {
 
   useEffect(() => {
     fetchLevelProfiles();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Get selected level profile
@@ -268,6 +268,14 @@ export const CreateStudentPage: React.FC = () => {
       />
       <div className={styles.scrollContainer}>
         <div className={styles.narrowContainer}>
+          <button
+            type="button"
+            className={styles.backBtn}
+            onClick={() => navigate('/dashboard')}
+          >
+            <ArrowLeft size={16} />
+            Voltar
+          </button>
           <h1 className={styles.title}>Cadastrar novo aluno</h1>
           <p className={styles.subtitle}>
             O espaço de estudo é gerado automaticamente conforme o nível escolhido.
