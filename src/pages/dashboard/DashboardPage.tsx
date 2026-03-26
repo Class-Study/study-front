@@ -10,6 +10,33 @@ import { NiveisTab } from '@/pages/dashboard/tabs/NiveisTab';
 import { BillingTab } from '@/pages/dashboard/tabs/BillingTab';
 import styles from './DashboardPage.module.css';
 
+const DAY_MAP: Record<string, number> = {
+  SUNDAY: 0, MONDAY: 1, TUESDAY: 2, WEDNESDAY: 3,
+  THURSDAY: 4, FRIDAY: 5, SATURDAY: 6,
+};
+
+/** Verifica se o aluno está dentro do horário de aula agora (bloqueados excluídos) */
+function isStudentClassNow(
+  classDays: string[],
+  classTime: string,
+  classDuration: number,
+  status: string,
+  now: Date,
+): boolean {
+  if (status === 'BLOCKED') return false;
+  if (!classDays.length || !classTime) return false;
+
+  const todayDow = now.getDay();
+  const isToday = classDays.some((d) => DAY_MAP[d] === todayDow);
+  if (!isToday) return false;
+
+  const [h, m, s] = classTime.split(':').map(Number);
+  const start = new Date(now.getFullYear(), now.getMonth(), now.getDate(), h, m, s ?? 0);
+  const end   = new Date(start.getTime() + classDuration * 60 * 1000);
+
+  return now >= start && now < end;
+}
+
 type TabType = 'alunos' | 'cobranca' | 'niveis';
 
 type LevelClass = 'levelBasic' | 'levelIntermediate' | 'levelAdvanced';
@@ -56,6 +83,7 @@ export const DashboardPage: React.FC = () => {
 
   const [activeTab, setActiveTab] = useState<TabType>('alunos');
   const [searchQuery, setSearchQuery] = useState('');
+  const [now, setNow] = useState(() => new Date());
 
   const TODAY_DAY_VALUE = ['SUNDAY','MONDAY','TUESDAY','WEDNESDAY','THURSDAY','FRIDAY','SATURDAY'][new Date().getDay()];
   const [selectedDay, setSelectedDay] = useState(TODAY_DAY_VALUE);
@@ -79,6 +107,12 @@ export const DashboardPage: React.FC = () => {
     fetchStudents();
     fetchLevelProfiles();
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Atualiza o relógio a cada minuto para detectar início/fim de aulas
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 60_000);
+    return () => clearInterval(id);
   }, []);
 
   const filteredStudents = useMemo(() => {
@@ -266,11 +300,18 @@ export const DashboardPage: React.FC = () => {
                 const profile = getProfileById(student.levelProfileId);
                 const levelName = profile?.name ?? 'Sem nível';
                 const levelClass = getLevelClassByCode(profile?.code);
-                
+                const classNow = isStudentClassNow(
+                  student.classDays,
+                  student.classTime,
+                  student.classDuration,
+                  student.status,
+                  now,
+                );
+
                 return (
                   <div
                     key={student.id}
-                    className={`${styles.studentCard} ${styles[levelClass]}`}
+                    className={`${styles.studentCard} ${styles[levelClass]} ${classNow ? styles.cardClassNow : ''}`}
                     onClick={() => navigate(`/dashboard/student/${student.id}`)}
                     role="button"
                     tabIndex={0}
@@ -297,6 +338,15 @@ export const DashboardPage: React.FC = () => {
                         {student.status === 'ACTIVE' ? '● Ativo' : '⊘ Bloqueado'}
                       </span>
                     </div>
+
+                    {classNow && (
+                      <div style={{ marginBottom: 8 }}>
+                        <span className={styles.classNowBadge}>
+                          <span className={styles.classNowDot} />
+                          Aula em andamento
+                        </span>
+                      </div>
+                    )}
 
                     <div className={styles.classInfo}>
                       📅 {formatClassDays(student.classDays)} às {formatClassTime(student.classTime)}

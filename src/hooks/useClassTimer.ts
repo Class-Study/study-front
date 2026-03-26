@@ -95,7 +95,7 @@ export function useClassTimer(
           duration: durationSec,
           progress: elapsed / durationSec,
           startTime: start,
-          nextLabel: isClassTime ? '' : `Encerrando conexão em ${minsToEnd} min`,
+          nextLabel: isClassTime ? '' : `Tempo de aula finalizado, encerrando conexão em ${minsToEnd} min`,
         };
       }
 

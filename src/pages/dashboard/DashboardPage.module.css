@@ -261,6 +261,60 @@
     box-shadow 0.15s ease;
 }
 
+/* ── Card em aula ────────────────────────────────── */
+.studentCard.cardClassNow {
+  border-color: var(--color-success);
+  border-left-width: 3px;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-success) 25%, transparent),
+              var(--shadow-md);
+  animation: cardPulse 2.4s ease-in-out infinite;
+}
+
+:global([data-theme="light"]) .studentCard.cardClassNow {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-accent) 30%, transparent),
+              var(--shadow-md);
+  border-color: var(--color-accent);
+}
+
+@keyframes cardPulse {
+  0%, 100% { transform: scale(1); }
+  50%       { transform: scale(1.010); }
+}
+
+.classNowBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--color-success);
+  background: color-mix(in srgb, var(--color-success) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-success) 35%, transparent);
+  border-radius: 20px;
+  padding: 2px 8px;
+}
+
+:global([data-theme="light"]) .classNowBadge {
+  color: var(--color-accent);
+  background: color-mix(in srgb, var(--color-accent) 10%, transparent);
+  border-color: color-mix(in srgb, var(--color-accent) 30%, transparent);
+}
+
+.classNowDot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: dotBlink 1.2s ease-in-out infinite;
+}
+
+@keyframes dotBlink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.3; }
+}
+
 .studentCard.levelBasic {
   border-left-color: var(--color-blue);
 }
