@@ -101,7 +101,6 @@ export const DashboardPage: React.FC = () => {
       <div className={styles.page}>
         <Header
           breadcrumbItems={breadcrumbItems}
-          onNewStudent={handleNewStudent}
         />
         <nav className={styles.tabs}>
           <button
@@ -133,7 +132,6 @@ export const DashboardPage: React.FC = () => {
       <div className={styles.page}>
         <Header
           breadcrumbItems={breadcrumbItems}
-          onNewStudent={handleNewStudent}
         />
         <nav className={styles.tabs}>
           <button
@@ -164,7 +162,6 @@ export const DashboardPage: React.FC = () => {
     <div className={styles.page}>
       <Header
         breadcrumbItems={breadcrumbItems}
-        onNewStudent={handleNewStudent}
       />
 
       <nav className={styles.tabs}>
@@ -249,6 +246,13 @@ export const DashboardPage: React.FC = () => {
             <div className={styles.gridHeader}>
               <h3 className={styles.gridTitle}>Alunos</h3>
               <span className={styles.gridCount}>{filteredStudents.length} encontrados</span>
+              <button
+                onClick={handleNewStudent}
+                className={styles.newStudentBtn}
+                type="button"
+              >
+                + Novo aluno
+              </button>
             </div>
 
             <div className={styles.grid}>

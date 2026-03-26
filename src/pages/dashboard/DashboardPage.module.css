@@ -201,9 +201,28 @@
 /* Grid Header */
 .gridHeader {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 12px;
   margin-bottom: 24px;
+}
+
+.newStudentBtn {
+  margin-left: auto;
+  background: var(--color-accent);
+  color: var(--color-text-inverse);
+  border-radius: 8px;
+  white-space: nowrap;
+  padding: 0.4rem 1.5rem;
+  font-size: 15px;
+  font-weight: bold;
+  font-family: var(--font-sans);
+  cursor: pointer;
+  border: none;
+  transition: opacity 0.15s;
+}
+
+.newStudentBtn:hover {
+  opacity: 0.85;
 }
 
 .gridTitle {

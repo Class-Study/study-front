@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import InputMask from 'react-input-mask';
+import { IMaskInput } from 'react-imask';
 import Swal from 'sweetalert2';
 import { useNavigate } from 'react-router-dom';
 import { Header } from '@/components/layout/Header/Header';
@@ -310,13 +310,15 @@ export const CreateStudentPage: React.FC = () => {
 
               <div className={styles.field}>
                 <label className={styles.label}>WhatsApp</label>
-                <InputMask
-                  mask="(99) 99999-9999"
-                  maskChar={null}
+                <IMaskInput
+                  mask="(00) 00000-0000"
                   type="tel"
                   name="phone"
                   value={form.phone}
-                  onChange={handleInputChange}
+                  onAccept={(value) => {
+                    setForm((prev) => ({ ...prev, phone: value as string }));
+                    if (errors.phone) setErrors((prev) => ({ ...prev, phone: '' }));
+                  }}
                   placeholder="(11) 99999-9999"
                   className={styles.input + (errors.phone ? ' ' + styles.error : '')}
                 />
@@ -341,13 +343,15 @@ export const CreateStudentPage: React.FC = () => {
 
               <div className={styles.field}>
                 <label className={styles.label}>Valor/aula (R$)</label>
-                <InputMask
-                  mask="99999,99"
-                  maskChar={null}
+                <IMaskInput
+                  mask="00000,00"
                   type="text"
                   name="classRate"
                   value={form.classRate}
-                  onChange={handleInputChange}
+                  onAccept={(value) => {
+                    setForm((prev) => ({ ...prev, classRate: value as string }));
+                    if (errors.classRate) setErrors((prev) => ({ ...prev, classRate: '' }));
+                  }}
                   placeholder="150,00"
                   className={styles.input + (errors.classRate ? ' ' + styles.error : '')}
                   inputMode="decimal"

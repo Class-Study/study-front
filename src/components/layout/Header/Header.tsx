@@ -13,7 +13,6 @@ interface HeaderProps {
   title?: string;
   breadcrumb?: string;
   breadcrumbItems?: BreadcrumbItem[];
-  onNewStudent?: () => void;
 }
 
 const getInitials = (name?: string | null): string => {
@@ -33,7 +32,7 @@ const getAvatarTone = (name?: string | null): number => {
   return name.charCodeAt(0) % 6;
 };
 
-export const Header: React.FC<HeaderProps> = ({ breadcrumb, breadcrumbItems, onNewStudent }) => {
+export const Header: React.FC<HeaderProps> = ({ breadcrumb, breadcrumbItems }) => {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
   const hasBreadcrumbItems = (breadcrumbItems?.length ?? 0) > 0;
@@ -79,15 +78,6 @@ export const Header: React.FC<HeaderProps> = ({ breadcrumb, breadcrumbItems, onN
       </div>
 
       <div className={styles.right}>
-        {onNewStudent && (
-          <button
-            onClick={onNewStudent}
-            className={styles.newStudentBtn}
-            type="button"
-          >
-            + Novo aluno
-          </button>
-        )}
 
         <ThemeToggle />
 
