@@ -8,6 +8,11 @@ function fmt(seconds: number): string {
   return `${m}:${s}`;
 }
 
+function fmtMin(seconds: number): string {
+  const m = Math.floor(seconds / 60);
+  return `${m} min`;
+}
+
 interface ClassTimerProps {
   timer: ClassTimerState;
 }
@@ -18,17 +23,10 @@ export const ClassTimer: React.FC<ClassTimerProps> = ({ timer }) => {
       <div className={styles.wrap}>
         <span className={`${styles.dot} ${styles.dotActive}`} />
         <div className={styles.info}>
-          <div className={styles.times}>
-            <span className={styles.elapsed}>{fmt(timer.elapsed)}</span>
-            <span className={styles.sep}>/</span>
-            <span className={styles.total}>{fmt(timer.duration)}</span>
-            <span className={styles.remaining}>−{fmt(timer.remaining)}</span>
-          </div>
+          <span className={styles.elapsed}>{fmt(timer.elapsed)}</span>
+          <span className={styles.total}>{fmtMin(timer.duration)}</span>
           <div className={styles.bar}>
-            <div
-              className={styles.barFill}
-              style={{ width: `${timer.progress * 100}%` }}
-            />
+            <div className={styles.barFill} style={{ width: `${timer.progress * 100}%` }} />
           </div>
         </div>
       </div>
@@ -44,6 +42,7 @@ export const ClassTimer: React.FC<ClassTimerProps> = ({ timer }) => {
     );
   }
 
+  // Grace period ou fora do horário
   return (
     <div className={`${styles.wrap} ${styles.idle}`}>
       <span className={`${styles.dot} ${styles.dotIdle}`} />
@@ -51,4 +50,6 @@ export const ClassTimer: React.FC<ClassTimerProps> = ({ timer }) => {
     </div>
   );
 };
+
+
 

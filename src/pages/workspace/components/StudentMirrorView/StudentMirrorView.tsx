@@ -127,8 +127,8 @@ export const StudentMirrorView: React.FC<StudentMirrorViewProps> = ({ activity, 
 
     /* ── Aluno offline ──────────────────────────────────────────────── */
     if (!isStudentOnline) {
-        // Fora do horário de aula
-        if (!timer.isClassTime) {
+        // Fora da janela de conexão (antes ou depois da aula + grace)
+        if (!timer.isConnectionAllowed) {
             return (
                 <div className={styles.wrapper}>
                     <div className={styles.waitingState}>
@@ -146,14 +146,16 @@ export const StudentMirrorView: React.FC<StudentMirrorViewProps> = ({ activity, 
             );
         }
 
-        // Dentro do horário — aguardando conexão
+        // Dentro da janela de conexão — aguardando aluno
         return (
             <div className={styles.wrapper}>
                 <div className={styles.waitingState}>
                     <span className={styles.waitingIcon}>🕐</span>
                     <p className={styles.waitingTitle}>Aguardando aluno...</p>
                     <p className={styles.waitingSubtitle}>
-                        O conteúdo aparecerá aqui assim que o aluno se conectar e iniciar a atividade.
+                        {timer.isClassTime
+                            ? 'O conteúdo aparecerá aqui assim que o aluno se conectar e iniciar a atividade.'
+                            : timer.nextLabel /* "Encerrando conexão em X min" */}
                     </p>
                     <div className={styles.dots}><span /><span /><span /></div>
                     <button

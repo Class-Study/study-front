@@ -50,9 +50,9 @@ const ProfessorRightPanel: React.FC<ProfessorRightPanelProps> = ({
     const chatActivityTitle = studentTitle ?? ws.activeActivity?.title ?? '';
     const chatDisabled = !isStudentOnline || !studentActivityId;
 
-    // Mensagem de espera: fora do horário mostra próxima aula, dentro mostra status da conexão
+    // Mensagem de espera contextual
     const disabledMessage = (() => {
-        if (!timer.isClassTime) {
+        if (!timer.isConnectionAllowed) {
             return timer.isEnded
                 ? 'Aula encerrada.'
                 : (timer.nextLabel || 'Fora do horário de aula.');
@@ -61,8 +61,8 @@ const ProfessorRightPanel: React.FC<ProfessorRightPanelProps> = ({
         return 'Aguardando o aluno selecionar uma atividade...';
     })();
 
-    // Só exibe botão de reconexão se estiver no horário e o aluno estiver offline
-    const showReconnect = timer.isClassTime && !isStudentOnline;
+    // Botão reconectar: só durante a janela de conexão e aluno offline
+    const showReconnect = timer.isConnectionAllowed && !isStudentOnline;
 
     // Quando o aluno envia o activityId via WebRTC, atualiza a atividade ativa do chat
     useEffect(() => {
@@ -204,8 +204,8 @@ const ProfessorWorkspacePage: React.FC = () => {
 
     // ── Cronômetro de aula ────────────────────────────────────────────────────
     const timer = useClassTimer(classDays, classTime, classDuration);
-    // Só conecta ao WebRTC quando estiver dentro do horário de aula
-    const activeWorkspaceId = timer.isClassTime ? workspaceId : null;
+    // Só conecta ao WebRTC dentro da janela de aula (horário + 15min de tolerância)
+    const activeWorkspaceId = timer.isConnectionAllowed ? workspaceId : null;
 
     const breadcrumbItems = [
         {label: isStudent ? 'Meu Perfil' : 'Dashboard', path: isStudent ? '/student/profile' : '/dashboard'},

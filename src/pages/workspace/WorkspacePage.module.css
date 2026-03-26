@@ -8,14 +8,15 @@
 }
 
 .toolbar {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: flex-end;
   gap: 8px;
-  padding: 4px 16px;
+  padding: 10px 16px;
   border-bottom: 1px solid var(--color-border);
   background: var(--color-bg-card);
-  height: 36px;
+  height: 3.5rem;
   flex-shrink: 0;
 }
 

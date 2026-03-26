@@ -102,7 +102,16 @@ export const WorkspaceShell: React.FC<WorkspaceShellProps> = ({
                                 ▶
                             </button>
                         )}
-                        {timerSlot && <div style={{ marginRight: 'auto' }}>{timerSlot}</div>}
+                        {timerSlot && (
+                            <div style={{
+                                position: 'absolute',
+                                left: '50%',
+                                transform: 'translateX(-50%)',
+                                pointerEvents: 'none',
+                            }}>
+                                {timerSlot}
+                            </div>
+                        )}
                         <button
                             type="button"
                             className={`${styles.chatToggleBtn} ${chatVisible ? styles.chatToggleBtnActive : ''}`}

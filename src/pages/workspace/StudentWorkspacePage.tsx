@@ -125,8 +125,8 @@ const StudentWorkspacePage: React.FC = () => {
 
     // ── Cronômetro de aula ────────────────────────────────────────────────────
     const timer = useClassTimer(classDays, classTime, classDuration);
-    // Só conecta ao WebRTC quando estiver dentro do horário de aula
-    const activeWorkspaceId = timer.isClassTime ? workspaceId : null;
+    // Só conecta ao WebRTC dentro da janela de aula (horário + 15min de tolerância)
+    const activeWorkspaceId = timer.isConnectionAllowed ? workspaceId : null;
 
     const breadcrumbItems = [
         {label: 'Meu Perfil', path: '/me'},
@@ -319,7 +319,7 @@ const StudentWorkspacePage: React.FC = () => {
                         activityTitle={ws.activeActivity?.title ?? ''}
                         messages={ws.messages}
                         onSendMessage={ws.handleSendMessage}
-                        inputDisabled={!timer.isClassTime}
+                        inputDisabled={!timer.isConnectionAllowed}
                         inputDisabledMessage={
                             timer.isEnded
                                 ? 'Aula encerrada.'

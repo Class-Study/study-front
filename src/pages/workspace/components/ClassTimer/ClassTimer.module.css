@@ -2,8 +2,8 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 4px 10px;
-  border-radius: 20px;
+  padding: 5px 14px;
+  border-radius: 10px;
   border: 1px solid var(--color-border);
   background: var(--color-bg-input);
   font-family: var(--font-sans);
@@ -22,13 +22,14 @@
   animation: pulse 1.8s ease-in-out infinite;
 }
 
-.dotEnded {
-  background: var(--color-text-tertiary);
+/* Tema claro: dot e textos no verde bem escuro */
+:global([data-theme="light"]) .dotActive {
+  background: var(--color-accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent) 25%, transparent);
 }
 
-.dotIdle {
-  background: var(--color-text-tertiary);
-}
+.dotEnded  { background: var(--color-text-tertiary); }
+.dotIdle   { background: var(--color-text-tertiary); }
 
 @keyframes pulse {
   0%, 100% { opacity: 1; }
@@ -40,47 +41,35 @@
 .info {
   display: flex;
   flex-direction: column;
-  gap: 3px;
-}
-
-.times {
-  display: flex;
-  align-items: baseline;
-  gap: 4px;
-  line-height: 1;
+  align-items: center;
+  gap: 0.3rem;
 }
 
 .elapsed {
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   color: var(--color-success);
+  line-height: 1;
 }
 
-.sep {
-  font-size: 11px;
-  color: var(--color-text-tertiary);
+:global([data-theme="light"]) .elapsed {
+  color: var(--color-accent);
 }
 
 .total {
-  font-size: 11px;
-  color: var(--color-text-secondary);
-  font-variant-numeric: tabular-nums;
-}
-
-.remaining {
-  font-size: 11px;
+  font-size: 10px;
   color: var(--color-text-tertiary);
-  font-variant-numeric: tabular-nums;
-  margin-left: 4px;
+  line-height: 1;
 }
 
 .bar {
-  width: 100%;
+  width: 64px;
   height: 3px;
   border-radius: 99px;
   background: var(--color-border);
   overflow: hidden;
+  margin-top: 2px;
 }
 
 .barFill {
@@ -90,6 +79,10 @@
   transition: width 1s linear;
 }
 
+:global([data-theme="light"]) .barFill {
+  background: var(--color-accent);
+}
+
 /* ── Encerrada / Fora do horário ────────────────────────────── */
 
 .label {
@@ -97,17 +90,10 @@
   color: var(--color-text-secondary);
 }
 
-.ended .label {
-  color: var(--color-danger, #c43a3a);
-}
+.ended .label { color: var(--color-danger, #c43a3a); }
 
-.ended {
-  border-color: transparent;
-  background: transparent;
-}
-
+.ended,
 .idle {
   border-color: transparent;
   background: transparent;
 }
-
