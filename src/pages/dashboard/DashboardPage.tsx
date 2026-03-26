@@ -56,10 +56,18 @@ export const DashboardPage: React.FC = () => {
 
   const [activeTab, setActiveTab] = useState<TabType>('alunos');
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedDay, setSelectedDay] = useState('ALL');
+
+  const TODAY_DAY_VALUE = ['SUNDAY','MONDAY','TUESDAY','WEDNESDAY','THURSDAY','FRIDAY','SATURDAY'][new Date().getDay()];
+  const [selectedDay, setSelectedDay] = useState(TODAY_DAY_VALUE);
+  const TAB_LABELS: Record<TabType, string> = {
+    alunos: 'Alunos',
+    cobranca: 'Financeiro',
+    niveis: 'Níveis & Atividades',
+  };
+
   const breadcrumbItems = [
     { label: 'Dashboard', path: '/dashboard' },
-    { label: 'Alunos' },
+    { label: TAB_LABELS[activeTab] },
   ];
 
   const handleNewStudent = () => {
@@ -200,19 +208,17 @@ export const DashboardPage: React.FC = () => {
               <div className={styles.statCard}>
                 <div className={styles.statLabel}>AULAS ESTA SEMANA</div>
                 <div className={styles.statNumber}>{stats.thisWeek}</div>
-                <div className={styles.statSubtitle}>Segunda a sábado</div>
+                <div className={styles.statSubtitle}>Segunda a domingo</div>
               </div>
 
               <div className={styles.statCard}>
                 <div className={styles.statLabel}>EXERCÍCIOS ENTREGUES</div>
                 <div className={styles.statNumber}>{stats.delivered}</div>
-                <div className={styles.statSubtitle}>↑ 12% vs semana passada</div>
               </div>
 
               <div className={styles.statCard}>
                 <div className={styles.statLabel}>BLOQUEADOS</div>
                 <div className={styles.statNumber}>{stats.blocked}</div>
-                <div className={styles.statSubtitle}>Aguardando pagamento</div>
               </div>
             </div>
 
