@@ -8,6 +8,7 @@ import { ClassDay } from '@/types/student.types';
 import { formatClassDays, formatClassTime, DAY_FILTER_OPTIONS } from '@/utils/classDay.utils';
 import { NiveisTab } from '@/pages/dashboard/tabs/NiveisTab';
 import { BillingTab } from '@/pages/dashboard/tabs/BillingTab';
+import { CalendarioTab } from '@/pages/dashboard/tabs/CalendarioTab';
 import styles from './DashboardPage.module.css';
 
 const DAY_MAP: Record<string, number> = {
@@ -37,7 +38,7 @@ function isStudentClassNow(
   return now >= start && now < end;
 }
 
-type TabType = 'alunos' | 'cobranca' | 'niveis';
+type TabType = 'alunos' | 'cobranca' | 'niveis' | 'calendario';
 
 type LevelClass = 'levelBasic' | 'levelIntermediate' | 'levelAdvanced';
 
@@ -91,6 +92,7 @@ export const DashboardPage: React.FC = () => {
     alunos: 'Alunos',
     cobranca: 'Financeiro',
     niveis: 'Níveis & Atividades',
+    calendario: 'Calendário',
   };
 
   const breadcrumbItems = [
@@ -163,6 +165,12 @@ export const DashboardPage: React.FC = () => {
           >
             🎯 Níveis & Atividades
           </button>
+          <button
+            className={`${styles.tab} ${activeTab === 'calendario' ? styles.active : ''}`}
+            onClick={() => setActiveTab('calendario')}
+          >
+            📅 Calendário
+          </button>
         </nav>
         <div className={styles.loading}>Carregando...</div>
       </div>
@@ -193,6 +201,12 @@ export const DashboardPage: React.FC = () => {
             onClick={() => setActiveTab('niveis')}
           >
             🎯 Níveis & Atividades
+          </button>
+          <button
+            className={`${styles.tab} ${activeTab === 'calendario' ? styles.active : ''}`}
+            onClick={() => setActiveTab('calendario')}
+          >
+            📅 Calendário
           </button>
         </nav>
         <div className={styles.error}>{error}</div>
@@ -225,9 +239,18 @@ export const DashboardPage: React.FC = () => {
         >
           🎯 Níveis & Atividades
         </button>
+        <button
+          className={`${styles.tab} ${activeTab === 'calendario' ? styles.active : ''}`}
+          onClick={() => setActiveTab('calendario')}
+        >
+          📅 Calendário
+        </button>
       </nav>
 
-      <main className={styles.content}>
+      <main className={`${styles.content} ${activeTab === 'calendario' ? styles.contentCalendar : ''}`}>
+        {activeTab === 'calendario' ? (
+          <CalendarioTab />
+        ) : (
         <div className={styles.inner}>
           {activeTab === 'alunos' && (
             <>
@@ -399,6 +422,7 @@ export const DashboardPage: React.FC = () => {
             <NiveisTab />
           )}
         </div>
+        )}
       </main>
     </div>
   );

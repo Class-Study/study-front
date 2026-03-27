@@ -49,6 +49,18 @@
   box-sizing: border-box;
 }
 
+/* Calendar tab — full-height, no padding, flex column */
+.contentCalendar {
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.contentCalendar > * {
+  flex: 1;
+  min-height: 0;
+}
+
 .inner {
   width: 100%;
   max-width: 1400px;
