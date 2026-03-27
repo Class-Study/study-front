@@ -76,6 +76,12 @@ const studentService = {
     return data;
   },
 
+  // Search students by name or email (returns minimal fields used by the create modal)
+  searchByNameOrEmail: async (q: string): Promise<{ id: string; name: string }[]> => {
+    const { data } = await api.get<{ id: string; name: string }[]>(`/students/search?q=${encodeURIComponent(q)}`);
+    return data;
+  },
+
   saveNote: async (id: string, payload: UpdateStudentNoteRequest): Promise<void> => {
     await api.post(`/students/${id}/notes`, payload);
   },
