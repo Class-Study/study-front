@@ -1,9 +1,21 @@
-export type EventType = 'RECURRING' | 'EXTRA';
+export type EventType = 'EXTRA' | 'RECURRING' | 'RECOVERY';
+
+export const EventTypeMeta = {
+  EXTRA: {
+    label: 'Aula extra',
+  },
+  RECURRING: {
+    label: 'Aula recorrente',
+  },
+  RECOVERY: {
+    label: 'Aula de recuperação',
+  },
+} as const;
 
 export interface CalendarEvent {
   id: string;
   studentId: string;
-  studentName: string;
+  studentName?: string;
   date: string;
   startTime: string;
   durationMin: number;

@@ -7,6 +7,7 @@ import {
     Clock,
     ExternalLink,
     Plus,
+    RefreshCcw,
     Repeat,
     Sparkles,
     X
@@ -17,15 +18,16 @@ import {useAuth} from '@/hooks/useAuth';
 import studentService from '@/services/api/student.service';
 import scheduleService from '@/services/api/schedule.service';
 import {Student} from '@/types/student.types';
-import {CalendarEvent} from '@/types/schedule.types';
+import {CalendarEvent, EventType, EventTypeMeta} from '@/types/schedule.types';
 import styles from './CalendarioTab.module.css';
+import Swal from "sweetalert2";
 
 // ── Grid constants ─────────────────────────────────────────────────────────────
 const START_HOUR = 6;
 const END_HOUR = 23;
-const HOUR_PX = 64; // px por hora → ~1.067px por minuto
+const HOUR_PX = 64;
 const MIN_PX = HOUR_PX / 60;
-const GRID_H = (END_HOUR - START_HOUR) * HOUR_PX; // 1088px
+const GRID_H = (END_HOUR - START_HOUR) * HOUR_PX;
 
 // ── Localização ───────────────────────────────────────────────────────────────
 const PT_SHORT = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
@@ -142,14 +144,36 @@ const EventDetailsModal: React.FC<EventDetailsModalProps> = ({event, onClose, on
                     <div className={`${styles.detailsAvatar} ${styles[`level_${getLevelKey(event.levelCode)}`]}`}>
                         {getAvatarText(event.studentName)}
                     </div>
+
                     <div>
                         <h3 className={styles.detailsName}>{event.studentName}</h3>
-                        <span className={`${styles.typeBadge} ${event.type === 'EXTRA' ? styles.typeBadgeExtra : ''}`}>
-              {event.type === 'RECURRING'
-                  ? <><Repeat size={11}/> Aula recorrente</>
-                  : <><Sparkles size={11}/> Aula avulsa</>}
-            </span>
+
+                        {/* 🔥 TYPE BADGE */}
+                        <span className={`
+                        ${styles.typeBadge}
+                        ${event.type === 'EXTRA' ? styles.typeBadgeExtra : ''}
+                        ${event.type === 'RECOVERY' ? styles.typeBadgeRecovery : ''}
+                    `}>
+                        {event.type === 'RECURRING' && (
+                            <>
+                                <Repeat size={11}/> Aula recorrente
+                            </>
+                        )}
+
+                            {event.type === 'EXTRA' && (
+                                <>
+                                    <Sparkles size={11}/> Aula avulsa
+                                </>
+                            )}
+
+                            {event.type === 'RECOVERY' && (
+                                <>
+                                    <RefreshCcw size={11}/> Aula de reposição
+                                </>
+                            )}
+                    </span>
                     </div>
+
                     <button type="button" className={styles.modalCloseBtn} onClick={onClose}>
                         <X size={15}/>
                     </button>
@@ -160,16 +184,19 @@ const EventDetailsModal: React.FC<EventDetailsModalProps> = ({event, onClose, on
                         <Calendar size={13} className={styles.detailsIcon}/>
                         <span>{dateLabel}</span>
                     </div>
+
                     <div className={styles.detailsRow}>
                         <Clock size={13} className={styles.detailsIcon}/>
                         <span>{timeLabel}</span>
                     </div>
+
                     {event.title && event.type === 'EXTRA' && (
                         <div className={styles.detailsRow}>
                             <Sparkles size={13} className={styles.detailsIcon}/>
                             <span>{event.title}</span>
                         </div>
                     )}
+
                     {event.meetLink && (
                         <div className={styles.detailsRow}>
                             <ExternalLink size={13} className={styles.detailsIcon}/>
@@ -179,8 +206,9 @@ const EventDetailsModal: React.FC<EventDetailsModalProps> = ({event, onClose, on
                                 rel="noreferrer"
                                 className={styles.meetLink}
                             >
-                                {event.meetPlatform === 'GOOGLE_MEET' ? 'Google Meet' : event.meetPlatform ?? 'Reunião'} —
-                                Entrar
+                                {event.meetPlatform === 'GOOGLE_MEET'
+                                    ? 'Google Meet'
+                                    : event.meetPlatform ?? 'Reunião'} — Entrar
                             </a>
                         </div>
                     )}
@@ -203,54 +231,58 @@ const EventDetailsModal: React.FC<EventDetailsModalProps> = ({event, onClose, on
 
 // ── CreateClassModal ──────────────────────────────────────────────────────────
 const DURATION_OPTS = [30, 45, 60, 90, 120];
-const TITLE_OPTS = ['Reposição', 'Aula extra'];
 
 interface CreateModalProps {
-    students: Student[];
     onClose: () => void;
     onCreated: (ev: CalendarEvent) => void;
 }
 
-const CreateClassModal: React.FC<CreateModalProps> = ({students, onClose, onCreated}) => {
+interface BasicStudent {
+    id: string;
+    name: string;
+}
+
+const CreateClassModal: React.FC<Omit<CreateModalProps, 'students'>> = ({onClose, onCreated}) => {
     const [form, setForm] = useState({
         studentId: '',
         date: toDateStr(new Date()),
         time: '09:00',
         duration: 60,
-        title: 'Reposição',
+        type: 'EXTRA' as EventType,
     });
+
     const [error, setError] = useState('');
     const [submitting, setSubmitting] = useState(false);
     const [query, setQuery] = useState('');
     const [searchResults, setSearchResults] = useState<{ id: string; name: string }[]>([]);
     const [searching, setSearching] = useState(false);
 
-    const [selectedStudent, setSelectedStudent] = useState(null);
-    const selectedNameFromSearch = searchResults.find(s => s.id === form.studentId)?.name;
-    const active = students.filter(s => s.status === 'ACTIVE');
+    const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
+    const [basicStudent, setBasicStudent] = useState<BasicStudent | null>(null);
 
-
-    const set = (key: string, val: unknown) => setForm(p => ({...p, [key]: val}));
+    const set = <K extends keyof typeof form>(key: K, val: typeof form[K]) => {
+        setForm(p => ({...p, [key]: val}));
+    };
 
     const handleSubmit = async () => {
-        if (!form.studentId || !form.date || !form.time || !form.title.trim()) {
+        if (!form.studentId || !form.date || !form.time) {
             setError('Preencha todos os campos.');
             return;
         }
+
         setSubmitting(true);
+
         try {
             const payload = {
                 studentId: form.studentId,
-                teacherId: (studentService ? undefined : undefined), // placeholder to satisfy TS if studentService missing
-                type: 'EXTRA',
+                teacherId: '',
+                type: form.type,
                 date: form.date,
                 startTime: form.time + ':00',
                 durationMin: form.duration,
-                title: form.title,
-            } as any;
+                title: form.type.toString(),
+            };
 
-            // teacherId from auth (top-level CalendarioTab passes user via hook)
-            // We'll get teacherId from localStorage user if available to avoid prop drilling
             try {
                 const stored = localStorage.getItem('user');
                 if (stored) {
@@ -265,26 +297,57 @@ const CreateClassModal: React.FC<CreateModalProps> = ({students, onClose, onCrea
             const newEvent: CalendarEvent = {
                 id: `extra-${Date.now()}`,
                 studentId: form.studentId,
-                studentName: selectedNameFromSearch ?? selectedStudent?.name ?? '',
+                studentName: basicStudent?.name,
                 date: form.date,
                 startTime: form.time + ':00',
                 durationMin: form.duration,
-                type: 'EXTRA',
-                title: form.title,
+                type: form.type,
                 meetLink: selectedStudent?.meetLink,
                 meetPlatform: selectedStudent?.meetPlatform,
                 studentStatus: selectedStudent?.status ?? 'ACTIVE',
                 levelCode: selectedStudent?.levelProfileCode ?? selectedStudent?.levelProfile?.code,
+                title: EventTypeMeta[form.type].label,
             };
+
             onCreated(newEvent);
-        } catch {
-            setError('Erro ao criar aula. Tente novamente.');
+
+            // ✅ sucesso
+            Swal.fire({
+                icon: 'success',
+                title: 'Aula criada!',
+                text: 'Agendamento realizado com sucesso.',
+                confirmButtonText: 'OK',
+            });
+
+        } catch (err: any) {
+
+            // 🔥 tenta extrair resposta do backend
+            const status = err?.response?.status;
+            const message =
+                err?.response?.data?.message ||
+                err?.response?.data?.error ||
+                err?.message;
+
+            if (status === 400 || status === 409) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Atenção',
+                    text: message || 'Dados inválidos ou conflito de horário.',
+                });
+            } else {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Erro',
+                    text: 'Não foi possível criar um novo agendamento. Tente novamente mais tarde.',
+                });
+            }
+
         } finally {
             setSubmitting(false);
         }
     };
 
-    // Search students by name/email (debounced simple impl)
+    // 🔎 Busca de alunos
     useEffect(() => {
         const t = setTimeout(() => {
             if (!query || query.length < 2) {
@@ -292,12 +355,16 @@ const CreateClassModal: React.FC<CreateModalProps> = ({students, onClose, onCrea
                 setSearching(false);
                 return;
             }
+
             setSearching(true);
+
             studentService.searchByNameOrEmail(query)
                 .then(res => setSearchResults(res))
                 .catch(() => setSearchResults([]))
                 .finally(() => setSearching(false));
+
         }, 350);
+
         return () => clearTimeout(t);
     }, [query]);
 
@@ -308,12 +375,8 @@ const CreateClassModal: React.FC<CreateModalProps> = ({students, onClose, onCrea
                 {/* HEADER */}
                 <div className={styles.createHeader}>
                     <h3 className={styles.createTitle}>Nova Aula</h3>
-                    <button
-                        type="button"
-                        className={styles.modalCloseBtn}
-                        onClick={onClose}
-                    >
-                        <X size={15} />
+                    <button type="button" className={styles.modalCloseBtn} onClick={onClose}>
+                        <X size={15}/>
                     </button>
                 </div>
 
@@ -324,30 +387,24 @@ const CreateClassModal: React.FC<CreateModalProps> = ({students, onClose, onCrea
                     <label className={styles.label}>Aluno</label>
 
                     <div className={styles.searchWrapper}>
-
                         <input
                             type="text"
                             className={styles.input}
                             placeholder="Pesquisar por nome ou email..."
-                            value={selectedStudent ? selectedStudent.name : query}
+                            value={basicStudent ? basicStudent.name : query}
                             onChange={e => {
-                                setSelectedStudent(null);
-                                set('studentId', null);
+                                setBasicStudent(null);
+                                set('studentId', '');
                                 setQuery(e.target.value);
                             }}
                         />
 
-                        {/* Dropdown */}
                         {!selectedStudent && query.length >= 2 && (
                             <div className={styles.searchResults}>
-                                {searching && (
-                                    <div className={styles.searching}>Buscando...</div>
-                                )}
+                                {searching && <div className={styles.searching}>Buscando...</div>}
 
                                 {!searching && searchResults.length === 0 && (
-                                    <div className={styles.noResults}>
-                                        Nenhum resultado
-                                    </div>
+                                    <div className={styles.noResults}>Nenhum resultado</div>
                                 )}
 
                                 {!searching && searchResults.map(r => (
@@ -356,36 +413,17 @@ const CreateClassModal: React.FC<CreateModalProps> = ({students, onClose, onCrea
                                         type="button"
                                         className={styles.searchItem}
                                         onClick={() => {
-                                            setSelectedStudent(r);
+                                            setBasicStudent(r);
                                             set('studentId', r.id);
                                             setQuery('');
                                         }}
                                     >
-                                        <div className={styles.searchItemName}>
-                                            {r.name}
-                                        </div>
+                                        {r.name}
                                     </button>
                                 ))}
                             </div>
                         )}
                     </div>
-
-                    {/* Selecionado */}
-                    {selectedStudent && (
-                        <div className={styles.selectedStudent}>
-                            <span>{selectedStudent.name}</span>
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    setSelectedStudent(null);
-                                    set('studentId', null);
-                                    setQuery('');
-                                }}
-                            >
-                                ✕
-                            </button>
-                        </div>
-                    )}
 
                     {/* ───── DATA / HORA ───── */}
                     <div className={styles.row2}>
@@ -427,52 +465,44 @@ const CreateClassModal: React.FC<CreateModalProps> = ({students, onClose, onCrea
                         ))}
                     </div>
 
-                    {/* ───── MOTIVO ───── */}
-                    <label className={styles.label}>Motivo da aula</label>
-                    <div className={styles.suggestions}>
-                        {TITLE_OPTS.map(t => (
-                            <button
-                                key={t}
-                                type="button"
-                                className={`${styles.suggestion} ${
-                                    form.title === t ? styles.suggestionActive : ''
-                                }`}
-                                onClick={() => set('title', t)}
-                            >
-                                {t}
-                            </button>
-                        ))}
-                    </div>
+                    {/* ───── TIPO ───── */}
+                    <label className={styles.label}>Tipo da aula</label>
+                    <select
+                        className={styles.input}
+                        value={form.type}
+                        onChange={e => set('type', e.target.value as EventType)}
+                    >
+                        {Object.entries(EventTypeMeta)
+                            .filter(([key]) => key !== 'RECURRING')
+                            .map(([key, meta]) => (
+                                <option key={key} value={key}>
+                                    {meta.label}
+                                </option>
+                            ))}
+                    </select>
 
-                    {/* ───── INFO ───── */}
+                    {/* INFO */}
                     {selectedStudent?.meetLink && (
                         <p className={styles.infoNote}>
-                            🔗{' '}
-                            {selectedStudent.meetPlatform === 'GOOGLE_MEET'
-                                ? 'Google Meet'
-                                : selectedStudent.meetPlatform}{' '}
-                            será usado como link da reunião.
+                            🔗 {selectedStudent.meetPlatform === 'GOOGLE_MEET'
+                            ? 'Google Meet'
+                            : selectedStudent.meetPlatform} será usado.
                         </p>
                     )}
 
-                    {/* ───── ERRO ───── */}
                     {error && <p className={styles.formError}>{error}</p>}
                 </div>
 
                 {/* FOOTER */}
                 <div className={styles.modalFooter}>
-                    <button
-                        type="button"
-                        className={styles.cancelBtn}
-                        onClick={onClose}
-                    >
+                    <button type="button" className={styles.cancelBtn} onClick={onClose}>
                         Cancelar
                     </button>
 
                     <button
                         type="button"
                         className={styles.submitBtn}
-                        onClick={() => handleSubmit(form)}
+                        onClick={handleSubmit}
                         disabled={submitting}
                     >
                         {submitting ? 'Criando...' : 'Criar aula'}
@@ -534,7 +564,7 @@ export const CalendarioTab: React.FC = () => {
                         date: normalizedDate,
                         startTime: e.startTime,
                         durationMin: e.durationMin,
-                        type: e.type === 'EXTRA' ? 'EXTRA' : 'RECURRING',
+                        type: mapType(e.type),
                         title: e.title ?? undefined,
                         meetLink: e.meetLink ?? undefined,
                         meetPlatform: e.meetPlatform ?? undefined,
@@ -552,6 +582,14 @@ export const CalendarioTab: React.FC = () => {
         void fetchWeek();
     }, [weekDates, user]);
 
+    const mapType = (type: string): EventType => {
+        if (type === 'EXTRA') return 'EXTRA';
+        if (type === 'RECURRING') return 'RECURRING';
+        if (type === 'RECOVERY') return 'RECOVERY';
+
+        console.warn('Tipo desconhecido vindo do backend:', type);
+        return 'EXTRA'; // fallback
+    };
     // Eventos da semana atual (recorrentes + avulsos)
     const weekEvents = useMemo(() => {
         const weekStrs = new Set(weekDates.map(toDateStr));
@@ -735,14 +773,14 @@ export const CalendarioTab: React.FC = () => {
 
                                     return (
                                         <div
-                                            key={`${ev.id}::${ev.date}`}
-                                            className={`
-        ${styles.event}
-        ${ev.type === 'EXTRA' ? styles.extra : ''}
-        ${ev.type === 'RECURRING' ? styles.recurring : ''}
-        ${blocked ? styles.blocked : ''}
-      `}
-                                            style={{ top, height }}
+                                            key={`${ev.id}-${ev.startTime}-${ev.type}`}
+                                            className={`${styles.event}
+                                                ${ev.type === 'EXTRA' ? styles.extra : ''}
+                                                ${ev.type === 'RECURRING' ? styles.recurring : ''}
+                                                ${ev.type === 'RECOVERY' ? styles.recovery : ''}
+                                                ${blocked ? styles.blocked : ''}
+                                            `}
+                                            style={{top, height}}
                                             onClick={() => !blocked && setDetailsEvent(ev)}
                                             title={blocked ? `${ev.studentName} — Bloqueado` : ev.studentName}
                                         >
@@ -754,6 +792,10 @@ export const CalendarioTab: React.FC = () => {
 
                                             {ev.type === 'RECURRING' && (
                                                 <div className={styles.badgeRecurring}>Recorrente</div>
+                                            )}
+
+                                            {ev.type === 'RECOVERY' && (
+                                                <div className={styles.badgeRecovery}>Reposição</div>
                                             )}
 
                                             {/* CONTEÚDO */}
@@ -768,7 +810,6 @@ export const CalendarioTab: React.FC = () => {
                                                     </div>
                                                 </div>
                                             </div>
-
                                         </div>
                                     );
                                 })}
@@ -792,7 +833,6 @@ export const CalendarioTab: React.FC = () => {
 
             {showCreate && (
                 <CreateClassModal
-                    students={students}
                     onClose={() => setShowCreate(false)}
                     onCreated={ev => {
                         setExtraEvents(p => [...p, ev]);

@@ -76,7 +76,7 @@ textarea:focus::placeholder {
 
 
 
-  --color-bg-card-calendar: #dcd9ea;
+  --color-bg-card-calendar: #ffffff;
   --color-bg-card-calendar-hover: #ede9fe;
 
   --color-border-card-calendar: #7c3aed;
@@ -85,7 +85,8 @@ textarea:focus::placeholder {
   --color-text-calendar-primary: #2a2540;
   --color-text-calendar-secondary: #6b6785;
 
-  --color-calendar-extra: #f59e0b;
+  --color-calendar-extra: #774a00;
+  --color-calendar-recovery: #004671;
   --color-calendar-blocked: #ef4444;
   --color-calendar-success: #10b981;
 }
@@ -139,6 +140,7 @@ textarea:focus::placeholder {
   --color-text-calendar-secondary: #b9b6d3;
 
   --color-calendar-extra: #f59e0b;
+  --color-calendar-recovery: #039eff;
   --color-calendar-blocked: #ef4444;
   --color-calendar-success: #10b981;
 

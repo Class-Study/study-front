@@ -288,8 +288,8 @@
     cursor: pointer;
     overflow: hidden;
     z-index: 2;
-    border: none;
-    border-left: 3px solid var(--color-border-card-calendar);
+    border: 1px solid var(--color-border);
+    border-left-width: 4px;
     background: var(--color-bg-card-calendar);
     transition: box-shadow 0.18s, transform 0.12s;
     display: flex;
@@ -302,12 +302,12 @@
     top: 6px;
     right: 6px;
 
-    font-size: 10px;
-    font-weight: 600;
+    font-size: 0.8rem;
+    font-weight: 500;
     padding: 2px 6px;
     border-radius: 6px;
 
-    background: rgba(245, 158, 11, 0.15);
+    background: var(--color-bg-tag);
     color: var(--color-calendar-extra);
 
     pointer-events: none;
@@ -318,16 +318,33 @@
     top: 6px;
     right: 6px;
 
-    font-size: 10px;
-    font-weight: 600;
+    font-size: 0.8rem;
+    font-weight: 500;
     padding: 2px 6px;
     border-radius: 6px;
 
-    background: rgba(139, 92, 246, 0.15);
-    color: #8b5cf6;
+    background: var(--color-bg-tag);
+    color: var(--color-accent);
 
     pointer-events: none;
 }
+
+.badgeRecovery {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+
+    font-size: 0.8rem;
+    font-weight: 500;
+    padding: 2px 6px;
+    border-radius: 6px;
+
+    background: var(--color-bg-tag);
+    color: var(--color-calendar-recovery);
+
+    pointer-events: none;
+}
+
 .event:hover {
     transform: translateY(-2px);
     background: var(--color-bg-card-calendar-hover);
@@ -384,6 +401,14 @@
     border-left-color: var(--color-calendar-extra);
 }
 
+.event.recurring {
+    border-left-color: var(--color-accent);
+}
+
+.event.recovery {
+    border-left-color: var(--color-calendar-recovery);
+}
+
 .event.blocked {
     border-left-color: var(--color-calendar-blocked);
     opacity: 0.7;
@@ -419,6 +444,9 @@
 }
 
 .searchResults {
+    width: 100%;
+    position: absolute;
+    display: flex;
     border: 2px solid var(--color-border);
     border-radius: 6px;
     background: var(--color-bg-card);
@@ -607,15 +635,21 @@
     font-weight: 600;
     padding: 2px 8px;
     border-radius: 20px;
-    background: color-mix(in srgb, var(--color-accent) 12%, transparent);
+    background: var(--color-bg-tag);
     color: var(--color-accent);
     border: 1px solid color-mix(in srgb, var(--color-accent) 30%, transparent);
 }
 
 .typeBadgeExtra {
-    background: color-mix(in srgb, #7c5dd4 12%, transparent);
-    color: #7c5dd4;
-    border-color: color-mix(in srgb, #7c5dd4 30%, transparent);
+    background: var(--color-bg-tag);
+    color: var(--color-calendar-extra);
+    border: 1px solid color-mix(in srgb, var(--color-calendar-extra) 30%, transparent);
+}
+
+.typeBadgeRecovery {
+    background: var(--color-bg-tag);
+    color: var(--color-calendar-recovery);
+    border: 1px solid color-mix(in srgb, var(--color-calendar-recovery) 30%, transparent);
 }
 
 .detailsBody {
@@ -629,7 +663,7 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    font-family: var(--font-sans);
+    font-family: var(--font-sans), serif;
     font-size: 13px;
     color: var(--color-text-secondary);
 }
