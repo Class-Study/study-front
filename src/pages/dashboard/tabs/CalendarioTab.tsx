@@ -203,7 +203,7 @@ const EventDetailsModal: React.FC<EventDetailsModalProps> = ({event, onClose, on
 
 // ── CreateClassModal ──────────────────────────────────────────────────────────
 const DURATION_OPTS = [30, 45, 60, 90, 120];
-const TITLE_OPTS = ['Reposição', 'Aula extra', 'Recuperação', 'Plantão de dúvidas', 'Revisão'];
+const TITLE_OPTS = ['Reposição', 'Aula extra'];
 
 interface CreateModalProps {
     students: Student[];
@@ -225,9 +225,10 @@ const CreateClassModal: React.FC<CreateModalProps> = ({students, onClose, onCrea
     const [searchResults, setSearchResults] = useState<{ id: string; name: string }[]>([]);
     const [searching, setSearching] = useState(false);
 
-    const selectedStudent = students.find(s => s.id === form.studentId) ?? null;
+    const [selectedStudent, setSelectedStudent] = useState(null);
     const selectedNameFromSearch = searchResults.find(s => s.id === form.studentId)?.name;
     const active = students.filter(s => s.status === 'ACTIVE');
+
 
     const set = (key: string, val: unknown) => setForm(p => ({...p, [key]: val}));
 
@@ -303,71 +304,122 @@ const CreateClassModal: React.FC<CreateModalProps> = ({students, onClose, onCrea
     return (
         <div className={styles.overlay} onClick={onClose}>
             <div className={styles.modal} onClick={e => e.stopPropagation()}>
+
+                {/* HEADER */}
                 <div className={styles.createHeader}>
-                    <h3 className={styles.createTitle}>Nova aula avulsa</h3>
-                    <button type="button" className={styles.modalCloseBtn} onClick={onClose}>
-                        <X size={15}/>
+                    <h3 className={styles.createTitle}>Nova Aula</h3>
+                    <button
+                        type="button"
+                        className={styles.modalCloseBtn}
+                        onClick={onClose}
+                    >
+                        <X size={15} />
                     </button>
                 </div>
 
+                {/* BODY */}
                 <div className={styles.createBody}>
+
+                    {/* ───── ALUNO ───── */}
                     <label className={styles.label}>Aluno</label>
-                    <input
-                        type="text"
-                        className={styles.input}
-                        placeholder="Pesquisar por nome ou email..."
-                        value={query}
-                        onChange={e => setQuery(e.target.value)}
-                    />
-                    {/* Suggestion list from backend search; clicking sets the student */}
-                    {query.length >= 2 && (
-                        <div className={styles.searchResults}>
-                            {searching && <div className={styles.searching}>Buscando...</div>}
-                            {!searching && searchResults.length === 0 && (
-                                <div className={styles.noResults}>Nenhum resultado</div>
-                            )}
-                            {!searching && searchResults.map(r => (
-                                <button
-                                    key={r.id}
-                                    type="button"
-                                    className={styles.searchItem}
-                                    onClick={() => {
-                                        set('studentId', r.id);
-                                        setQuery('');
-                                    }}
-                                >
-                                    {r.name}
-                                </button>
-                            ))}
+
+                    <div className={styles.searchWrapper}>
+
+                        <input
+                            type="text"
+                            className={styles.input}
+                            placeholder="Pesquisar por nome ou email..."
+                            value={selectedStudent ? selectedStudent.name : query}
+                            onChange={e => {
+                                setSelectedStudent(null);
+                                set('studentId', null);
+                                setQuery(e.target.value);
+                            }}
+                        />
+
+                        {/* Dropdown */}
+                        {!selectedStudent && query.length >= 2 && (
+                            <div className={styles.searchResults}>
+                                {searching && (
+                                    <div className={styles.searching}>Buscando...</div>
+                                )}
+
+                                {!searching && searchResults.length === 0 && (
+                                    <div className={styles.noResults}>
+                                        Nenhum resultado
+                                    </div>
+                                )}
+
+                                {!searching && searchResults.map(r => (
+                                    <button
+                                        key={r.id}
+                                        type="button"
+                                        className={styles.searchItem}
+                                        onClick={() => {
+                                            setSelectedStudent(r);
+                                            set('studentId', r.id);
+                                            setQuery('');
+                                        }}
+                                    >
+                                        <div className={styles.searchItemName}>
+                                            {r.name}
+                                        </div>
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Selecionado */}
+                    {selectedStudent && (
+                        <div className={styles.selectedStudent}>
+                            <span>{selectedStudent.name}</span>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setSelectedStudent(null);
+                                    set('studentId', null);
+                                    setQuery('');
+                                }}
+                            >
+                                ✕
+                            </button>
                         </div>
                     )}
-                    {/* Fallback select (shows active students) */}
-                    <select className={styles.select} value={form.studentId}
-                            onChange={e => set('studentId', e.target.value)}>
-                        <option value="">Ou selecione na lista...</option>
-                        {active.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                    </select>
 
+                    {/* ───── DATA / HORA ───── */}
                     <div className={styles.row2}>
                         <div className={styles.col}>
                             <label className={styles.label}>Data</label>
-                            <input type="date" className={styles.input} value={form.date}
-                                   onChange={e => set('date', e.target.value)}/>
+                            <input
+                                type="date"
+                                className={styles.input}
+                                value={form.date}
+                                onChange={e => set('date', e.target.value)}
+                            />
                         </div>
+
                         <div className={styles.col}>
                             <label className={styles.label}>Horário</label>
-                            <input type="time" className={styles.input} value={form.time}
-                                   onChange={e => set('time', e.target.value)}/>
+                            <input
+                                type="time"
+                                className={styles.input}
+                                value={form.time}
+                                onChange={e => set('time', e.target.value)}
+                            />
                         </div>
                     </div>
 
+                    {/* ───── DURAÇÃO ───── */}
                     <label className={styles.label}>Duração</label>
                     <div className={styles.pills}>
                         {DURATION_OPTS.map(d => (
                             <button
                                 key={d}
                                 type="button"
-                                className={`${styles.pill} ${form.duration === d ? styles.pillActive : ''}`}
+                                className={`${styles.pill} ${
+                                    form.duration === d ? styles.pillActive : ''
+                                }`}
                                 onClick={() => set('duration', d)}
                             >
                                 {d} min
@@ -375,20 +427,16 @@ const CreateClassModal: React.FC<CreateModalProps> = ({students, onClose, onCrea
                         ))}
                     </div>
 
-                    <label className={styles.label}>Motivo / Título</label>
-                    <input
-                        type="text"
-                        className={styles.input}
-                        placeholder="Ex: Reposição, Aula extra..."
-                        value={form.title}
-                        onChange={e => set('title', e.target.value)}
-                    />
+                    {/* ───── MOTIVO ───── */}
+                    <label className={styles.label}>Motivo da aula</label>
                     <div className={styles.suggestions}>
                         {TITLE_OPTS.map(t => (
                             <button
                                 key={t}
                                 type="button"
-                                className={`${styles.suggestion} ${form.title === t ? styles.suggestionActive : ''}`}
+                                className={`${styles.suggestion} ${
+                                    form.title === t ? styles.suggestionActive : ''
+                                }`}
                                 onClick={() => set('title', t)}
                             >
                                 {t}
@@ -396,19 +444,37 @@ const CreateClassModal: React.FC<CreateModalProps> = ({students, onClose, onCrea
                         ))}
                     </div>
 
+                    {/* ───── INFO ───── */}
                     {selectedStudent?.meetLink && (
                         <p className={styles.infoNote}>
-                            🔗 {selectedStudent.meetPlatform === 'GOOGLE_MEET' ? 'Google Meet' : selectedStudent.meetPlatform} será
-                            usado como link da reunião.
+                            🔗{' '}
+                            {selectedStudent.meetPlatform === 'GOOGLE_MEET'
+                                ? 'Google Meet'
+                                : selectedStudent.meetPlatform}{' '}
+                            será usado como link da reunião.
                         </p>
                     )}
 
+                    {/* ───── ERRO ───── */}
                     {error && <p className={styles.formError}>{error}</p>}
                 </div>
 
+                {/* FOOTER */}
                 <div className={styles.modalFooter}>
-                    <button type="button" className={styles.cancelBtn} onClick={onClose}>Cancelar</button>
-                    <button type="button" className={styles.submitBtn} onClick={handleSubmit} disabled={submitting}>
+                    <button
+                        type="button"
+                        className={styles.cancelBtn}
+                        onClick={onClose}
+                    >
+                        Cancelar
+                    </button>
+
+                    <button
+                        type="button"
+                        className={styles.submitBtn}
+                        onClick={() => handleSubmit(form)}
+                        disabled={submitting}
+                    >
                         {submitting ? 'Criando...' : 'Criar aula'}
                     </button>
                 </div>
@@ -663,31 +729,46 @@ export const CalendarioTab: React.FC = () => {
                                 {/* Events */}
                                 {events.map(ev => {
                                     const startMin = timeToMin(ev.startTime);
-                                    const top = minToTop(startMin);
+                                    const top = Math.max(0, minToTop(startMin));
                                     const height = Math.max(ev.durationMin * MIN_PX, 48);
                                     const blocked = ev.studentStatus === 'BLOCKED';
 
                                     return (
                                         <div
                                             key={`${ev.id}::${ev.date}`}
-                                            className={`${styles.event}`}
-                                            style={{top, height}}
+                                            className={`
+        ${styles.event}
+        ${ev.type === 'EXTRA' ? styles.extra : ''}
+        ${ev.type === 'RECURRING' ? styles.recurring : ''}
+        ${blocked ? styles.blocked : ''}
+      `}
+                                            style={{ top, height }}
                                             onClick={() => !blocked && setDetailsEvent(ev)}
                                             title={blocked ? `${ev.studentName} — Bloqueado` : ev.studentName}
                                         >
-                                            <div>
-                                                <div className={styles.eventCardHeader}>
-                                                    <div className={styles.eventCardTitle}>
-                                                        <div className={styles.eventName}>{ev.studentName}</div>
-                                                    </div>
-                                                    <div className={styles.eventCardRight}>
-                                                        <div
-                                                            className={styles.eventTime}>{ev.startTime.substring(0, 5)}</div>
-                                                        {ev.type === 'EXTRA' &&
-                                                            <div className={styles.extraBadge}>Avulsa</div>}
+
+                                            {/* BADGE ABSOLUTA */}
+                                            {ev.type === 'EXTRA' && (
+                                                <div className={styles.badge}>Avulsa</div>
+                                            )}
+
+                                            {ev.type === 'RECURRING' && (
+                                                <div className={styles.badgeRecurring}>Recorrente</div>
+                                            )}
+
+                                            {/* CONTEÚDO */}
+                                            <div className={styles.eventCardHeader}>
+                                                <div className={styles.eventCardTitle}>
+                                                    <div className={styles.eventName}>{ev.studentName}</div>
+                                                </div>
+
+                                                <div className={styles.eventCardRight}>
+                                                    <div className={styles.eventTime}>
+                                                        {ev.startTime.substring(0, 5)}
                                                     </div>
                                                 </div>
                                             </div>
+
                                         </div>
                                     );
                                 })}

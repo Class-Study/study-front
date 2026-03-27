@@ -73,6 +73,21 @@ textarea:focus::placeholder {
   --color-btn-teacher-text: #ffffff;
   --color-btn-student: #3a5fc4;
   --color-btn-student-text: #ffffff;
+
+
+
+  --color-bg-card-calendar: #dcd9ea;
+  --color-bg-card-calendar-hover: #ede9fe;
+
+  --color-border-card-calendar: #7c3aed;
+  --color-border-card-calendar-soft: #a78bfa;
+
+  --color-text-calendar-primary: #2a2540;
+  --color-text-calendar-secondary: #6b6785;
+
+  --color-calendar-extra: #f59e0b;
+  --color-calendar-blocked: #ef4444;
+  --color-calendar-success: #10b981;
 }
 
 /* Dark Mode */
@@ -112,6 +127,21 @@ textarea:focus::placeholder {
   --color-btn-teacher-text: #0f0e17;
   --color-btn-student: #7c9ee8;
   --color-btn-student-text: #0f0e17;
+
+  /* Calendar - Dark Mode */
+  --color-bg-card-calendar: #1f1d2e;
+  --color-bg-card-calendar-hover: #2a273d;
+
+  --color-border-card-calendar: #8b5cf6; /* roxo vibrante moderno */
+  --color-border-card-calendar-soft: #5b4bb7;
+
+  --color-text-calendar-primary: #f5f3ff;
+  --color-text-calendar-secondary: #b9b6d3;
+
+  --color-calendar-extra: #f59e0b;
+  --color-calendar-blocked: #ef4444;
+  --color-calendar-success: #10b981;
+
 }
 
 /* Global Styles */
