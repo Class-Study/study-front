@@ -92,6 +92,7 @@ export const WorkspaceShell: React.FC<WorkspaceShellProps> = ({
                     <Header breadcrumbItems={breadcrumbItems} />
 
                     <div className={styles.toolbar}>
+
                         {sidebarCollapsed && (
                             <button
                                 type="button"
@@ -112,6 +113,13 @@ export const WorkspaceShell: React.FC<WorkspaceShellProps> = ({
                                 {timerSlot}
                             </div>
                         )}
+                        <button
+                            type="button"
+                            className={styles.backBtn}
+                            onClick={() => window.history.back()}
+                        >
+                            ← Voltar
+                        </button>
                         <button
                             type="button"
                             className={`${styles.chatToggleBtn} ${chatVisible ? styles.chatToggleBtnActive : ''}`}

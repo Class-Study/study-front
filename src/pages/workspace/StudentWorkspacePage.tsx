@@ -18,6 +18,7 @@ import DocxPreviewEditor from '@/components/ui/DocxPreviewEditor/DocxPreviewEdit
 import {Header} from '@/components/layout/Header/Header';
 import {WorkspaceActivity} from '@/types/workspace.types';
 import styles from './WorkspacePage.module.css';
+import {ExtraClass} from "@/types/student.types.ts";
 
 /* ─── Student Workspace ───────────────────────────────────────────────────── */
 
@@ -46,6 +47,7 @@ const StudentWorkspacePage: React.FC = () => {
         workspaceActivities,
         exerciseFolders,
         fetchWorkspace,
+        extraClass
     } = useMyWorkspace();
 
     const allActivities = useMemo(
@@ -57,7 +59,7 @@ const StudentWorkspacePage: React.FC = () => {
     const ws = useWorkspaceBase({
         sidebarStorageKey: 'workspace.student.sidebar.width',
         wsRef,
-        reconnectSignal: isConnected, // re-registra listener ao reconectar
+        reconnectSignal: isConnected,
     });
 
     // ── Resize do painel direito ───────────────────────────────────────────────
@@ -124,7 +126,7 @@ const StudentWorkspacePage: React.FC = () => {
         : null;
 
     // ── Cronômetro de aula ────────────────────────────────────────────────────
-    const timer = useClassTimer(classDays, classTime, classDuration);
+    const timer = useClassTimer(classDays, classTime, classDuration, extraClass);
     // Só conecta ao WebRTC dentro da janela de aula (horário + 15min de tolerância)
     const activeWorkspaceId = timer.isConnectionAllowed ? workspaceId : null;
 

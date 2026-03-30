@@ -43,7 +43,6 @@
 }
 
 .weekLabel {
-    font-family: var(--font-sans);
     font-size: 14px;
     font-weight: 600;
     color: var(--color-text-primary);
@@ -56,7 +55,6 @@
     border-radius: 6px;
     border: 1px solid var(--color-border);
     background: transparent;
-    font-family: var(--font-sans);
     font-size: 12px;
     color: var(--color-text-secondary);
     cursor: pointer;
@@ -78,7 +76,6 @@
     border-radius: 20px;
     border: 1px solid var(--color-border);
     background: transparent;
-    font-family: var(--font-sans);
     font-size: 12px;
     color: var(--color-text-secondary);
     cursor: pointer;
@@ -115,7 +112,6 @@
     border: none;
     background: var(--color-accent);
     color: var(--color-text-inverse);
-    font-family: var(--font-sans);
     font-size: 1rem;
     font-weight: 600;
     cursor: pointer;
@@ -131,6 +127,8 @@
     display: flex;
     flex-direction: column;
     flex: 1;
+    min-height: 0;
+    overflow: hidden;
 }
 
 /* Sticky day header row */
@@ -166,7 +164,6 @@
 }
 
 .dayHeaderName {
-    font-family: var(--font-sans);
     font-size: 11px;
     font-weight: 600;
     text-transform: uppercase;
@@ -179,7 +176,6 @@
 }
 
 .dayHeaderNum {
-    font-family: var(--font-sans);
     font-size: 18px;
     font-weight: 400;
     color: var(--color-text-primary);
@@ -202,7 +198,7 @@
 .calendarBody {
     display: flex;
     flex: 1;
-    max-height: 73.5vh;
+    min-height: 0;
     overflow-y: auto;
 }
 
@@ -221,7 +217,6 @@
 .timeLabel {
     position: absolute;
     right: 8px;
-    font-family: var(--font-sans);
     font-size: 10px;
     color: var(--color-text-tertiary);
     font-variant-numeric: tabular-nums;
@@ -446,12 +441,14 @@
 .searchResults {
     width: 100%;
     position: absolute;
+    flex-direction: column;
     display: flex;
     border: 2px solid var(--color-border);
     border-radius: 6px;
-    background: var(--color-bg-card);
+    background: var(--color-bg-card-calendar);
     max-height: 220px;
     overflow: auto;
+    z-index: 1;
 }
 
 .searching {
@@ -468,6 +465,7 @@
     display: flex;
     flex-direction: column;
     align-items: flex-start;
+    border-bottom: 2px solid var(--color-border);
     padding: 8px;
     width: 100%;
     background: var(--color-bg-card);
@@ -483,11 +481,6 @@
     align-items: center;
     justify-content: space-between;
     font-size: 13px;
-}
-
-.searchItemEmail {
-    font-size: 12px;
-    color: var(--color-text-tertiary);
 }
 
 
@@ -630,7 +623,6 @@
     display: inline-flex;
     align-items: center;
     gap: 4px;
-    font-family: var(--font-sans);
     font-size: 11px;
     font-weight: 600;
     padding: 2px 8px;
@@ -692,7 +684,6 @@
     border: none;
     background: var(--color-accent);
     color: var(--color-text-inverse);
-    font-family: var(--font-sans);
     font-size: 13px;
     font-weight: 600;
     cursor: pointer;
@@ -730,7 +721,6 @@
 }
 
 .label {
-    font-family: var(--font-sans);
     font-size: 11px;
     font-weight: 600;
     text-transform: uppercase;
@@ -746,7 +736,6 @@
     border-radius: 8px;
     border: 1px solid var(--color-border);
     background: var(--color-bg-input, var(--color-bg-page));
-    font-family: var(--font-sans);
     font-size: 13px;
     color: var(--color-text-primary);
     outline: none;
@@ -813,7 +802,6 @@
     padding: 3px 10px;
     border-radius: 10px;
     background: var(--color-bg-input);
-    font-family: var(--font-sans);
     font-size: 1rem;
     color: var(--color-text-tertiary);
     cursor: pointer;
@@ -833,14 +821,12 @@
 
 .infoNote,
 .tzNote {
-    font-family: var(--font-sans);
     font-size: 11px;
     color: var(--color-text-tertiary);
     margin: 0;
 }
 
 .formError {
-    font-family: var(--font-sans);
     font-size: 12px;
     color: var(--color-danger);
     margin: 0;
@@ -851,7 +837,6 @@
     border-radius: 8px;
     border: 1px solid var(--color-border);
     background: transparent;
-    font-family: var(--font-sans);
     font-size: 13px;
     color: var(--color-text-secondary);
     cursor: pointer;
@@ -868,7 +853,6 @@
     border: none;
     background: var(--color-accent);
     color: var(--color-text-inverse);
-    font-family: var(--font-sans);
     font-size: 13px;
     font-weight: 600;
     cursor: pointer;

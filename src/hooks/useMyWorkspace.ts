@@ -5,6 +5,7 @@ import studentProfileService from '@/services/api/studentProfile.service';
 import activityService from '@/services/api/activity.service';
 import workspaceService from '@/services/api/workspace.service';
 import { WorkspaceActivity, WorkspaceData } from '@/types/workspace.types';
+import {ExtraClass} from "@/types/student.types.ts";
 
 const toWorkspaceActivity = (
   activity: {
@@ -39,6 +40,7 @@ export const useMyWorkspace = () => {
   const [error, setError] = useState<string | null>(null);
   const [accessDenied, setAccessDenied] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [extraClass, setExtraClass] = useState<ExtraClass | null>(null);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   const updateTeacherInfo = useCallback((me: Awaited<ReturnType<typeof studentService.getMe>>) => {
@@ -66,6 +68,7 @@ export const useMyWorkspace = () => {
       setClassDays(me.classDays ?? []);
       setClassTime(me.classTime ?? '');
       setClassDuration(me.classDuration ?? 0);
+      setExtraClass(me.extraClass ?? null);
       updateTeacherInfo(me);
 
       setWorkspace({
@@ -256,5 +259,6 @@ export const useMyWorkspace = () => {
     fetchWorkspace,
     saveContent,
     moveActivity,
+    extraClass
   };
 };

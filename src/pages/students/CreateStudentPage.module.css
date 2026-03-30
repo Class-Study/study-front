@@ -30,7 +30,6 @@
   cursor: pointer;
   color: var(--color-text-secondary);
   font-size: 20px;
-  font-family: var(--font-sans);
   padding: 0;
   margin-bottom: 20px;
   transition: color 0.15s;
@@ -107,6 +106,12 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
+}
+
+.fieldHour {
+  display: grid;
+  grid-template-columns: 4fr 1fr;
+  gap: 12px;
 }
 
 .label {
@@ -196,7 +201,6 @@
 
 /* ══ LEVEL CARDS ══ */
 .loadingProfiles {
-  font-family: var(--font-sans);
   font-size: 13px;
   color: var(--color-text-tertiary);
   padding: 16px 0;
@@ -353,6 +357,119 @@
   opacity: 0.6;
   cursor: not-allowed;
 }
+
+/* ══ HORÁRIO — CONTRATO ══ */
+.monthsRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.monthsLabel {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+}
+
+.contractEnd {
+  z-index: 10;
+  font-size: 12px;
+  color: var(--color-text-tertiary);
+  margin-top: 4px;
+}
+
+.availHint {
+  font-size: 11px;
+  color: var(--color-text-tertiary);
+  margin-bottom: 6px;
+}
+
+.iconLoading { color: var(--color-text-tertiary); animation: spin 1s linear infinite; }
+.iconFree    { color: var(--color-success); }
+.iconWarn    { color: var(--color-gold); }
+.iconBlock   { color: var(--color-danger); }
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ══ AVAILABILITY PANEL ══ */
+.availPanel {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  margin-top: 4px;
+}
+
+.availHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 14px;
+  background: var(--color-bg-input);
+  border-bottom: 1px solid var(--color-border);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+}
+
+.availHeaderSub {
+  font-size: 11px;
+  color: var(--color-text-tertiary);
+  font-weight: 400;
+}
+
+.availRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--color-border);
+  font-size: 13px;
+}
+
+.availRow:last-child { border-bottom: none; }
+
+.availDay {
+  min-width: 80px;
+  font-weight: 500;
+  color: var(--color-text-primary);
+}
+
+.availBarWrap {
+  flex: 1;
+  height: 5px;
+  background: var(--color-bg-tag);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.availBar {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.4s ease;
+}
+
+.bar_free  { background: var(--color-success); }
+.bar_warn  { background: var(--color-gold); }
+.bar_block { background: var(--color-danger); }
+
+.availFreeText    { font-size: 12px; color: var(--color-success); white-space: nowrap; }
+.availConflictText { font-size: 12px; white-space: nowrap; }
+.text_warn  { color: var(--color-gold); }
+.text_block { color: var(--color-danger); }
+
+.availLoading { font-size: 12px; color: var(--color-text-tertiary); }
+
+.availSeeBtn {
+  font-size: 12px;
+  color: var(--color-accent);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+  white-space: nowrap;
+}
+
+.availSeeBtn:hover { opacity: 0.8; }
 
 /* ══ RESPONSIVE ══ */
 @media (max-width: 640px) {

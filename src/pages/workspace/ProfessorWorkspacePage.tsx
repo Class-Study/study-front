@@ -18,6 +18,7 @@ import {ActivityPickerModal} from './components/ActivityPickerModal/ActivityPick
 import {Header} from '@/components/layout/Header/Header';
 import {WorkspaceActivity} from '@/types/workspace.types';
 import styles from './WorkspacePage.module.css';
+import {ExtraClass} from "@/types/student.types.ts";
 
 /* ─── Painel direito do professor (dentro do WebRTCProvider) ───────────────── */
 
@@ -167,6 +168,7 @@ const ProfessorWorkspacePage: React.FC = () => {
     const [activityPickerOpen, setActivityPickerOpen] = useState(false);
     const [classDays, setClassDays] = useState<string[]>([]);
     const [classTime, setClassTime] = useState('');
+    const [extraClass, setExtraClass] = useState<ExtraClass | null>(null);
     const [classDuration, setClassDuration] = useState(0);
 
     // ── Efeitos ───────────────────────────────────────────────────────────────
@@ -191,6 +193,7 @@ const ProfessorWorkspacePage: React.FC = () => {
                 setClassDays(s.classDays ?? []);
                 setClassTime(s.classTime ?? '');
                 setClassDuration(s.classDuration ?? 0);
+                setExtraClass(s.extraClass ?? null)
             })
             .catch(() => {});
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -203,7 +206,7 @@ const ProfessorWorkspacePage: React.FC = () => {
         : null;
 
     // ── Cronômetro de aula ────────────────────────────────────────────────────
-    const timer = useClassTimer(classDays, classTime, classDuration);
+    const timer = useClassTimer(classDays, classTime, classDuration, extraClass);
     // Só conecta ao WebRTC dentro da janela de aula (horário + 15min de tolerância)
     const activeWorkspaceId = timer.isConnectionAllowed ? workspaceId : null;
 

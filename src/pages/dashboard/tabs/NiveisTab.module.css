@@ -16,14 +16,12 @@
 }
 
 .title {
-  font-family: var(--font-serif);
   font-size: 28px;
   font-weight: 600;
   color: var(--color-text-primary);
 }
 
 .counter {
-  font-family: var(--font-sans);
   font-size: 13px;
   color: var(--color-text-tertiary);
 }
@@ -34,7 +32,6 @@
   border: none;
   border-radius: var(--radius-md);
   padding: 8px 16px;
-  font-family: var(--font-sans);
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
@@ -54,7 +51,6 @@
 }
 
 .formTitle {
-  font-family: var(--font-sans);
   font-size: 14px;
   font-weight: 600;
   color: var(--color-text-primary);
@@ -80,7 +76,6 @@
 }
 
 .formLabel {
-  font-family: var(--font-sans);
   font-size: 11px;
   font-weight: 500;
   color: var(--color-text-tertiary);
@@ -94,7 +89,6 @@
   border-radius: var(--radius-md);
   padding: 8px 12px;
   color: var(--color-text-primary);
-  font-family: var(--font-sans);
   font-size: 13px;
   outline: none;
 }
@@ -108,7 +102,6 @@
 }
 
 .foldersSectionTitle {
-  font-family: var(--font-sans);
   font-size: 12px;
   font-weight: 500;
   color: var(--color-text-secondary);
@@ -131,7 +124,6 @@
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   padding: 8px 12px;
-  font-family: var(--font-sans);
   font-size: 13px;
   color: var(--color-text-primary);
   outline: none;
@@ -162,7 +154,6 @@
   border: 1px dashed var(--color-border);
   border-radius: var(--radius-md);
   color: var(--color-text-secondary);
-  font-family: var(--font-sans);
   font-size: 13px;
   cursor: pointer;
   transition: background 0.2s;
@@ -191,7 +182,6 @@
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   color: var(--color-text-secondary);
-  font-family: var(--font-sans);
   font-size: 13px;
   cursor: pointer;
 }
@@ -202,7 +192,6 @@
   border: none;
   border-radius: var(--radius-md);
   color: white;
-  font-family: var(--font-sans);
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
@@ -294,7 +283,6 @@
 }
 
 .levelName {
-  font-family: var(--font-sans);
   font-size: 15px;
   font-weight: 600;
   color: var(--color-text-primary);
@@ -302,7 +290,6 @@
 }
 
 .levelDesc {
-  font-family: var(--font-sans);
   font-size: 12px;
   color: var(--color-text-secondary);
   line-height: 1.4;
@@ -356,7 +343,6 @@
 
 .folderListName {
   color: var(--color-text-secondary);
-  font-family: var(--font-sans);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -386,7 +372,6 @@
   border-radius: var(--radius-sm);
   color: var(--color-accent);
   cursor: pointer;
-  font-family: var(--font-sans);
   transition: opacity 0.2s;
 }
 
@@ -402,7 +387,6 @@
   border-radius: var(--radius-sm);
   color: var(--color-text-secondary);
   cursor: pointer;
-  font-family: var(--font-sans);
 }
 
 .managementContent {
@@ -428,7 +412,6 @@
   color: white;
   border: none;
   border-radius: var(--radius-md);
-  font-family: var(--font-sans);
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
@@ -448,7 +431,6 @@
 }
 
 .modalTitleMain {
-  font-family: var(--font-sans);
   font-size: 18px;
   font-weight: 600;
   color: var(--color-text-primary);
@@ -475,7 +457,6 @@
   border-bottom: 2px solid transparent;
   margin-bottom: -1px;
   color: var(--color-text-secondary);
-  font-family: var(--font-sans);
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
@@ -514,7 +495,6 @@
 }
 
 .modalFolderName {
-  font-family: var(--font-sans);
   font-size: 13px;
   font-weight: 600;
   color: var(--color-text-primary);
@@ -550,7 +530,6 @@
   border-radius: 4px;
   background: rgba(196, 130, 58, 0.15);
   color: var(--color-accent-2);
-  font-family: var(--font-sans);
 }
 
 .successBanner {
@@ -654,7 +633,6 @@
 }
 
 .freeTextDividerText {
-  font-family: var(--font-sans);
   font-size: 11px;
   color: var(--color-text-tertiary);
   text-transform: uppercase;
@@ -674,7 +652,6 @@
   border: 1px dashed var(--color-border);
   border-radius: var(--radius-md);
   color: var(--color-text-secondary);
-  font-family: var(--font-sans);
   font-size: 13px;
   cursor: pointer;
   transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
@@ -702,7 +679,6 @@
 }
 
 .uploadZoneText {
-  font-family: var(--font-sans);
   font-size: 13px;
   font-weight: 500;
   color: var(--color-text-primary);
@@ -738,7 +714,6 @@
 .templateTitle {
   font-size: 12px;
   color: var(--color-text-primary);
-  font-family: var(--font-sans);
 }
 
 .templateType {
@@ -749,7 +724,6 @@
 .templateFile {
   font-size: 10px;
   color: var(--color-text-tertiary);
-  font-family: var(--font-sans);
 }
 
 .removeTemplateBtn {
@@ -780,7 +754,6 @@
   padding: 6px 10px;
   font-size: 12px;
   color: var(--color-text-primary);
-  font-family: var(--font-sans);
   outline: none;
 }
 
@@ -791,7 +764,6 @@
   padding: 6px 10px;
   font-size: 12px;
   color: var(--color-text-primary);
-  font-family: var(--font-sans);
   outline: none;
 }
 
@@ -806,7 +778,6 @@
   font-size: 11px;
   color: var(--color-text-secondary);
   cursor: pointer;
-  font-family: var(--font-sans);
 }
 
 .fileInput {
@@ -912,7 +883,6 @@
 }
 
 .previewLabel {
-  font-family: var(--font-sans);
   font-size: 12px;
   font-weight: 500;
   color: var(--color-text-secondary);
@@ -924,7 +894,6 @@
   border: none;
   cursor: pointer;
   color: var(--color-text-tertiary);
-  font-family: var(--font-sans);
 }
 
 .closePreviewBtn:hover {
@@ -965,7 +934,6 @@
 }
 
 .previewLabel {
-  font-family: var(--font-sans);
   font-size: 11px;
   font-weight: 500;
   color: var(--color-text-tertiary);
@@ -979,7 +947,6 @@
   border-radius: var(--radius-md);
   padding: 8px 12px;
   color: var(--color-text-primary);
-  font-family: var(--font-sans);
   font-size: 13px;
   outline: none;
 }
@@ -1014,7 +981,6 @@
 
 .propagateModalTitle {
   margin: 0;
-  font-family: var(--font-sans);
   font-size: 16px;
   font-weight: 600;
   color: var(--color-text-primary);
@@ -1023,7 +989,6 @@
 
 .propagateModalText {
   margin: 0;
-  font-family: var(--font-sans);
   font-size: 13px;
   color: var(--color-text-secondary);
   line-height: 1.6;
@@ -1042,7 +1007,6 @@
 .propagateModalPrimaryBtn {
   padding: 8px 12px;
   border-radius: var(--radius-md);
-  font-family: var(--font-sans);
   font-size: 13px;
   cursor: pointer;
   transition: opacity 0.2s;
@@ -1056,12 +1020,12 @@
 
 .propagateModalSecondaryBtn {
   background: var(--color-bg-card);
-  border: 0.5px solid var(--color-border-primary, var(--color-border));
+  border: 0.5px solid var(--color-border);
   color: var(--color-text-primary);
 }
 
 .propagateModalPrimaryBtn {
-  background: var(--color-primary, var(--color-accent));
+  background: var(--color-accent);
   border: none;
   color: white;
 }

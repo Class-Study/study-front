@@ -128,9 +128,10 @@ interface EventDetailsModalProps {
     event: CalendarEvent;
     onClose: () => void;
     onWorkspace: (id: string) => void;
+    onProfile: (id: string) => void;
 }
 
-const EventDetailsModal: React.FC<EventDetailsModalProps> = ({event, onClose, onWorkspace}) => {
+const EventDetailsModal: React.FC<EventDetailsModalProps> = ({event, onClose, onWorkspace, onProfile}) => {
     const dt = new Date(event.date + 'T00:00:00');
     const dateLabel = `${PT_LONG[dt.getDay()]}, ${dt.getDate()} de ${PT_MONTHS[dt.getMonth()]} de ${dt.getFullYear()}`;
     const endTime = addMinutes(event.startTime.substring(0, 5), event.durationMin);
@@ -141,7 +142,11 @@ const EventDetailsModal: React.FC<EventDetailsModalProps> = ({event, onClose, on
             <div className={`${styles.modal}`} onClick={e => e.stopPropagation()}>
 
                 <div className={`${styles.detailsHeader} ${styles[`level_${getLevelKey(event.levelCode)}`]}`}>
-                    <div className={`${styles.detailsAvatar} ${styles[`level_${getLevelKey(event.levelCode)}`]}`}>
+                    <div
+                        className={`${styles.detailsAvatar} ${styles[`level_${getLevelKey(event.levelCode)}`]}`}
+                        onClick={() => onProfile(event.id)}
+                        style={{ cursor: 'pointer' }}
+                    >
                         {getAvatarText(event.studentName)}
                     </div>
 
@@ -787,15 +792,15 @@ export const CalendarioTab: React.FC = () => {
 
                                             {/* BADGE ABSOLUTA */}
                                             {ev.type === 'EXTRA' && (
-                                                <div className={styles.badge}>Avulsa</div>
+                                                <div className={styles.badge}>AVU</div>
                                             )}
 
                                             {ev.type === 'RECURRING' && (
-                                                <div className={styles.badgeRecurring}>Recorrente</div>
+                                                <div className={styles.badgeRecurring}>REC</div>
                                             )}
 
                                             {ev.type === 'RECOVERY' && (
-                                                <div className={styles.badgeRecovery}>Reposição</div>
+                                                <div className={styles.badgeRecovery}>REP</div>
                                             )}
 
                                             {/* CONTEÚDO */}
@@ -828,6 +833,11 @@ export const CalendarioTab: React.FC = () => {
                         setDetailsEvent(null);
                         navigate(`/dashboard/student/${id}/workspace`);
                     }}
+                        onProfile={id => {
+                        setDetailsEvent(null);
+                        navigate(`/dashboard/student/${id}`);
+                    }
+                    }
                 />
             )}
 

@@ -335,7 +335,10 @@ export const StudentProfilePage: React.FC = () => {
         breadcrumbItems={breadcrumbItems}
       />
 
+
+
       <div className={styles.layout}>
+
         <main className={styles.main}>
           {pageLoading && <p className={styles.loading}>Carregando...</p>}
           {pageError && <p className={styles.errorMsg}>{pageError}</p>}
@@ -343,6 +346,13 @@ export const StudentProfilePage: React.FC = () => {
           {!pageLoading && !pageError && student && (
             <>
               <section className={heroCardClass}>
+                <button
+                    type="button"
+                    className={styles.backBtn}
+                    onClick={() => window.history.back()}
+                >
+                  ← Voltar
+                </button>
                 <div
                   className={styles.heroAvatar}
                   style={{ backgroundColor: getAvatarTone(student.name) }}

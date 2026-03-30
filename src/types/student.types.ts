@@ -4,6 +4,13 @@ export type ClassDay =
   | 'MONDAY' | 'TUESDAY' | 'WEDNESDAY'
   | 'THURSDAY' | 'FRIDAY' | 'SATURDAY' | 'SUNDAY';
 
+export interface ExtraClass {
+  id: string;
+  date: string;
+  startTime: string;
+  durationMin: number;
+}
+
 export interface Student {
   id: string;
   name: string;
@@ -41,6 +48,7 @@ export interface Student {
   };
   startDate: string;
   createdAt: string;
+  extraClass?: ExtraClass;
 }
 
 export interface CreateStudentRequest {
@@ -56,6 +64,8 @@ export interface CreateStudentRequest {
   meetPlatform?: string;
   meetLink?: string;
   startDate: string;
+  contractEndDate: string;
+  contractMonths: number;
 }
 
 export interface UpdateStudentRequest {

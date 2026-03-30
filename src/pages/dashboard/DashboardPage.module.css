@@ -1,679 +1,671 @@
 .page {
-  display: flex;
-  flex-direction: column;
-  min-height: 100vh;
-  width: 100%;
-  background: var(--color-bg-page);
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    overflow: hidden;
+    width: 100%;
+    background: var(--color-bg-page);
 }
 
 /* Tabs Navigation */
 .tabs {
-  display: flex;
-  gap: 0;
-  border-bottom: 1px solid var(--color-border);
-  background: var(--color-bg-card);
-  padding: 0 24px;
-  position: sticky;
-  top: 56px;
-  z-index: 50;
+    display: flex;
+    gap: 0;
+    border-bottom: 1px solid var(--color-border);
+    background: var(--color-bg-card);
+    padding: 0 24px;
+    position: sticky;
+    top: 56px;
+    z-index: 50;
 }
 
 .tab {
-  padding: 16px 20px;
-  border: none;
-  background: transparent;
-  color: var(--color-text-secondary);
-  font-family: var(--font-sans);
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: color 0.2s ease;
-  border-bottom: 2px solid transparent;
-  margin-bottom: -1px;
+    padding: 16px 20px;
+    border: none;
+    background: transparent;
+    color: var(--color-text-secondary);
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: color 0.2s ease;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
 }
 
 .tab:hover {
-  color: var(--color-text-primary);
+    color: var(--color-text-primary);
 }
 
 .tab.active {
-  color: var(--color-accent);
-  border-bottom-color: var(--color-accent);
+    color: var(--color-accent);
+    border-bottom-color: var(--color-accent);
 }
 
 /* Main Content */
 .content {
-  flex: 1;
-  width: 100%;
-  padding: 24px 32px 32px 32px;
-  box-sizing: border-box;
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    width: 100%;
+    padding: 24px 32px 32px 32px;
+    box-sizing: border-box;
 }
 
 /* Calendar tab — full-height, no padding, flex column */
 .contentCalendar {
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
 }
+
 .contentCalendar > * {
-  flex: 1;
-  min-height: 0;
+    flex: 1;
+    min-height: 0;
 }
 
 .inner {
-  width: 100%;
-  max-width: 1400px;
-  margin: 0 auto;
+    width: 100%;
+    max-width: 1400px;
+    margin: 0 auto;
 }
 
 /* Stats Container */
 .statsContainer {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 14px;
-  margin-bottom: 24px;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 14px;
+    margin-bottom: 24px;
 }
 
 .statCard {
-  background: var(--color-bg-card);
-  border-radius: var(--radius-lg);
-  padding: 24px;
-  box-shadow: var(--shadow-md);
-  transition:
-    transform 0.2s ease,
+    background: var(--color-bg-card);
+    border-radius: var(--radius-lg);
+    padding: 24px;
+    box-shadow: var(--shadow-md);
+    transition: transform 0.2s ease,
     box-shadow 0.2s ease;
 }
 
 .statCard:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-lg);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
 }
 
 .statCard.primary {
-  background: linear-gradient(
-    135deg,
-    var(--color-accent) 0%,
-    var(--color-accent-hover) 100%
-  );
-  color: var(--color-text-inverse);
+    background: linear-gradient(
+            135deg,
+            var(--color-accent) 0%,
+            var(--color-accent-hover) 100%
+    );
+    color: var(--color-text-inverse);
 }
 
 .statLabel {
-  font-family: var(--font-sans);
-  font-size: 11px;
-  font-weight: 500;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: inherit;
-  margin: 0 0 12px 0;
-  opacity: 0.9;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: inherit;
+    margin: 0 0 12px 0;
+    opacity: 0.9;
 }
 
 .statCard.primary .statLabel {
-  opacity: 0.95;
+    opacity: 0.95;
 }
 
 .statNumber {
-  font-family: var(--font-serif);
-  font-size: 48px;
-  font-weight: 600;
-  margin: 0 0 8px 0;
-  line-height: 1;
-  color: inherit;
+    font-size: 48px;
+    font-weight: 600;
+    margin: 0 0 8px 0;
+    line-height: 1;
+    color: inherit;
 }
 
 .statSubtitle {
-  font-family: var(--font-sans);
-  font-size: 13px;
-  font-weight: 300;
-  color: inherit;
-  margin: 0;
-  opacity: 0.85;
+    font-size: 13px;
+    font-weight: 300;
+    color: inherit;
+    margin: 0;
+    opacity: 0.85;
 }
 
 .statCard.primary .statSubtitle {
-  opacity: 0.9;
+    opacity: 0.9;
 }
 
 /* Filter Section */
 .filterSection {
-  display: flex;
-  gap: 12px;
-  margin-bottom: 18px;
-  align-items: center;
-  flex-wrap: wrap;
+    display: flex;
+    gap: 12px;
+    margin-bottom: 18px;
+    align-items: center;
+    flex-wrap: wrap;
 }
 
 .searchBox {
-  flex: 1;
-  min-width: 250px;
-  position: relative;
+    flex: 1;
+    min-width: 250px;
+    position: relative;
 }
 
 .searchIcon {
-  position: absolute;
-  left: 10px;
-  top: 50%;
-  transform: translateY(-50%);
-  color: var(--color-text-tertiary);
+    position: absolute;
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--color-text-tertiary);
 }
 
 .searchInput {
-  width: 100%;
-  padding: 10px 12px 10px 34px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  background: var(--color-bg-input);
-  color: var(--color-text-primary);
-  font-family: var(--font-sans);
-  font-size: 14px;
-  transition: border-color 0.2s ease;
+    width: 100%;
+    padding: 10px 12px 10px 34px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-bg-input);
+    color: var(--color-text-primary);
+    font-size: 14px;
+    transition: border-color 0.2s ease;
 }
 
 .searchInput:focus {
-  outline: none;
-  border-color: var(--color-accent);
+    outline: none;
+    border-color: var(--color-accent);
 }
 
 .searchInput::placeholder {
-  color: var(--color-text-tertiary);
+    color: var(--color-text-tertiary);
 }
 
 .dayPills {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
 }
 
 .pill {
-  padding: 8px 14px;
-  border: 1px solid var(--color-border);
-  background: transparent;
-  border-radius: var(--radius-md);
-  color: var(--color-text-secondary);
-  font-family: var(--font-sans);
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease;
+    padding: 8px 14px;
+    border: 1px solid var(--color-border);
+    background: transparent;
+    border-radius: var(--radius-md);
+    color: var(--color-text-secondary);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
 }
 
 .pill:hover {
-  border-color: var(--color-accent);
-  color: var(--color-accent);
+    border-color: var(--color-accent);
+    color: var(--color-accent);
 }
 
 .pill.pillActive {
-  background: var(--color-accent);
-  border-color: var(--color-accent);
-  color: var(--color-text-inverse);
+    background: var(--color-accent);
+    border-color: var(--color-accent);
+    color: var(--color-text-inverse);
 }
 
 /* Grid Header */
 .gridHeader {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 24px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 24px;
 }
 
 .newStudentBtn {
-  margin-left: auto;
-  background: var(--color-accent);
-  color: var(--color-text-inverse);
-  border-radius: 8px;
-  white-space: nowrap;
-  padding: 0.4rem 1.5rem;
-  font-size: 15px;
-  font-weight: bold;
-  font-family: var(--font-sans);
-  cursor: pointer;
-  border: none;
-  transition: opacity 0.15s;
+    margin-left: auto;
+    background: var(--color-accent);
+    color: var(--color-text-inverse);
+    border-radius: 8px;
+    white-space: nowrap;
+    padding: 0.4rem 1.5rem;
+    font-size: 15px;
+    font-weight: bold;
+    cursor: pointer;
+    border: none;
+    transition: opacity 0.15s;
 }
 
 .newStudentBtn:hover {
-  opacity: 0.85;
+    opacity: 0.85;
 }
 
 .gridTitle {
-  font-family: var(--font-serif);
-  font-size: 24px;
-  font-weight: 600;
-  color: var(--color-text-primary);
-  margin: 0;
+    font-size: 24px;
+    font-weight: 600;
+    color: var(--color-text-primary);
+    margin: 0;
 }
 
 .gridCount {
-  font-family: var(--font-sans);
-  font-size: 14px;
-  color: var(--color-text-secondary);
+    font-size: 14px;
+    color: var(--color-text-secondary);
 }
 
 /* Students Grid */
 .grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 12px;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
 }
 
 .studentCard {
-  background: var(--color-bg-card);
-  border-radius: var(--radius-lg);
-  border-left: 3px solid var(--color-accent);
-  border-top: 1px solid var(--color-border);
-  border-right: 1px solid var(--color-border);
-  border-bottom: 1px solid var(--color-border);
-  padding: 16px;
-  cursor: pointer;
-  box-shadow: var(--shadow-sm);
-  transition:
-    transform 0.15s ease,
+    background: var(--color-bg-card);
+    border-radius: var(--radius-lg);
+    border-left: 3px solid var(--color-accent);
+    border-top: 1px solid var(--color-border);
+    border-right: 1px solid var(--color-border);
+    border-bottom: 1px solid var(--color-border);
+    padding: 16px;
+    cursor: pointer;
+    box-shadow: var(--shadow-sm);
+    transition: transform 0.15s ease,
     box-shadow 0.15s ease;
 }
 
 /* ── Card em aula ────────────────────────────────── */
 .studentCard.cardClassNow {
-  border-color: var(--color-success);
-  border-left-width: 3px;
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-success) 25%, transparent),
-              var(--shadow-md);
-  animation: cardPulse 2.4s ease-in-out infinite;
+    border-color: var(--color-success);
+    border-left-width: 3px;
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-success) 25%, transparent),
+    var(--shadow-md);
+    animation: cardPulse 2.4s ease-in-out infinite;
 }
 
 :global([data-theme="light"]) .studentCard.cardClassNow {
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-accent) 30%, transparent),
-              var(--shadow-md);
-  border-color: var(--color-accent);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-accent) 30%, transparent),
+    var(--shadow-md);
+    border-color: var(--color-accent);
 }
 
 @keyframes cardPulse {
-  0%, 100% { transform: scale(1); }
-  50%       { transform: scale(1.010); }
+    0%, 100% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.010);
+    }
 }
 
 .classNowBadge {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  font-size: 10px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.07em;
-  color: var(--color-success);
-  background: color-mix(in srgb, var(--color-success) 12%, transparent);
-  border: 1px solid color-mix(in srgb, var(--color-success) 35%, transparent);
-  border-radius: 20px;
-  padding: 2px 8px;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--color-success);
+    background: color-mix(in srgb, var(--color-success) 12%, transparent);
+    border: 1px solid color-mix(in srgb, var(--color-success) 35%, transparent);
+    border-radius: 20px;
+    padding: 2px 8px;
 }
 
 :global([data-theme="light"]) .classNowBadge {
-  color: var(--color-accent);
-  background: color-mix(in srgb, var(--color-accent) 10%, transparent);
-  border-color: color-mix(in srgb, var(--color-accent) 30%, transparent);
+    color: var(--color-accent);
+    background: color-mix(in srgb, var(--color-accent) 10%, transparent);
+    border-color: color-mix(in srgb, var(--color-accent) 30%, transparent);
 }
 
 .classNowDot {
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background: currentColor;
-  animation: dotBlink 1.2s ease-in-out infinite;
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: currentColor;
+    animation: dotBlink 1.2s ease-in-out infinite;
 }
 
 @keyframes dotBlink {
-  0%, 100% { opacity: 1; }
-  50%       { opacity: 0.3; }
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.3;
+    }
 }
 
 .studentCard.levelBasic {
-  border-left-color: var(--color-blue);
+    border-left-color: var(--color-blue);
 }
 
 .studentCard.levelIntermediate {
-  border-left-color: var(--color-accent-2);
+    border-left-color: var(--color-accent-2);
 }
 
 .studentCard.levelAdvanced {
-  border-left-color: var(--color-accent);
+    border-left-color: var(--color-accent);
 }
 
 .studentCard:hover {
-  box-shadow: var(--shadow-md);
-  transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+    transform: translateY(-2px);
 }
 
 .studentCard:active {
-  transform: translateY(0);
+    transform: translateY(0);
 }
 
 /* Card Header */
 .cardHeader {
-  display: flex;
-  gap: 12px;
-  margin-bottom: 16px;
-  align-items: flex-start;
+    display: flex;
+    gap: 12px;
+    margin-bottom: 16px;
+    align-items: flex-start;
 }
 
 .cardAvatar {
-  width: 40px;
-  height: 40px;
-  border-radius: 10px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--color-text-inverse);
-  font-family: var(--font-sans);
-  font-size: 14px;
-  font-weight: 600;
-  flex-shrink: 0;
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--color-text-inverse);
+    font-size: 14px;
+    font-weight: 600;
+    flex-shrink: 0;
 }
 
 .avatarTone0 {
-  background: var(--color-accent-2);
+    background: var(--color-accent-2);
 }
 
 .avatarTone1 {
-  background: var(--color-blue);
+    background: var(--color-blue);
 }
 
 .avatarTone2 {
-  background: var(--color-accent);
+    background: var(--color-accent);
 }
 
 .avatarTone3 {
-  background: var(--color-danger);
+    background: var(--color-danger);
 }
 
 .avatarTone4 {
-  background: var(--color-gold);
+    background: var(--color-gold);
 }
 
 .avatarTone5 {
-  background: var(--color-success);
+    background: var(--color-success);
 }
 
 .cardTitle {
-  font-family: var(--font-sans);
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--color-text-primary);
-  margin: 0;
-  line-height: 1.3;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--color-text-primary);
+    margin: 0;
+    line-height: 1.3;
 }
 
 /* Card Meta */
 .cardMeta {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 12px;
-  flex-wrap: wrap;
+    display: flex;
+    gap: 8px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
 }
 
 .levelTag {
-  padding: 4px 10px;
-  border-radius: var(--radius-md);
-  font-family: var(--font-sans);
-  font-size: 12px;
-  font-weight: 500;
-  display: inline-block;
+    padding: 4px 10px;
+    border-radius: var(--radius-md);
+    font-size: 12px;
+    font-weight: 500;
+    display: inline-block;
 }
 
 .levelTag.levelBasic {
-  background: color-mix(in srgb, var(--color-blue) 16%, transparent);
-  color: var(--color-blue);
+    background: color-mix(in srgb, var(--color-blue) 16%, transparent);
+    color: var(--color-blue);
 }
 
 .levelTag.levelIntermediate {
-  background: color-mix(in srgb, var(--color-accent-2) 16%, transparent);
-  color: var(--color-accent-2);
+    background: color-mix(in srgb, var(--color-accent-2) 16%, transparent);
+    color: var(--color-accent-2);
 }
 
 .levelTag.levelAdvanced {
-  background: color-mix(in srgb, var(--color-accent) 16%, transparent);
-  color: var(--color-accent);
+    background: color-mix(in srgb, var(--color-accent) 16%, transparent);
+    color: var(--color-accent);
 }
 
 .statusBadge {
-  font-family: var(--font-sans);
-  font-size: 12px;
-  font-weight: 500;
+    font-size: 12px;
+    font-weight: 500;
 }
 
 .statusActive {
-  color: var(--color-success);
+    color: var(--color-success);
 }
 
 .statusBlocked {
-  color: var(--color-danger);
+    color: var(--color-danger);
 }
 
 /* Class Info */
 .classInfo {
-  font-family: var(--font-sans);
-  font-size: 13px;
-  color: var(--color-text-secondary);
-  margin-bottom: 12px;
+    font-size: 13px;
+    color: var(--color-text-secondary);
+    margin-bottom: 12px;
 }
 
 /* Progress Section */
 .progressSection {
-  margin-bottom: 16px;
+    margin-bottom: 16px;
 }
 
 .progressLabel {
-  display: flex;
-  justify-content: space-between;
-  font-family: var(--font-sans);
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--color-text-primary);
-  margin-bottom: 6px;
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--color-text-primary);
+    margin-bottom: 6px;
 }
 
 .progressPercent {
-  color: var(--color-text-secondary);
+    color: var(--color-text-secondary);
 }
 
 .progressBar {
-  width: 100%;
-  height: 6px;
-  background: var(--color-bg-tag);
-  border-radius: 3px;
-  overflow: hidden;
+    width: 100%;
+    height: 6px;
+    background: var(--color-bg-tag);
+    border-radius: 3px;
+    overflow: hidden;
 }
 
 .progressFill {
-  width: 100%;
-  height: 100%;
-  border-radius: 3px;
-  appearance: none;
-  display: block;
+    width: 100%;
+    height: 100%;
+    border-radius: 3px;
+    appearance: none;
+    display: block;
 }
 
 .progressFill::-webkit-progress-bar {
-  background: transparent;
+    background: transparent;
 }
 
 .progressFill::-webkit-progress-value {
-  border-radius: 3px;
+    border-radius: 3px;
 }
 
 .progressFill::-moz-progress-bar {
-  border-radius: 3px;
+    border-radius: 3px;
 }
 
 .progressFill.levelBasic::-webkit-progress-value {
-  background: var(--color-blue);
+    background: var(--color-blue);
 }
 
 .progressFill.levelIntermediate::-webkit-progress-value {
-  background: var(--color-accent-2);
+    background: var(--color-accent-2);
 }
 
 .progressFill.levelAdvanced::-webkit-progress-value {
-  background: var(--color-accent);
+    background: var(--color-accent);
 }
 
 .progressFill.levelBasic::-moz-progress-bar {
-  background: var(--color-blue);
+    background: var(--color-blue);
 }
 
 .progressFill.levelIntermediate::-moz-progress-bar {
-  background: var(--color-accent-2);
+    background: var(--color-accent-2);
 }
 
 .progressFill.levelAdvanced::-moz-progress-bar {
-  background: var(--color-accent);
+    background: var(--color-accent);
 }
 
 /* Card Footer */
 .cardFooter {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding-top: 12px;
-  border-top: 1px solid var(--color-border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 12px;
+    border-top: 1px solid var(--color-border);
 }
 
 .activities {
-  font-family: var(--font-sans);
-  font-size: 13px;
-  color: var(--color-text-secondary);
+    font-size: 13px;
+    color: var(--color-text-secondary);
 }
 
 .actionButtons {
-  display: flex;
-  gap: 8px;
+    display: flex;
+    gap: 8px;
 }
 
 .iconBtn {
-  width: 2rem;
-  height: 2rem;
-  border-radius: var(--radius-md);
-  border: 1px solid var(--color-border);
-  background: var(--color-bg-tag);
-  color: var(--color-text-secondary);
-  cursor: pointer;
-  transition:
-    background 0.2s ease,
+    width: 2rem;
+    height: 2rem;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--color-border);
+    background: var(--color-bg-tag);
+    color: var(--color-text-secondary);
+    cursor: pointer;
+    transition: background 0.2s ease,
     color 0.2s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .iconBtn:hover {
-  background: var(--color-bg-card);
-  color: var(--color-text-primary);
+    background: var(--color-bg-card);
+    color: var(--color-text-primary);
 }
 
 /* Placeholder */
 .placeholder {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 16px;
-  padding: 80px 24px;
-  text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    padding: 80px 24px;
+    text-align: center;
 }
 
 .placeholderIcon {
-  color: var(--color-text-secondary);
+    color: var(--color-text-secondary);
 }
 
 .placeholder h2 {
-  font-family: var(--font-serif);
-  font-size: 28px;
-  font-weight: 600;
-  color: var(--color-text-primary);
-  margin: 0;
+    font-size: 28px;
+    font-weight: 600;
+    color: var(--color-text-primary);
+    margin: 0;
 }
 
 .placeholder p {
-  font-family: var(--font-sans);
-  font-size: 16px;
-  color: var(--color-text-secondary);
-  margin: 0;
+    font-size: 16px;
+    color: var(--color-text-secondary);
+    margin: 0;
 }
 
 /* Loading and Error States */
 .loading,
 .error {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex: 1;
-  min-height: 400px;
-  font-family: var(--font-sans);
-  font-size: 16px;
-  color: var(--color-text-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+    min-height: 400px;
+    font-size: 16px;
+    color: var(--color-text-primary);
 }
 
 .error {
-  color: var(--color-danger);
+    color: var(--color-danger);
 }
 
 /* Responsive */
 @media (max-width: 1200px) {
-  .statsContainer {
-    grid-template-columns: repeat(2, 1fr);
-  }
+    .statsContainer {
+        grid-template-columns: repeat(2, 1fr);
+    }
 
-  .grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
+    .grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
 }
 
 @media (max-width: 768px) {
-  .grid {
-    grid-template-columns: 1fr;
-  }
+    .grid {
+        grid-template-columns: 1fr;
+    }
 
-  .filterSection {
-    flex-direction: column;
-    gap: 12px;
-  }
+    .filterSection {
+        flex-direction: column;
+        gap: 12px;
+    }
 
-  .searchBox {
-    min-width: 100%;
-  }
+    .searchBox {
+        min-width: 100%;
+    }
 
-  .dayPills {
-    width: 100%;
-    justify-content: flex-start;
-  }
+    .dayPills {
+        width: 100%;
+        justify-content: flex-start;
+    }
 
-  .inner {
-    padding: 0;
-  }
+    .inner {
+        padding: 0;
+    }
 }
 
 @media (max-width: 480px) {
-  .content {
-    padding: 16px 12px 20px 12px;
-  }
+    .content {
+        padding: 16px 12px 20px 12px;
+    }
 
-  .statsContainer {
-    grid-template-columns: 1fr;
-  }
+    .statsContainer {
+        grid-template-columns: 1fr;
+    }
 
-  .statNumber {
-    font-size: 36px;
-  }
+    .statNumber {
+        font-size: 36px;
+    }
 
-  .tabs {
-    padding: 0 12px;
-  }
+    .tabs {
+        padding: 0 12px;
+    }
 
-  .tab {
-    padding: 12px 16px;
-    font-size: 12px;
-  }
+    .tab {
+        padding: 12px 16px;
+        font-size: 12px;
+    }
 
-  .gridTitle {
-    font-size: 18px;
-  }
+    .gridTitle {
+        font-size: 18px;
+    }
 }

@@ -5,9 +5,10 @@ import {
   CreateStudentRequest,
   UpdateStudentRequest,
   UpdateStudentNoteRequest,
-  ListStudentsResponse,
+  ListStudentsResponse, ClassDay,
 } from '@/types/student.types';
 import { PageResponse } from '@/types/api.types';
+import {DayAvailability} from "@/types/schedule.types.ts";
 
 const normalizeStudent = (student: Student): Student => ({
   ...student,
@@ -30,6 +31,28 @@ const studentService = {
       `/students?page=${page}&size=${size}`,
     );
     return data;
+  },
+
+  checkAvailability: async (
+      days: ClassDay[],
+      durationMin: number,
+      startDate: string,
+      classTime: string,
+      contractMonths: number,
+  ): Promise<DayAvailability[]> => {
+    const { data } = await api.get<{ totalClassesPerDay: number; availability: DayAvailability[] }>(
+        '/students/availability',
+        {
+          params: {
+            days: days.join(','),
+            durationMin,
+            startDate,
+            classTime,          // 🆕 ex: "19:00"
+            contractMonths,
+          },
+        },
+    );
+    return data.availability;
   },
 
   getById: async (id: string): Promise<Student> => {

@@ -1,3 +1,5 @@
+import {ClassDay} from "@/types/student.types.ts";
+
 export type EventType = 'EXTRA' | 'RECURRING' | 'RECOVERY';
 
 export const EventTypeMeta = {
@@ -53,4 +55,36 @@ export interface CreateExtraClassRequest {
   durationMin: number;
   title: string;
   type: EventType
+}
+
+export interface ConflictItem {
+  date: string;        // "2026-04-07"
+  studentId: string;
+  studentName: string;
+  startTime: string;
+  type: string;
+  durationMin: number;
+  scheduleId: string;
+}
+
+export interface DayAvailability {
+  day: ClassDay;
+  totalClasses: number;
+  conflictCount: number;
+  conflicts: ConflictItem[];
+  status: 'free' | 'warn' | 'block';
+}
+
+export interface RescheduleOptionResponse {
+  scheduleId: string;
+  studentName?: string;
+  currentDate: string;
+  startTime: string;
+  durationMin: number;
+  options: Option[];
+}
+
+export interface Option {
+  date: string;
+  time: string;
 }
