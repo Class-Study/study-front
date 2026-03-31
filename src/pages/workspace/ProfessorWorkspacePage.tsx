@@ -18,7 +18,7 @@ import {ActivityPickerModal} from './components/ActivityPickerModal/ActivityPick
 import {Header} from '@/components/layout/Header/Header';
 import {WorkspaceActivity} from '@/types/workspace.types';
 import styles from './WorkspacePage.module.css';
-import {ExtraClass} from "@/types/student.types.ts";
+import {Classroom} from "@/types/student.types.ts";
 
 /* ─── Painel direito do professor (dentro do WebRTCProvider) ───────────────── */
 
@@ -38,14 +38,14 @@ interface ProfessorRightPanelProps {
  * O chat fica desabilitado até o aluno se conectar e definir uma atividade.
  */
 const ProfessorRightPanel: React.FC<ProfessorRightPanelProps> = ({
-    ws,
-    targetStudentId,
-    rightWidth,
-    onRightResizeStart,
-    chatPercent,
-    onVerticalResizeStart,
-    timer,
-}) => {
+                                                                     ws,
+                                                                     targetStudentId,
+                                                                     rightWidth,
+                                                                     onRightResizeStart,
+                                                                     chatPercent,
+                                                                     onVerticalResizeStart,
+                                                                     timer,
+                                                                 }) => {
     const {isStudentOnline, studentActivityId, studentTitle, requestReconnect, isReconnecting} = useWebRTC();
 
     const chatActivityTitle = studentTitle ?? ws.activeActivity?.title ?? '';
@@ -91,7 +91,7 @@ const ProfessorRightPanel: React.FC<ProfessorRightPanelProps> = ({
         >
             {/* Handle de resize horizontal — esquerda do painel */}
             {ws.chatVisible && (
-                <div className={styles.rightResizeHandle} onMouseDown={onRightResizeStart} />
+                <div className={styles.rightResizeHandle} onMouseDown={onRightResizeStart}/>
             )}
 
             <div className={styles.chatSection} style={{height: `${chatPercent}%`, flex: 'none'}}>
@@ -107,7 +107,7 @@ const ProfessorRightPanel: React.FC<ProfessorRightPanelProps> = ({
             </div>
 
             {/* Handle de resize vertical — entre chat e notas */}
-            <div className={styles.verticalResizeHandle} onMouseDown={onVerticalResizeStart} />
+            <div className={styles.verticalResizeHandle} onMouseDown={onVerticalResizeStart}/>
 
             <div className={styles.notesSection} style={{height: `${100 - chatPercent}%`, flex: 'none'}}>
                 <WorkspaceNotes
@@ -168,7 +168,7 @@ const ProfessorWorkspacePage: React.FC = () => {
     const [activityPickerOpen, setActivityPickerOpen] = useState(false);
     const [classDays, setClassDays] = useState<string[]>([]);
     const [classTime, setClassTime] = useState('');
-    const [extraClass, setExtraClass] = useState<ExtraClass | null>(null);
+    const [classroom, setClassroom] = useState<Classroom | null>(null);
     const [classDuration, setClassDuration] = useState(0);
 
     // ── Efeitos ───────────────────────────────────────────────────────────────
@@ -193,9 +193,10 @@ const ProfessorWorkspacePage: React.FC = () => {
                 setClassDays(s.classDays ?? []);
                 setClassTime(s.classTime ?? '');
                 setClassDuration(s.classDuration ?? 0);
-                setExtraClass(s.extraClass ?? null)
+                setClassroom(s.classroom ?? null)
             })
-            .catch(() => {});
+            .catch(() => {
+            });
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isStudent, targetStudentId]);
 
@@ -206,7 +207,7 @@ const ProfessorWorkspacePage: React.FC = () => {
         : null;
 
     // ── Cronômetro de aula ────────────────────────────────────────────────────
-    const timer = useClassTimer(classDays, classTime, classDuration, extraClass);
+    const timer = useClassTimer(classDays, classTime, classDuration, classroom);
     // Só conecta ao WebRTC dentro da janela de aula (horário + 15min de tolerância)
     const activeWorkspaceId = timer.isConnectionAllowed ? workspaceId : null;
 
@@ -251,7 +252,7 @@ const ProfessorWorkspacePage: React.FC = () => {
             chatVisible={ws.chatVisible}
             setChatVisible={ws.setChatVisible}
             bodyRef={ws.bodyRef}
-            timerSlot={<ClassTimer timer={timer} />}
+            timerSlot={<ClassTimer timer={timer}/>}
             topBar={
                 <>
                     {/* Modal de seleção de atividade */}
@@ -287,7 +288,7 @@ const ProfessorWorkspacePage: React.FC = () => {
             }
         >
             <div className={styles.editorArea}>
-                <StudentMirrorView activity={ws.activeActivity} timer={timer} />
+                <StudentMirrorView activity={ws.activeActivity} timer={timer}/>
             </div>
 
             {/* Painel direito: chat + notas — usa useWebRTC internamente */}

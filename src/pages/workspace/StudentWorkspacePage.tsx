@@ -18,7 +18,6 @@ import DocxPreviewEditor from '@/components/ui/DocxPreviewEditor/DocxPreviewEdit
 import {Header} from '@/components/layout/Header/Header';
 import {WorkspaceActivity} from '@/types/workspace.types';
 import styles from './WorkspacePage.module.css';
-import {ExtraClass} from "@/types/student.types.ts";
 
 /* ─── Student Workspace ───────────────────────────────────────────────────── */
 
@@ -47,7 +46,7 @@ const StudentWorkspacePage: React.FC = () => {
         workspaceActivities,
         exerciseFolders,
         fetchWorkspace,
-        extraClass
+        classroom
     } = useMyWorkspace();
 
     const allActivities = useMemo(
@@ -126,7 +125,7 @@ const StudentWorkspacePage: React.FC = () => {
         : null;
 
     // ── Cronômetro de aula ────────────────────────────────────────────────────
-    const timer = useClassTimer(classDays, classTime, classDuration, extraClass);
+    const timer = useClassTimer(classDays, classTime, classDuration, classroom);
     // Só conecta ao WebRTC dentro da janela de aula (horário + 15min de tolerância)
     const activeWorkspaceId = timer.isConnectionAllowed ? workspaceId : null;
 
@@ -203,7 +202,7 @@ const StudentWorkspacePage: React.FC = () => {
             chatVisible={ws.chatVisible}
             setChatVisible={ws.setChatVisible}
             bodyRef={ws.bodyRef}
-            timerSlot={<ClassTimer timer={timer} />}
+            timerSlot={<ClassTimer timer={timer}/>}
             pageProps={{'data-student-id': studentId} as React.HTMLAttributes<HTMLDivElement>}
         >
             {/* Sidebar */}
@@ -306,11 +305,15 @@ const StudentWorkspacePage: React.FC = () => {
             {/* Painel direito: presença do professor + chat */}
             <div
                 className={`${styles.rightPanel} ${ws.chatVisible ? '' : styles.rightPanelHidden}`}
-                style={ws.chatVisible ? {width: `${rightWidth}px`, minWidth: `${rightWidth}px`, flexShrink: 0} : undefined}
+                style={ws.chatVisible ? {
+                    width: `${rightWidth}px`,
+                    minWidth: `${rightWidth}px`,
+                    flexShrink: 0
+                } : undefined}
             >
                 {/* Handle de resize horizontal — esquerda do painel */}
                 {ws.chatVisible && (
-                    <div className={styles.rightResizeHandle} onMouseDown={handleRightResizeStart} />
+                    <div className={styles.rightResizeHandle} onMouseDown={handleRightResizeStart}/>
                 )}
                 <TeacherPresencePanel
                     teacherName={teacherName}

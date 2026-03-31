@@ -1,264 +1,264 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import axios from 'axios';
 import studentService from '@/services/api/student.service';
 import studentProfileService from '@/services/api/studentProfile.service';
 import activityService from '@/services/api/activity.service';
 import workspaceService from '@/services/api/workspace.service';
-import { WorkspaceActivity, WorkspaceData } from '@/types/workspace.types';
-import {ExtraClass} from "@/types/student.types.ts";
+import {WorkspaceActivity, WorkspaceData} from '@/types/workspace.types';
+import {Classroom} from "@/types/student.types.ts";
 
 const toWorkspaceActivity = (
-  activity: {
-    id: string;
-    title: string;
-    type: 'EXERCISE' | 'WORKSPACE';
-    convertedHtml?: string;
-    folderId?: string;
-    createdAt: string;
-  },
-  folderId: string,
+    activity: {
+        id: string;
+        title: string;
+        type: 'EXERCISE' | 'WORKSPACE';
+        convertedHtml?: string;
+        folderId?: string;
+        createdAt: string;
+    },
+    folderId: string,
 ): WorkspaceActivity => ({
-  id: activity.id,
-  title: activity.title,
-  type: activity.type,
-  convertedHtml: activity.convertedHtml ?? '<p></p>',
-  folderId: activity.folderId ?? folderId,
-  createdAt: activity.createdAt,
+    id: activity.id,
+    title: activity.title,
+    type: activity.type,
+    convertedHtml: activity.convertedHtml ?? '<p></p>',
+    folderId: activity.folderId ?? folderId,
+    createdAt: activity.createdAt,
 });
 
 export const useMyWorkspace = () => {
-  const [workspace, setWorkspace] = useState<WorkspaceData | null>(null);
-  const [studentName, setStudentName] = useState('');
-  const [studentId, setStudentId] = useState('');
-  const [teacherId, setTeacherId] = useState('');
-  const [teacherName, setTeacherName] = useState('Professor');
-  const [teacherOnline, setTeacherOnline] = useState(false);
-  const [classDays, setClassDays] = useState<string[]>([]);
-  const [classTime, setClassTime] = useState('');
-  const [classDuration, setClassDuration] = useState(0);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [accessDenied, setAccessDenied] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [extraClass, setExtraClass] = useState<ExtraClass | null>(null);
-  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+    const [workspace, setWorkspace] = useState<WorkspaceData | null>(null);
+    const [studentName, setStudentName] = useState('');
+    const [studentId, setStudentId] = useState('');
+    const [teacherId, setTeacherId] = useState('');
+    const [teacherName, setTeacherName] = useState('Professor');
+    const [teacherOnline, setTeacherOnline] = useState(false);
+    const [classDays, setClassDays] = useState<string[]>([]);
+    const [classTime, setClassTime] = useState('');
+    const [classDuration, setClassDuration] = useState(0);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const [accessDenied, setAccessDenied] = useState(false);
+    const [saving, setSaving] = useState(false);
+    const [classroom, setClassroom] = useState<Classroom | null>(null);
+    const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
-  const updateTeacherInfo = useCallback((me: Awaited<ReturnType<typeof studentService.getMe>>) => {
-    const resolvedTeacherName = me.teacher?.name ?? me.teacherName ?? 'Professor';
-    const resolvedTeacherOnline = me.teacher?.isOnline ?? me.teacherOnline ?? false;
+    const updateTeacherInfo = useCallback((me: Awaited<ReturnType<typeof studentService.getMe>>) => {
+        const resolvedTeacherName = me.teacher?.name ?? me.teacherName ?? 'Professor';
+        const resolvedTeacherOnline = me.teacher?.isOnline ?? me.teacherOnline ?? false;
 
-    setTeacherName(resolvedTeacherName);
-    setTeacherOnline(resolvedTeacherOnline);
-  }, []);
+        setTeacherName(resolvedTeacherName);
+        setTeacherOnline(resolvedTeacherOnline);
+    }, []);
 
-  const fetchWorkspace = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    setAccessDenied(false);
+    const fetchWorkspace = useCallback(async () => {
+        setLoading(true);
+        setError(null);
+        setAccessDenied(false);
 
-    try {
-      const [me, folders] = await Promise.all([
-        studentService.getMe(),
-        studentProfileService.getMyActivityFolders(),
-      ]);
+        try {
+            const [me, folders] = await Promise.all([
+                studentService.getMe(),
+                studentProfileService.getMyActivityFolders(),
+            ]);
 
-      setStudentId(me.id);
-      setStudentName(me.name);
-      setTeacherId(me.teacherId ?? me.teacher?.id ?? '');
-      setClassDays(me.classDays ?? []);
-      setClassTime(me.classTime ?? '');
-      setClassDuration(me.classDuration ?? 0);
-      setExtraClass(me.extraClass ?? null);
-      updateTeacherInfo(me);
+            setStudentId(me.id);
+            setStudentName(me.name);
+            setTeacherId(me.teacherId ?? me.teacher?.id ?? '');
+            setClassDays(me.classDays ?? []);
+            setClassTime(me.classTime ?? '');
+            setClassDuration(me.classDuration ?? 0);
+            setClassroom(me.classroom ?? null);
+            updateTeacherInfo(me);
 
-      setWorkspace({
-        studentId: me.id,
-        folders: [...folders]
-          .sort((a, b) => a.position - b.position)
-          .map((folder) => ({
-            id: folder.id,
-            name: folder.name,
-            position: folder.position,
-            activities: (folder.activities ?? []).map((activity) =>
-              toWorkspaceActivity(activity, folder.id),
-            ),
-          })),
-      });
-    } catch (err) {
-      if (axios.isAxiosError(err) && err.response?.status === 403) {
-        setAccessDenied(true);
-        setError('Acesso negado a este workspace.');
-      } else {
-        setError('Erro ao carregar workspace.');
-      }
-    } finally {
-      setLoading(false);
-    }
-  }, [updateTeacherInfo]);
+            setWorkspace({
+                studentId: me.id,
+                folders: [...folders]
+                    .sort((a, b) => a.position - b.position)
+                    .map((folder) => ({
+                        id: folder.id,
+                        name: folder.name,
+                        position: folder.position,
+                        activities: (folder.activities ?? []).map((activity) =>
+                            toWorkspaceActivity(activity, folder.id),
+                        ),
+                    })),
+            });
+        } catch (err) {
+            if (axios.isAxiosError(err) && err.response?.status === 403) {
+                setAccessDenied(true);
+                setError('Acesso negado a este workspace.');
+            } else {
+                setError('Erro ao carregar workspace.');
+            }
+        } finally {
+            setLoading(false);
+        }
+    }, [updateTeacherInfo]);
 
-  const refreshTeacherPresence = useCallback(async (): Promise<void> => {
-    try {
-      const me = await studentService.getMe();
-      updateTeacherInfo(me);
-    } catch {
-      // Keep the last known presence state if refresh fails.
-    }
-  }, [updateTeacherInfo]);
+    const refreshTeacherPresence = useCallback(async (): Promise<void> => {
+        try {
+            const me = await studentService.getMe();
+            updateTeacherInfo(me);
+        } catch {
+            // Keep the last known presence state if refresh fails.
+        }
+    }, [updateTeacherInfo]);
 
-  useEffect(() => {
-    return () => {
-      if (saveTimeoutRef.current) {
-        clearTimeout(saveTimeoutRef.current);
-      }
-    };
-  }, []);
+    useEffect(() => {
+        return () => {
+            if (saveTimeoutRef.current) {
+                clearTimeout(saveTimeoutRef.current);
+            }
+        };
+    }, []);
 
-  useEffect(() => {
-    const intervalId = setInterval(() => {
-      void refreshTeacherPresence();
-    }, 30000);
+    useEffect(() => {
+        const intervalId = setInterval(() => {
+            void refreshTeacherPresence();
+        }, 30000);
 
-    return () => {
-      clearInterval(intervalId);
-    };
-  }, [refreshTeacherPresence]);
+        return () => {
+            clearInterval(intervalId);
+        };
+    }, [refreshTeacherPresence]);
 
-  const saveContent = useCallback((activityId: string, html: string) => {
-    if (saveTimeoutRef.current) {
-      clearTimeout(saveTimeoutRef.current);
-    }
+    const saveContent = useCallback((activityId: string, html: string) => {
+        if (saveTimeoutRef.current) {
+            clearTimeout(saveTimeoutRef.current);
+        }
 
-    saveTimeoutRef.current = setTimeout(async () => {
-      setSaving(true);
-      try {
-        await workspaceService.updateContent(activityId, html);
-        setWorkspace((prev) => {
-          if (!prev) return prev;
+        saveTimeoutRef.current = setTimeout(async () => {
+            setSaving(true);
+            try {
+                await workspaceService.updateContent(activityId, html);
+                setWorkspace((prev) => {
+                    if (!prev) return prev;
 
-          return {
-            ...prev,
-            folders: prev.folders.map((folder) => ({
-              ...folder,
-              activities: folder.activities.map((activity) => (
-                activity.id === activityId
-                  ? { ...activity, convertedHtml: html }
-                  : activity
-              )),
-            })),
-          };
+                    return {
+                        ...prev,
+                        folders: prev.folders.map((folder) => ({
+                            ...folder,
+                            activities: folder.activities.map((activity) => (
+                                activity.id === activityId
+                                    ? {...activity, convertedHtml: html}
+                                    : activity
+                            )),
+                        })),
+                    };
+                });
+            } catch {
+                console.error('Erro ao salvar conteúdo do exercício');
+            } finally {
+                setSaving(false);
+            }
+        }, 1200);
+    }, []);
+
+    const moveActivity = useCallback(async (
+        activityId: string,
+        targetFolderId: string,
+    ): Promise<boolean> => {
+        if (!workspace) {
+            return false;
+        }
+
+        let sourceFolderId: string | null = null;
+        let sourceActivity: WorkspaceActivity | null = null;
+
+        workspace.folders.forEach((folder) => {
+            const found = folder.activities.find((activity) => activity.id === activityId);
+            if (found) {
+                sourceFolderId = folder.id;
+                sourceActivity = found;
+            }
         });
-      } catch {
-        console.error('Erro ao salvar conteúdo do exercício');
-      } finally {
-        setSaving(false);
-      }
-    }, 1200);
-  }, []);
 
-  const moveActivity = useCallback(async (
-    activityId: string,
-    targetFolderId: string,
-  ): Promise<boolean> => {
-    if (!workspace) {
-      return false;
-    }
+        if (!sourceFolderId || !sourceActivity || sourceFolderId === targetFolderId) {
+            return true;
+        }
 
-    let sourceFolderId: string | null = null;
-    let sourceActivity: WorkspaceActivity | null = null;
+        const previousWorkspace = workspace;
 
-    workspace.folders.forEach((folder) => {
-      const found = folder.activities.find((activity) => activity.id === activityId);
-      if (found) {
-        sourceFolderId = folder.id;
-        sourceActivity = found;
-      }
-    });
+        setWorkspace((prev) => {
+            if (!prev) return prev;
 
-    if (!sourceFolderId || !sourceActivity || sourceFolderId === targetFolderId) {
-      return true;
-    }
+            const targetFolderExists = prev.folders.some((folder) => folder.id === targetFolderId);
+            if (!targetFolderExists) {
+                return prev;
+            }
 
-    const previousWorkspace = workspace;
-
-    setWorkspace((prev) => {
-      if (!prev) return prev;
-
-      const targetFolderExists = prev.folders.some((folder) => folder.id === targetFolderId);
-      if (!targetFolderExists) {
-        return prev;
-      }
-
-      return {
-        ...prev,
-        folders: prev.folders.map((folder) => {
-          if (folder.id === sourceFolderId) {
             return {
-              ...folder,
-              activities: folder.activities.filter((activity) => activity.id !== activityId),
+                ...prev,
+                folders: prev.folders.map((folder) => {
+                    if (folder.id === sourceFolderId) {
+                        return {
+                            ...folder,
+                            activities: folder.activities.filter((activity) => activity.id !== activityId),
+                        };
+                    }
+
+                    if (folder.id === targetFolderId && sourceActivity) {
+                        return {
+                            ...folder,
+                            activities: [
+                                ...folder.activities,
+                                {
+                                    ...sourceActivity,
+                                    folderId: targetFolderId,
+                                },
+                            ],
+                        };
+                    }
+
+                    return folder;
+                }),
             };
-          }
+        });
 
-          if (folder.id === targetFolderId && sourceActivity) {
-            return {
-              ...folder,
-              activities: [
-                ...folder.activities,
-                {
-                  ...sourceActivity,
-                  folderId: targetFolderId,
-                },
-              ],
-            };
-          }
+        try {
+            await activityService.move(activityId, {targetFolderId});
+            return true;
+        } catch {
+            setWorkspace(previousWorkspace);
+            return false;
+        }
+    }, [workspace]);
 
-          return folder;
-        }),
-      };
-    });
+    const workspaceActivities = useMemo(
+        () => workspace?.folders
+            .flatMap((folder) => folder.activities)
+            .filter((activity) => activity.type === 'WORKSPACE') ?? [],
+        [workspace],
+    );
 
-    try {
-      await activityService.move(activityId, { targetFolderId });
-      return true;
-    } catch {
-      setWorkspace(previousWorkspace);
-      return false;
-    }
-  }, [workspace]);
+    const exerciseFolders = useMemo(
+        () => workspace?.folders.map((folder) => ({
+            ...folder,
+            activities: folder.activities.filter((activity) => activity.type === 'EXERCISE'),
+        })) ?? [],
+        [workspace],
+    );
 
-  const workspaceActivities = useMemo(
-    () => workspace?.folders
-      .flatMap((folder) => folder.activities)
-      .filter((activity) => activity.type === 'WORKSPACE') ?? [],
-    [workspace],
-  );
-
-  const exerciseFolders = useMemo(
-    () => workspace?.folders.map((folder) => ({
-      ...folder,
-      activities: folder.activities.filter((activity) => activity.type === 'EXERCISE'),
-    })) ?? [],
-    [workspace],
-  );
-
-  return {
-    workspace,
-    studentId,
-    studentName,
-    teacherId,
-    teacherName,
-    teacherOnline,
-    classDays,
-    classTime,
-    classDuration,
-    workspaceActivities,
-    exerciseFolders,
-    loading,
-    error,
-    accessDenied,
-    saving,
-    fetchWorkspace,
-    saveContent,
-    moveActivity,
-    extraClass
-  };
+    return {
+        workspace,
+        studentId,
+        studentName,
+        teacherId,
+        teacherName,
+        teacherOnline,
+        classDays,
+        classTime,
+        classDuration,
+        workspaceActivities,
+        exerciseFolders,
+        loading,
+        error,
+        accessDenied,
+        saving,
+        fetchWorkspace,
+        saveContent,
+        moveActivity,
+        classroom
+    };
 };

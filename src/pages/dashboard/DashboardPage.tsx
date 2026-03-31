@@ -17,26 +17,26 @@ const DAY_MAP: Record<string, number> = {
 };
 
 /** Verifica se o aluno está dentro do horário de aula agora (bloqueados excluídos) */
-function isStudentClassNow(
-    classDays: string[],
-    classTime: string,
-    classDuration: number,
-    status: string,
-    now: Date,
-): boolean {
-    if (status === 'BLOCKED') return false;
-    if (!classDays.length || !classTime) return false;
-
-    const todayDow = now.getDay();
-    const isToday = classDays.some((d) => DAY_MAP[d] === todayDow);
-    if (!isToday) return false;
-
-    const [h, m, s] = classTime.split(':').map(Number);
-    const start = new Date(now.getFullYear(), now.getMonth(), now.getDate(), h, m, s ?? 0);
-    const end = new Date(start.getTime() + classDuration * 60 * 1000);
-
-    return now >= start && now < end;
-}
+// function isStudentClassNow(
+//     classDays: string[],
+//     classTime: string,
+//     classDuration: number,
+//     status: string,
+//     now: Date,
+// ): boolean {
+//     if (status === 'BLOCKED') return false;
+//     if (!classDays.length || !classTime) return false;
+//
+//     const todayDow = now.getDay();
+//     const isToday = classDays.some((d) => DAY_MAP[d] === todayDow);
+//     if (!isToday) return false;
+//
+//     const [h, m, s] = classTime.split(':').map(Number);
+//     const start = new Date(now.getFullYear(), now.getMonth(), now.getDate(), h, m, s ?? 0);
+//     const end = new Date(start.getTime() + classDuration * 60 * 1000);
+//
+//     return now >= start && now < end;
+// }
 
 type TabType = 'calendario' | 'alunos' | 'cobranca' | 'niveis';
 
@@ -327,18 +327,11 @@ export const DashboardPage: React.FC = () => {
                                         const profile = getProfileById(student.levelProfileId);
                                         const levelName = profile?.name ?? 'Sem nível';
                                         const levelClass = getLevelClassByCode(profile?.code);
-                                        const classNow = isStudentClassNow(
-                                            student.classDays,
-                                            student.classTime,
-                                            student.classDuration,
-                                            student.status,
-                                            now,
-                                        );
 
                                         return (
                                             <div
                                                 key={student.id}
-                                                className={`${styles.studentCard} ${styles[levelClass]} ${classNow ? styles.cardClassNow : ''}`}
+                                                className={`${styles.studentCard} ${styles[levelClass]}`}
                                                 onClick={() => navigate(`/dashboard/student/${student.id}`)}
                                                 role="button"
                                                 tabIndex={0}
@@ -367,15 +360,6 @@ export const DashboardPage: React.FC = () => {
                         {student.status === 'ACTIVE' ? '● Ativo' : '⊘ Bloqueado'}
                       </span>
                                                 </div>
-
-                                                {classNow && (
-                                                    <div style={{marginBottom: 8}}>
-                        <span className={styles.classNowBadge}>
-                          <span className={styles.classNowDot}/>
-                          Aula em andamento
-                        </span>
-                                                    </div>
-                                                )}
 
                                                 <div className={styles.classInfo}>
                                                     📅 {formatClassDays(student.classDays)} às {formatClassTime(student.classTime)}
