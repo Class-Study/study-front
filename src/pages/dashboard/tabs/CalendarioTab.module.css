@@ -868,3 +868,34 @@
     cursor: not-allowed;
 }
 
+/* ── Ongoing (aula em andamento) ─────────────────────────────────────────── */
+.event.ongoing {
+    border-color: color-mix(in srgb, var(--color-success) 40%, var(--color-border));
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-success) 25%, transparent),
+    0 4px 16px color-mix(in srgb, var(--color-success) 15%, transparent);
+    animation: ongoingGlow 2.5s ease-in-out infinite;
+}
+
+@keyframes ongoingGlow {
+    0%, 100% { box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-success) 25%, transparent),
+    0 4px 16px color-mix(in srgb, var(--color-success) 15%, transparent); }
+    50%       { box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-success) 40%, transparent),
+    0 6px 24px color-mix(in srgb, var(--color-success) 25%, transparent); }
+}
+
+.ongoingDot {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--color-success);
+    pointer-events: none;
+    animation: ongoingDotPulse 1.4s ease-in-out infinite;
+}
+
+@keyframes ongoingDotPulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50%       { opacity: 0.4; transform: scale(0.75); }
+}

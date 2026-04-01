@@ -1,42 +1,15 @@
-import React, {useState, useMemo, useEffect} from 'react';
+import React, {useEffect, useMemo, useState} from 'react';
 import {PlusSquare, Search} from 'lucide-react';
 import {useNavigate} from 'react-router-dom';
 import {Header} from '@/components/layout/Header/Header';
 import {useStudents} from '@/hooks/useStudents';
 import {useLevelProfiles} from '@/hooks/useLevelProfiles';
 import {ClassDay} from '@/types/student.types';
-import {formatClassDays, formatClassTime, DAY_FILTER_OPTIONS} from '@/utils/classDay.utils';
+import {DAY_FILTER_OPTIONS, formatClassDays, formatClassTime} from '@/utils/classDay.utils';
 import {NiveisTab} from '@/pages/dashboard/tabs/NiveisTab';
 import {BillingTab} from '@/pages/dashboard/tabs/BillingTab';
 import {CalendarioTab} from '@/pages/dashboard/tabs/CalendarioTab';
 import styles from './DashboardPage.module.css';
-
-const DAY_MAP: Record<string, number> = {
-    SUNDAY: 0, MONDAY: 1, TUESDAY: 2, WEDNESDAY: 3,
-    THURSDAY: 4, FRIDAY: 5, SATURDAY: 6,
-};
-
-/** Verifica se o aluno está dentro do horário de aula agora (bloqueados excluídos) */
-// function isStudentClassNow(
-//     classDays: string[],
-//     classTime: string,
-//     classDuration: number,
-//     status: string,
-//     now: Date,
-// ): boolean {
-//     if (status === 'BLOCKED') return false;
-//     if (!classDays.length || !classTime) return false;
-//
-//     const todayDow = now.getDay();
-//     const isToday = classDays.some((d) => DAY_MAP[d] === todayDow);
-//     if (!isToday) return false;
-//
-//     const [h, m, s] = classTime.split(':').map(Number);
-//     const start = new Date(now.getFullYear(), now.getMonth(), now.getDate(), h, m, s ?? 0);
-//     const end = new Date(start.getTime() + classDuration * 60 * 1000);
-//
-//     return now >= start && now < end;
-// }
 
 type TabType = 'calendario' | 'alunos' | 'cobranca' | 'niveis';
 
@@ -86,7 +59,7 @@ export const DashboardPage: React.FC = () => {
     const {students, loading, error, fetchStudents} = useStudents();
     const {fetchLevelProfiles, getProfileById} = useLevelProfiles();
 
-    const [activeTab, setActiveTab] = useState<TabType>('alunos');
+    const [activeTab, setActiveTab] = useState<TabType>('calendario');
     const [searchQuery, setSearchQuery] = useState('');
     const [now, setNow] = useState(() => new Date());
 

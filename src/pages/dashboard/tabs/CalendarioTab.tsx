@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import {useNavigate} from 'react-router-dom';
 import {useStudents} from '@/hooks/useStudents';
+import {useNow} from '@/hooks/useNow';
 import {useAuth} from '@/hooks/useAuth';
 import studentService from '@/services/api/student.service';
 import scheduleService from '@/services/api/schedule.service';
@@ -45,6 +46,15 @@ function getMondayOfWeek(date: Date): Date {
     d.setDate(d.getDate() + diff);
     d.setHours(0, 0, 0, 0);
     return d;
+}
+
+function isOngoing(ev: CalendarEvent, now: Date): boolean {
+    const dateStr = toDateStr(now);
+    if (ev.date !== dateStr) return false;
+    const nowMin = now.getHours() * 60 + now.getMinutes();
+    const start = timeToMin(ev.startTime);
+    const end = start + ev.durationMin;
+    return nowMin >= start && nowMin < end;
 }
 
 // Normalize level code to one of the known short keys used in CSS
@@ -144,8 +154,8 @@ const EventDetailsModal: React.FC<EventDetailsModalProps> = ({event, onClose, on
                 <div className={`${styles.detailsHeader} ${styles[`level_${getLevelKey(event.levelCode)}`]}`}>
                     <div
                         className={`${styles.detailsAvatar} ${styles[`level_${getLevelKey(event.levelCode)}`]}`}
-                        onClick={() => onProfile(event.id)}
-                        style={{ cursor: 'pointer' }}
+                        onClick={() => onProfile(event.studentId)}
+                        style={{cursor: 'pointer'}}
                     >
                         {getAvatarText(event.studentName)}
                     </div>
@@ -529,14 +539,9 @@ export const CalendarioTab: React.FC = () => {
     const [extraEvents, setExtraEvents] = useState<CalendarEvent[]>([]);
     const [detailsEvent, setDetailsEvent] = useState<CalendarEvent | null>(null);
     const [showCreate, setShowCreate] = useState(false);
-    const [now, setNow] = useState(() => new Date());
     const bodyRef = useRef<HTMLDivElement | null>(null);
 
-    // Clock — atualiza a cada minuto para a linha de "agora"
-    useEffect(() => {
-        const id = setInterval(() => setNow(new Date()), 60_000);
-        return () => clearInterval(id);
-    }, []);
+    const now = useNow(30_000);
 
     // Scroll para o horário atual ao montar
     useEffect(() => {
@@ -775,6 +780,7 @@ export const CalendarioTab: React.FC = () => {
                                     const top = Math.max(0, minToTop(startMin));
                                     const height = Math.max(ev.durationMin * MIN_PX, 48);
                                     const blocked = ev.studentStatus === 'BLOCKED';
+                                    const ongoing = isOngoing(ev, now);
 
                                     return (
                                         <div
@@ -784,31 +790,27 @@ export const CalendarioTab: React.FC = () => {
                                                 ${ev.type === 'RECURRING' ? styles.recurring : ''}
                                                 ${ev.type === 'RECOVERY' ? styles.recovery : ''}
                                                 ${blocked ? styles.blocked : ''}
+                                                ${ongoing ? styles.ongoing : ''}
                                             `}
                                             style={{top, height}}
                                             onClick={() => !blocked && setDetailsEvent(ev)}
                                             title={blocked ? `${ev.studentName} — Bloqueado` : ev.studentName}
                                         >
-
-                                            {/* BADGE ABSOLUTA */}
-                                            {ev.type === 'EXTRA' && (
-                                                <div className={styles.badge}>AVU</div>
+                                            {/* ongoing — canto superior esquerdo */}
+                                            {ongoing && (
+                                                <span className={styles.ongoingDot}/>
                                             )}
 
-                                            {ev.type === 'RECURRING' && (
-                                                <div className={styles.badgeRecurring}>REC</div>
-                                            )}
+                                            {/* badges — sempre visíveis, canto superior direito */}
+                                            {ev.type === 'EXTRA' && <div className={styles.badge}>AVU</div>}
+                                            {ev.type === 'RECURRING' &&
+                                                <div className={styles.badgeRecurring}>REC</div>}
+                                            {ev.type === 'RECOVERY' && <div className={styles.badgeRecovery}>REP</div>}
 
-                                            {ev.type === 'RECOVERY' && (
-                                                <div className={styles.badgeRecovery}>REP</div>
-                                            )}
-
-                                            {/* CONTEÚDO */}
                                             <div className={styles.eventCardHeader}>
                                                 <div className={styles.eventCardTitle}>
                                                     <div className={styles.eventName}>{ev.studentName}</div>
                                                 </div>
-
                                                 <div className={styles.eventCardRight}>
                                                     <div className={styles.eventTime}>
                                                         {ev.startTime.substring(0, 5)}
@@ -833,7 +835,7 @@ export const CalendarioTab: React.FC = () => {
                         setDetailsEvent(null);
                         navigate(`/dashboard/student/${id}/workspace`);
                     }}
-                        onProfile={id => {
+                    onProfile={id => {
                         setDetailsEvent(null);
                         navigate(`/dashboard/student/${id}`);
                     }
