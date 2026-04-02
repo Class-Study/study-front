@@ -166,7 +166,7 @@ const ProfessorWorkspacePage: React.FC = () => {
     // ── Estado exclusivo do professor ─────────────────────────────────────────
     const [studentName, setStudentName] = useState('');
     const [activityPickerOpen, setActivityPickerOpen] = useState(false);
-    const [classDays, setClassDays] = useState<string[]>([]);
+    const [classDays, setClassDays] = useState('');
     const [classTime, setClassTime] = useState('');
     const [classroom, setClassroom] = useState<Classroom | null>(null);
     const [classDuration, setClassDuration] = useState(0);
@@ -190,8 +190,8 @@ const ProfessorWorkspacePage: React.FC = () => {
         getStudentById(targetStudentId)
             .then((s) => {
                 setStudentName(s.name);
-                setClassDays(s.classDays ?? []);
-                setClassTime(s.classTime ?? '');
+                setClassDays(s.classroom?.date ?? '');
+                setClassTime(s.classroom?.startTime ?? '');
                 setClassDuration(s.classDuration ?? 0);
                 setClassroom(s.classroom ?? null)
             })
