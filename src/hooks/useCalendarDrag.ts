@@ -2,7 +2,7 @@ import {useCallback, useEffect, useRef, useState} from 'react';
 import {CalendarEvent} from '@/types/schedule.types';
 import {timeToMin, toDateStr, minToTimeStr} from '@/hooks/useCalendarEvents';
 
-// ── Grid constants (must match CSS / CalendarioTab) ──────────────────────────
+// ── Grid constants (must match CSS / CalendarTab) ──────────────────────────
 const START_HOUR = 6;
 const END_HOUR = 23;
 const HOUR_PX = 64;

@@ -2,9 +2,8 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { PrivateRoute } from '@/PrivateRoute';
 import { LoginPage } from '@/pages/login/LoginPage';
 import { DashboardPage } from '@/pages/dashboard/DashboardPage';
-import { CreateStudentPage } from '@/pages/students/CreateStudentPage';
+import { CreateStudentPage } from '@/pages/students/CreateStudentPage.tsx';
 import { StudentProfilePage } from '@/pages/students/StudentProfilePage';
-import { BillingPage } from '@/pages/billing/BillingPage';
 import { ProfessorWorkspacePage } from '@/pages/workspace/ProfessorWorkspacePage.tsx';
 import { StudentWorkspacePage } from '@/pages/workspace/StudentWorkspacePage';
 import { MyProfilePage } from '@/pages/me/MyProfilePage';
@@ -56,7 +55,7 @@ export const AppRoutes: React.FC = () => {
         path="/billing"
         element={
           <PrivateRoute requiredRoles={['TEACHER', 'ADMIN']}>
-            <BillingPage />
+            <Navigate to="/dashboard" replace />
           </PrivateRoute>
         }
       />

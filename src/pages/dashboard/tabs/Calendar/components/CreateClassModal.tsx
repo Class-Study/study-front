@@ -1,12 +1,12 @@
 import {useEffect, useState} from 'react';
 import {X} from 'lucide-react';
-import {CalendarEvent, EventType, EventTypeMeta} from '@/types/schedule.types';
-import {Student} from '@/types/student.types';
-import {toDateStr} from '@/hooks/useCalendarEvents';
-import studentService from '@/services/api/student.service';
-import scheduleService from '@/services/api/schedule.service';
+import {CalendarEvent, EventType, EventTypeMeta} from '@/types/schedule.types.ts';
+import {Student} from '@/types/student.types.ts';
+import {toDateStr} from '@/hooks/useCalendarEvents.ts';
+import studentService from '@/services/api/student.service.ts';
+import scheduleService from '@/services/api/schedule.service.ts';
 import Swal from 'sweetalert2';
-import styles from '../CalendarioTab.module.css';
+import styles from '../CalendarTab.module.css';
 
 const DURATION_OPTS = [30, 45, 60, 90, 120];
 

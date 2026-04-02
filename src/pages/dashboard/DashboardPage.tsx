@@ -6,9 +6,9 @@ import {useStudents} from '@/hooks/useStudents';
 import {useLevelProfiles} from '@/hooks/useLevelProfiles';
 import {ClassDay} from '@/types/student.types';
 import {DAY_FILTER_OPTIONS, formatClassDays, formatClassTime} from '@/utils/classDay.utils';
-import {NiveisTab} from '@/pages/dashboard/tabs/NiveisTab';
-import {BillingTab} from '@/pages/dashboard/tabs/BillingTab';
-import {CalendarioTab} from '@/pages/dashboard/tabs/CalendarioTab';
+import {LevelTab} from '@/pages/dashboard/tabs/Level/LevelTab.tsx';
+import {BillingTab} from '@/pages/dashboard/tabs/Billing/BillingTab.tsx';
+import {CalendarTab} from '@/pages/dashboard/tabs/Calendar/CalendarTab.tsx';
 import styles from './DashboardPage.module.css';
 
 type TabType = 'calendario' | 'alunos' | 'cobranca' | 'niveis';
@@ -67,8 +67,8 @@ export const DashboardPage: React.FC = () => {
     const [selectedDay, setSelectedDay] = useState(TODAY_DAY_VALUE);
     const TAB_LABELS: Record<TabType, string> = {
         calendario: 'Calendário',
-        alunos: 'Alunos',
         cobranca: 'Financeiro',
+        alunos: 'Alunos',
         niveis: 'Níveis & Atividades'
     };
 
@@ -131,16 +131,16 @@ export const DashboardPage: React.FC = () => {
                         📅 Calendário
                     </button>
                     <button
-                        className={`${styles.tab} ${activeTab === 'alunos' ? styles.active : ''}`}
-                        onClick={() => setActiveTab('alunos')}
-                    >
-                        👥 Alunos
-                    </button>
-                    <button
                         className={`${styles.tab} ${activeTab === 'cobranca' ? styles.active : ''}`}
                         onClick={() => setActiveTab('cobranca')}
                     >
                         💳 Financeiro
+                    </button>
+                    <button
+                        className={`${styles.tab} ${activeTab === 'alunos' ? styles.active : ''}`}
+                        onClick={() => setActiveTab('alunos')}
+                    >
+                        👥 Alunos
                     </button>
                     <button
                         className={`${styles.tab} ${activeTab === 'niveis' ? styles.active : ''}`}
@@ -168,16 +168,16 @@ export const DashboardPage: React.FC = () => {
                         📅 Calendário
                     </button>
                     <button
-                        className={`${styles.tab} ${activeTab === 'alunos' ? styles.active : ''}`}
-                        onClick={() => setActiveTab('alunos')}
-                    >
-                        👥 Alunos
-                    </button>
-                    <button
                         className={`${styles.tab} ${activeTab === 'cobranca' ? styles.active : ''}`}
                         onClick={() => setActiveTab('cobranca')}
                     >
                         💳 Financeiro
+                    </button>
+                    <button
+                        className={`${styles.tab} ${activeTab === 'alunos' ? styles.active : ''}`}
+                        onClick={() => setActiveTab('alunos')}
+                    >
+                        👥 Alunos
                     </button>
                     <button
                         className={`${styles.tab} ${activeTab === 'niveis' ? styles.active : ''}`}
@@ -205,16 +205,16 @@ export const DashboardPage: React.FC = () => {
                     📅 Calendário
                 </button>
                 <button
-                    className={`${styles.tab} ${activeTab === 'alunos' ? styles.active : ''}`}
-                    onClick={() => setActiveTab('alunos')}
-                >
-                    👥 Alunos
-                </button>
-                <button
                     className={`${styles.tab} ${activeTab === 'cobranca' ? styles.active : ''}`}
                     onClick={() => setActiveTab('cobranca')}
                 >
                     💳 Financeiro
+                </button>
+                <button
+                    className={`${styles.tab} ${activeTab === 'alunos' ? styles.active : ''}`}
+                    onClick={() => setActiveTab('alunos')}
+                >
+                    👥 Alunos
                 </button>
                 <button
                     className={`${styles.tab} ${activeTab === 'niveis' ? styles.active : ''}`}
@@ -226,7 +226,9 @@ export const DashboardPage: React.FC = () => {
 
             <main className={`${styles.content} ${activeTab === 'calendario' ? styles.contentCalendar : ''}`}>
                 {activeTab === 'calendario' ? (
-                    <CalendarioTab/>
+                    <CalendarTab/>
+                ) : activeTab === 'cobranca' ? (
+                    <BillingTab/>
                 ) : (
                     <div className={styles.inner}>
                         {activeTab === 'alunos' && (
@@ -378,12 +380,9 @@ export const DashboardPage: React.FC = () => {
                             </>
                         )}
 
-                        {activeTab === 'cobranca' && (
-                            <BillingTab/>
-                        )}
 
                         {activeTab === 'niveis' && (
-                            <NiveisTab/>
+                            <LevelTab/>
                         )}
                     </div>
                 )}

@@ -1,8 +1,8 @@
 import {useState} from 'react';
 import {Calendar, Clock, X} from 'lucide-react';
-import {CalendarEvent} from '@/types/schedule.types';
-import {addMinutes} from '@/hooks/useCalendarEvents';
-import styles from '../CalendarioTab.module.css';
+import {CalendarEvent} from '@/types/schedule.types.ts';
+import {addMinutes} from '@/hooks/useCalendarEvents.ts';
+import styles from '../CalendarTab.module.css';
 
 const PT_LONG = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
 const PT_MONTHS = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];

@@ -13,7 +13,7 @@ import {
     X
 } from 'lucide-react';
 import {useNavigate} from 'react-router-dom';
-import {useNow} from '@/hooks/useNow';
+import {useNow} from '@/hooks/useNow.ts';
 import {
     useCalendarEvents,
     getMondayOfWeek,
@@ -24,13 +24,13 @@ import {
     isOngoing,
     getLevelKey,
     getAvatarText,
-} from '@/hooks/useCalendarEvents';
-import {useCalendarDrag} from '@/hooks/useCalendarDrag';
-import studentService from '@/services/api/student.service';
-import scheduleService from '@/services/api/schedule.service';
-import {Student} from '@/types/student.types';
-import {CalendarEvent, EventType, EventTypeMeta} from '@/types/schedule.types';
-import styles from './CalendarioTab.module.css';
+} from '@/hooks/useCalendarEvents.ts';
+import {useCalendarDrag} from '@/hooks/useCalendarDrag.ts';
+import studentService from '@/services/api/student.service.ts';
+import scheduleService from '@/services/api/schedule.service.ts';
+import {Student} from '@/types/student.types.ts';
+import {CalendarEvent, EventType, EventTypeMeta} from '@/types/schedule.types.ts';
+import styles from './CalendarTab.module.css';
 import Swal from 'sweetalert2';
 
 // ── Grid constants ─────────────────────────────────────────────────────────────
@@ -371,8 +371,8 @@ const CreateClassModal: React.FC<{ onClose: () => void; onCreated: (ev: Calendar
     );
 };
 
-// ── CalendarioTab (main) ──────────────────────────────────────────────────────
-export const CalendarioTab: React.FC = () => {
+// ── CalendarTab (main) ──────────────────────────────────────────────────────
+export const CalendarTab: React.FC = () => {
     const navigate = useNavigate();
     const now = useNow(30_000);
 

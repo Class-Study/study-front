@@ -1,9 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Badge } from '@/components/ui/Badge/Badge';
-import { Modal } from '@/components/ui/Modal/Modal';
-import { useBilling } from '@/hooks/useBilling';
-import { BillingEntry, BillingStatus } from '@/types/billing.types';
-import styles from '@/pages/billing/BillingPage.module.css';
+import { Badge } from '@/components/ui/Badge/Badge.tsx';
+import { Modal } from '@/components/ui/Modal/Modal.tsx';
+import { useBilling } from '@/hooks/useBilling.ts';
+import { BillingEntry, BillingStatus } from '@/types/billing.types.ts';
+import styles from '@/pages/dashboard/tabs/Billing/BillingTab.module.css';
 
 const WEEKDAY_TO_JS: Record<string, number> = {
   SUNDAY: 0,

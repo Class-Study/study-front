@@ -1,18 +1,18 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import * as mammoth from 'mammoth';
-import DocxPreviewEditor from '@/components/ui/DocxPreviewEditor/DocxPreviewEditor';
-import { Modal } from '@/components/ui/Modal/Modal';
-import { useLevelProfiles } from '@/hooks/useLevelProfiles';
-import levelFolderTemplateService from '@/services/api/levelFolderTemplate.service';
-import levelProfileService from '@/services/api/levelProfile.service';
+import DocxPreviewEditor from '@/components/ui/DocxPreviewEditor/DocxPreviewEditor.tsx';
+import { Modal } from '@/components/ui/Modal/Modal.tsx';
+import { useLevelProfiles } from '@/hooks/useLevelProfiles.ts';
+import levelFolderTemplateService from '@/services/api/levelFolderTemplate.service.ts';
+import levelProfileService from '@/services/api/levelProfile.service.ts';
 import {
   CreateLevelProfileRequest,
   LevelFolder,
   LevelFolderTemplate,
   LevelProfile,
   UpdateLevelProfileRequest,
-} from '@/types/levelProfile.types';
-import styles from './NiveisTab.module.css';
+} from '@/types/levelProfile.types.ts';
+import styles from './LevelTab.module.css';
 
 type TemplateType = 'EXERCISE' | 'WORKSPACE';
 type ModalTab = 'activities' | 'edit';
@@ -120,7 +120,7 @@ const createEditForm = (level: LevelProfile): NewLevelForm => ({
   })),
 });
 
-export const NiveisTab: React.FC = () => {
+export const LevelTab: React.FC = () => {
   const { levelProfiles, loading, error, fetchLevelProfiles } = useLevelProfiles();
   const [showForm, setShowForm] = useState(false);
   const [creating, setCreating] = useState(false);

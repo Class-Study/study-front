@@ -1,13 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Search } from 'lucide-react';
-import { Header } from '@/components/layout/Header/Header';
-import { Input } from '@/components/ui/Input/Input';
-import { Badge } from '@/components/ui/Badge/Badge';
-import { useStudents } from '@/hooks/useStudents';
-import styles from './StudentsPage.module.css';
+import { Header } from '@/components/layout/Header/Header.tsx';
+import { Input } from '@/components/ui/Input/Input.tsx';
+import { Badge } from '@/components/ui/Badge/Badge.tsx';
+import { useStudents } from '@/hooks/useStudents.ts';
+import styles from './TabStudents.module.css';
 
-export const StudentsPage: React.FC = () => {
+export const TabStudents: React.FC = () => {
   const { students, loading, error, fetchStudents } = useStudents();
   const [searchTerm, setSearchTerm] = useState('');
 
