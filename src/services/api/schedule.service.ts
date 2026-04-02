@@ -20,7 +20,11 @@ const scheduleService = {
             params: {date, scheduleType}
         })
         return data;
-    }
+    },
+
+    reschedule: async (scheduleId: string, newDate: string, newTime: string): Promise<void> => {
+        await api.patch(`/schedule/${scheduleId}/reschedule`, {newDate, newTime});
+    },
 }
 
 export default scheduleService;

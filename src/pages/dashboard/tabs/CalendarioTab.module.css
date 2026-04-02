@@ -129,6 +129,7 @@
     flex: 1;
     min-height: 0;
     overflow: hidden;
+    position: relative;
 }
 
 /* Sticky day header row */
@@ -200,13 +201,14 @@
     flex: 1;
     min-height: 0;
     overflow-y: auto;
+    position: relative;
 }
+
 
 /* Time column */
 .timeCol {
     width: 64px;
     flex-shrink: 0;
-    position: sticky;
     left: 0;
     z-index: 5;
     background: var(--color-bg-page);
@@ -292,6 +294,7 @@
     justify-content: center;
     min-height: 30px;
 }
+
 .badge {
     position: absolute;
     top: 6px;
@@ -764,21 +767,21 @@
 }
 
 .pills {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
 }
 
 .pill {
-  padding: 4px 12px;
-  border-radius: 20px;
-  border: 1px solid var(--color-border);
-  background: transparent;
-  font-family: var(--font-sans);
-  font-size: 12px;
-  color: var(--color-text-secondary);
-  cursor: pointer;
-  transition: background 0.12s, color 0.12s, border-color 0.12s;
+    padding: 4px 12px;
+    border-radius: 20px;
+    border: 1px solid var(--color-border);
+    background: transparent;
+    font-family: var(--font-sans);
+    font-size: 12px;
+    color: var(--color-text-secondary);
+    cursor: pointer;
+    transition: background 0.12s, color 0.12s, border-color 0.12s;
 }
 
 .pill:hover {
@@ -877,10 +880,14 @@
 }
 
 @keyframes ongoingGlow {
-    0%, 100% { box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-success) 25%, transparent),
-    0 4px 16px color-mix(in srgb, var(--color-success) 15%, transparent); }
-    50%       { box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-success) 40%, transparent),
-    0 6px 24px color-mix(in srgb, var(--color-success) 25%, transparent); }
+    0%, 100% {
+        box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-success) 25%, transparent),
+        0 4px 16px color-mix(in srgb, var(--color-success) 15%, transparent);
+    }
+    50% {
+        box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-success) 40%, transparent),
+        0 6px 24px color-mix(in srgb, var(--color-success) 25%, transparent);
+    }
 }
 
 .ongoingDot {
@@ -896,6 +903,192 @@
 }
 
 @keyframes ongoingDotPulse {
-    0%, 100% { opacity: 1; transform: scale(1); }
-    50%       { opacity: 0.4; transform: scale(0.75); }
+    0%, 100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 0.4;
+        transform: scale(0.75);
+    }
+}
+
+/* ── Drag & Drop ─────────────────────────────────────────────────────────── */
+
+/* Card sendo arrastado — fica semi-transparente no lugar original */
+.eventDragging {
+    opacity: 0.35;
+    pointer-events: none;
+}
+
+/* Ghost card — segue o mouse */
+.ghostCard {
+    position: absolute; /* Changed from fixed to absolute */
+    border-radius: 10px;
+    padding: 10px 12px;
+    cursor: grabbing;
+    overflow: hidden;
+    z-index: 1000; /* Lower z-index since it's contained */
+    border: 2px solid var(--color-text-primary);
+    background: var(--color-bg-card-calendar);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+    transition: none;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-height: 30px;
+    opacity: 0.9;
+    pointer-events: none;
+}
+
+.ghostValid {
+    background: color-mix(in srgb, #22c55e 12%, var(--color-bg-card));
+    border-color: #22c55e;
+    box-shadow: 0 0 0 1px color-mix(in srgb, #22c55e 35%, transparent),
+    0 8px 24px color-mix(in srgb, #22c55e 20%, transparent);
+}
+
+.ghostInvalid {
+    background: color-mix(in srgb, var(--color-danger) 10%, var(--color-bg-card));
+    border-color: var(--color-danger);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-danger) 30%, transparent);
+}
+
+.ghostTime {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--color-text-tertiary);
+    font-variant-numeric: tabular-nums;
+}
+
+.ghostName {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--color-text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* ── Confirm reschedule modal ─────────────────────────────────────────────── */
+.confirmStudent {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--color-text-primary);
+    margin: 0 0 12px;
+}
+
+.confirmBlock {
+    padding: 12px 14px;
+    border-radius: 8px;
+    background: var(--color-bg-page);
+    border: 1px solid var(--color-border);
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.confirmBlockNew {
+    border-color: color-mix(in srgb, #22c55e 40%, var(--color-border));
+    background: color-mix(in srgb, #22c55e 6%, var(--color-bg-page));
+}
+
+.confirmBlockLabel {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--color-text-tertiary);
+    margin: 0 0 2px;
+}
+
+.confirmRow {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: var(--color-text-secondary);
+}
+
+.confirmArrow {
+    text-align: center;
+    font-size: 18px;
+    color: var(--color-text-tertiary);
+    line-height: 1;
+    padding: 4px 0;
+}
+
+/* ── Edge hints (drag week-change indicators) ────────────────────────────── */
+.edgeHint {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 90px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    z-index: 1100;
+    pointer-events: none;
+}
+
+.edgeHint span {
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    white-space: nowrap;
+}
+
+.edgeHintLeft {
+    left: 0;
+    background: linear-gradient(to right,
+        color-mix(in srgb, var(--color-accent) 20%, transparent),
+        transparent
+    );
+    color: var(--color-accent);
+    border-right: 2px solid color-mix(in srgb, var(--color-accent) 50%, transparent);
+    animation: edgeSlideInLeft 0.25s ease-out forwards,
+               edgeHintPulse 1s 0.25s ease-in-out infinite;
+}
+
+.edgeHintRight {
+    right: 0;
+    background: linear-gradient(to left,
+        color-mix(in srgb, var(--color-accent) 20%, transparent),
+        transparent
+    );
+    color: var(--color-accent);
+    border-left: 2px solid color-mix(in srgb, var(--color-accent) 50%, transparent);
+    animation: edgeSlideInRight 0.25s ease-out forwards,
+               edgeHintPulse 1s 0.25s ease-in-out infinite;
+}
+
+@keyframes edgeSlideInLeft {
+    from {
+        transform: translateX(-100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes edgeSlideInRight {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes edgeHintPulse {
+    0%, 100% { opacity: 0.6; }
+    50% { opacity: 1; }
 }
