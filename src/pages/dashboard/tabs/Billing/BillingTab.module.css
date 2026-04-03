@@ -481,6 +481,10 @@ input[type="month"]:focus {
   white-space: nowrap;
 }
 
+.payBtnConfirm {
+  background: var(--color-success);
+}
+
 .payBtn:hover:not(:disabled) {
   opacity: 0.85;
 }

@@ -88,3 +88,23 @@ export interface Option {
   date: string;
   time: string;
 }
+
+export interface StudentScheduleResponse {
+  studentName: string;
+  classDays: string[];
+  classTime: string;
+  classDuration: number;
+  startDate: string;
+  endDate: string;
+  teacherName: string;
+  classes: StudentClassDate[];
+}
+
+export interface StudentClassDate {
+  id: string;
+  date: string;
+  time: string;
+  status: 'SCHEDULED' | 'COMPLETED' | 'CANCELLED' | 'TODAY';
+  classType: 'RECORRENTE' | 'EXTRA' | 'REMARCADA';
+  isNextClass: boolean;
+}

@@ -257,8 +257,8 @@ export const StudentBillingTab: React.FC = () => {
     setSelectedBilling(billing);
   };
 
-  const handleConfirmPayment = (billingId: string) => {
-    updatePaymentStatus(billingId, 'AWAITING_CONFIRMATION');
+  const handleConfirmPayment = async (billingId: string) => {
+    await updatePaymentStatus(billingId);
   };
 
   return (

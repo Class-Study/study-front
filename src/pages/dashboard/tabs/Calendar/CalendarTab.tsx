@@ -251,7 +251,7 @@ const CreateClassModal: React.FC<{ onClose: () => void; onCreated: (ev: Calendar
             } catch { /* silent */ }
             await scheduleService.createExtraClass(payload);
             const newEvent: CalendarEvent = {
-                id: `extra-${Date.now()}`,
+                id: crypto.randomUUID().toString(),
                 studentId: form.studentId,
                 studentName: basicStudent?.name,
                 date: form.date,

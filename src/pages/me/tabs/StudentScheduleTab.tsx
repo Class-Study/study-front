@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { ChevronDown, ChevronUp, Calendar, Clock, User } from 'lucide-react';
 import { useStudentSchedule } from '@/hooks/useStudentSchedule';
 import { formatClassDays } from '@/utils/classDay.utils';
 import styles from './StudentScheduleTab.module.css';
 
 export const StudentScheduleTab: React.FC = () => {
+  const navigate = useNavigate();
   const {
     studentName,
     classDays,
@@ -75,10 +77,19 @@ export const StudentScheduleTab: React.FC = () => {
 
       {/* Card da próxima aula em destaque */}
       {nextClass && (
-        <div className={styles.nextClassCard}>
+        <div
+          className={`${styles.nextClassCard} ${nextClass.isToday ? styles.nextClassCardToday : ''}`}
+          onClick={nextClass.isToday ? () => navigate('/me/workspace') : undefined}
+          role={nextClass.isToday ? 'button' : undefined}
+          tabIndex={nextClass.isToday ? 0 : undefined}
+          onKeyDown={nextClass.isToday ? (e) => e.key === 'Enter' && navigate('/me/workspace') : undefined}
+        >
           <div className={styles.nextClassHeader}>
             <h3 className={styles.nextClassTitle}>
-              {nextClass.isToday ? '🔴 Aula Hoje' : '→ Próxima Aula'}
+              {nextClass.isToday
+                ? <><span className={styles.pulseDot} />Aula Agora</>
+                : '→ Próxima Aula'
+              }
             </h3>
             <span className={`${styles.classTypeBadge} ${classTypeBadgeClass[nextClass.classType]}`}>
               {classTypeLabel[nextClass.classType]}
@@ -200,7 +211,7 @@ export const StudentScheduleTab: React.FC = () => {
                   
                   <div className={styles.classStatus}>
                     {classDate.isPast && <span className={styles.statusCompleted}>✓ Realizada</span>}
-                    {classDate.isToday && <span className={styles.statusToday}>🔴 Hoje</span>}
+                    {classDate.isToday && <span className={styles.statusToday}><span className={styles.pulseDotSmall} />Hoje</span>}
                     {classDate.isNextClass && <span className={styles.statusNext}>→ Próxima</span>}
                     {!classDate.isPast && !classDate.isToday && !classDate.isNextClass && (
                       <span className={styles.statusScheduled}>⏰ Agendada</span>

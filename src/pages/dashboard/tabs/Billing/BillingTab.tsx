@@ -70,15 +70,17 @@ function getClassDatesForMonth(monthIso: string, weekDays: string[]): Date[] {
   return result;
 }
 
-function statusVariant(status: BillingStatus): 'paid' | 'pending' | 'late' {
+function statusVariant(status: BillingStatus): 'paid' | 'pending' | 'late' | 'waiting' {
   if (status === 'PAID') return 'paid';
   if (status === 'OVERDUE') return 'late';
+  if (status === 'AWAITING_CONFIRMATION') return 'waiting';
   return 'pending';
 }
 
 function statusLabel(status: BillingStatus): string {
   if (status === 'PAID') return 'Pago';
   if (status === 'OVERDUE') return 'Atrasado';
+  if (status === 'AWAITING_CONFIRMATION') return 'Ag. Confirmação';
   return 'Pendente';
 }
 
@@ -228,7 +230,7 @@ const HistoryModal: React.FC<HistoryModalProps> = ({
   );
 };
 
-type FilterStatus = 'all' | 'PENDING' | 'OVERDUE' | 'PAID';
+type FilterStatus = 'all' | 'PENDING' | 'OVERDUE' | 'PAID' | 'AWAITING_CONFIRMATION';
 
 export const BillingTab: React.FC = () => {
   const {
@@ -282,9 +284,9 @@ export const BillingTab: React.FC = () => {
       }
       return true;
     });
-    // Depois ordena: OVERDUE > PENDING > PAID
+    // Ordena: OVERDUE > AWAITING_CONFIRMATION > PENDING > PAID
     return filtered.sort((a, b) => {
-      const order = { OVERDUE: 0, PENDING: 1, PAID: 2 };
+      const order: Record<string, number> = { OVERDUE: 0, AWAITING_CONFIRMATION: 1, PENDING: 2, PAID: 3 };
       return (order[a.status] ?? 99) - (order[b.status] ?? 99);
     });
   }, [entries, filterStatus, search]);
@@ -340,7 +342,7 @@ export const BillingTab: React.FC = () => {
           onChange={(event) => setSearch(event.target.value)}
         />
         <div className={styles.filterGroup}>
-          {(['all', 'PENDING', 'OVERDUE', 'PAID'] as FilterStatus[]).map((value) => (
+          {(['all', 'AWAITING_CONFIRMATION', 'PENDING', 'OVERDUE', 'PAID'] as FilterStatus[]).map((value) => (
             <button
               key={value}
               type="button"
@@ -349,11 +351,13 @@ export const BillingTab: React.FC = () => {
             >
               {value === 'all'
                 ? 'Todos'
-                : value === 'PENDING'
-                  ? 'Pendentes'
-                  : value === 'OVERDUE'
-                    ? 'Atrasados'
-                    : 'Pagos'}
+                : value === 'AWAITING_CONFIRMATION'
+                  ? 'Ag. Confirmação'
+                  : value === 'PENDING'
+                    ? 'Pendentes'
+                    : value === 'OVERDUE'
+                      ? 'Atrasados'
+                      : 'Pagos'}
             </button>
           ))}
           <button
@@ -461,6 +465,15 @@ export const BillingTab: React.FC = () => {
                   </button>
                   {entry.status === 'PAID' ? (
                     <span className={styles.paidInfo}>Pago em {fmtDate(entry.paidAt)}</span>
+                  ) : entry.status === 'AWAITING_CONFIRMATION' ? (
+                    <button
+                      type="button"
+                      className={`${styles.payBtn} ${styles.payBtnConfirm}`}
+                      disabled={paying === entry.id}
+                      onClick={() => payEntry(entry.id, selectedMonth)}
+                    >
+                      {paying === entry.id ? 'Registrando...' : '✓ Confirmar recebimento'}
+                    </button>
                   ) : (
                     <button
                       type="button"

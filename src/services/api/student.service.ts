@@ -8,7 +8,12 @@ import {
   ListStudentsResponse, ClassDay,
 } from '@/types/student.types';
 import { PageResponse } from '@/types/api.types';
-import {DayAvailability} from "@/types/schedule.types.ts";
+import {DayAvailability, StudentScheduleResponse} from "@/types/schedule.types.ts";
+import {
+  PaymentConfirmationRequest,
+  PaymentConfirmationResponse,
+  StudentBillingResponse
+} from "@/types/billing.types.ts";
 
 const normalizeStudent = (student: Student): Student => ({
   ...student,
@@ -112,6 +117,21 @@ const studentService = {
   saveMyNote: async (payload: UpdateStudentNoteRequest): Promise<void> => {
     await api.post('/students/me/notes', payload);
   },
+
+  getSchedule: async (): Promise<StudentScheduleResponse> => {
+    const { data } = await api.get<StudentScheduleResponse>('/students/me/schedule');
+    return data;
+  },
+
+  getBilling: async (): Promise<StudentBillingResponse> => {
+    const { data } = await api.get<StudentBillingResponse>('/students/me/billing');
+    return data;
+  },
+
+  confirmPayment: async (payload: PaymentConfirmationRequest): Promise<PaymentConfirmationResponse> => {
+    const { data } = await api.post<PaymentConfirmationResponse>('/students/me/billing/confirm-payment', payload);
+    return data;
+  }
 };
 
 export default studentService;

@@ -31,17 +31,19 @@ interface UseBillingReturn {
 const normalizeStatus = (entry: BillingEntry): BillingStatus => {
   if (entry.status === "PAID") return "PAID";
   if (entry.status === "OVERDUE") return "OVERDUE";
-  if (!entry.dueDate) return entry.status === "PENDING" ? "PENDING" : "PENDING";
+  if (entry.status === "AWAITING_CONFIRMATION") return "AWAITING_CONFIRMATION";
+  if (!entry.dueDate) return "PENDING";
   const today = new Date();
   const due = new Date(entry.dueDate);
-  if (Number.isNaN(due.getTime()))
-    return entry.status === "PENDING" ? "PENDING" : "PENDING";
+  if (Number.isNaN(due.getTime())) return "PENDING";
   return due < today ? "OVERDUE" : "PENDING";
 };
 
 const buildStats = (entries: BillingEntry[]): BillingStats => {
   const paidEntries = entries.filter((e) => e.status === "PAID");
-  const pendingEntries = entries.filter((e) => e.status === "PENDING");
+  const pendingEntries = entries.filter(
+    (e) => e.status === "PENDING" || e.status === "AWAITING_CONFIRMATION",
+  );
   const overdueEntries = entries.filter((e) => e.status === "OVERDUE");
 
   const totalReceived = paidEntries.reduce((sum, e) => sum + e.amount, 0);
