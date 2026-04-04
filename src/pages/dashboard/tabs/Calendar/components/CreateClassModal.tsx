@@ -1,6 +1,6 @@
 import {useEffect, useState} from 'react';
 import {X} from 'lucide-react';
-import {CalendarEvent, EventType, EventTypeMeta} from '@/types/schedule.types.ts';
+import {CalendarEvent, EventType, EventTypeMeta, CreateExtraClassRequest} from '@/types/schedule.types.ts';
 import {Student} from '@/types/student.types.ts';
 import {toDateStr} from '@/hooks/useCalendarEvents.ts';
 import studentService from '@/services/api/student.service.ts';
@@ -22,30 +22,51 @@ export const CreateClassModal: React.FC<Props> = ({onClose, onCreated}) => {
     const [query, setQuery] = useState('');
     const [searchResults, setSearchResults] = useState<{ id: string; name: string }[]>([]);
     const [searching, setSearching] = useState(false);
-    const [selectedStudent, _setSelectedStudent] = useState<Student | null>(null);
+    const [selectedStudent, ] = useState<Student | null>(null);
     const [basicStudent, setBasicStudent] = useState<{ id: string; name: string } | null>(null);
 
     const set = <K extends keyof typeof form>(key: K, val: typeof form[K]) => setForm(p => ({...p, [key]: val}));
 
     const handleSubmit = async () => {
-        if (!form.studentId || !form.date || !form.time) { setError('Preencha todos os campos.'); return; }
+        if (!form.studentId || !form.date || !form.time) { 
+            setError('Preencha todos os campos.'); 
+            return; 
+        }
         setSubmitting(true);
         try {
-            const payload: any = {studentId: form.studentId, teacherId: '', type: form.type, date: form.date, startTime: form.time + ':00', durationMin: form.duration, title: form.type.toString()};
-            try { const stored = localStorage.getItem('user'); if (stored) { const parsed = JSON.parse(stored); if (parsed?.id) payload.teacherId = parsed.id; } } catch { /* silent */ }
+            const payload: CreateExtraClassRequest = {
+                studentId: form.studentId, 
+                type: form.type, 
+                date: form.date, 
+                startTime: form.time + ':00', 
+                durationMin: form.duration, 
+                title: form.type.toString()
+            };
+            
             await scheduleService.createExtraClass(payload);
             onCreated({
-                id: `extra-${Date.now()}`, studentId: form.studentId, studentName: basicStudent?.name, date: form.date,
-                startTime: form.time + ':00', durationMin: form.duration, type: form.type,
-                meetLink: selectedStudent?.meetLink, meetPlatform: selectedStudent?.meetPlatform,
+                id: `extra-${Date.now()}`, 
+                studentId: form.studentId, 
+                studentName: basicStudent?.name, 
+                date: form.date,
+                startTime: form.time + ':00', 
+                durationMin: form.duration, 
+                type: form.type,
+                meetLink: selectedStudent?.meetLink, 
+                meetPlatform: selectedStudent?.meetPlatform,
                 studentStatus: selectedStudent?.status ?? 'ACTIVE',
                 levelCode: selectedStudent?.levelProfileCode ?? selectedStudent?.levelProfile?.code,
                 title: EventTypeMeta[form.type].label,
             });
-            Swal.fire({icon: 'success', title: 'Aula criada!', text: 'Agendamento realizado com sucesso.', confirmButtonText: 'OK'});
-        } catch (err: any) {
-            const status = err?.response?.status;
-            const message = err?.response?.data?.message || err?.response?.data?.error || err?.message;
+            Swal.fire({
+                icon: 'success', 
+                title: 'Aula criada!', 
+                text: 'Agendamento realizado com sucesso.', 
+                confirmButtonText: 'OK'
+            });
+        } catch (err: unknown) {
+            const status = (err as any)?.response?.status;
+            const message = (err as any)?.response?.data?.message || (err as any)?.response?.data?.error || (err as any)?.message;
             if (status === 400 || status === 409) Swal.fire({icon: 'warning', title: 'Atenção', text: message || 'Dados inválidos ou conflito de horário.'});
             else Swal.fire({icon: 'error', title: 'Erro', text: 'Não foi possível criar um novo agendamento.'});
         } finally { setSubmitting(false); }

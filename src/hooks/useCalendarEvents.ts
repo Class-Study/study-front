@@ -62,7 +62,7 @@ export function isOngoing(ev: CalendarEvent, now: Date): boolean {
 export function getLevelKey(levelCode?: string): 'basic' | 'intermediate' | 'advanced' {
     if (!levelCode) return 'basic';
     const k = levelCode.toLowerCase();
-    if (k === 'basic' || k === 'intermediate' || k === 'advanced') return k as any;
+    if (k === 'basic' || k === 'intermediate' || k === 'advanced') return k as 'basic' | 'intermediate' | 'advanced';
     if (k.includes('inter') || k.includes('mid')) return 'intermediate';
     if (k.includes('adv') || k.includes('pro') || k.includes('senior')) return 'advanced';
     return 'basic';
@@ -216,9 +216,9 @@ export function useCalendarEvents() {
                 text: 'O agendamento foi atualizado.',
                 confirmButtonText: 'OK'
             });
-        } catch (err: any) {
+        } catch (err: unknown) {
             setExtraEvents(previous);
-            const message = err?.response?.data?.message || 'Não foi possível remarcar a aula.';
+            const message = (err as any)?.response?.data?.message || 'Não foi possível remarcar a aula.';
             Swal.fire({icon: 'error', title: 'Erro', text: message});
         }
     }, [pendingReschedule, extraEvents]);

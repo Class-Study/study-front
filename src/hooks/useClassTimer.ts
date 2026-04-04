@@ -46,7 +46,7 @@ function getNextClassLabel(classroom: Classroom, now: Date): string {
         return `Aula hoje às ${timeStr}`;
     }
 
-    const [y, m, d] = classroom.date.split('-').map(Number);
+    const [, m, d] = classroom.date.split('-').map(Number);
     const formattedDate = `${String(d).padStart(2, '0')}/${String(m).padStart(2, '0')}`;
     return `Próxima aula: ${PT_DAYS[dow]} ${formattedDate} às ${timeStr}`;
 }

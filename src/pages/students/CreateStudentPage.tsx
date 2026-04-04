@@ -96,14 +96,6 @@ const CreateStudentPage: React.FC = () => {
     const [submitError, setSubmitError] = useState('');
     const [credentials, setCredentials] = useState<{ email: string; password: string } | null>(null);
 
-    const [rescheduleTarget, setRescheduleTarget] = useState<{
-        scheduleId: string;
-        studentId: string;
-        conflictDate: string;
-        conflictTime: string;
-        conflictDuration: number;
-    } | null>(null);
-
     const [contractMonths, setContractMonths] = useState(6);
     const [conflictModal, setConflictModal] = useState<{ day: ClassDay; avail: DayAvailability } | null>(null);
     const {result: availability, loading: availLoading, check: checkAvailability, clearDay} = useScheduleAvailability();
@@ -184,7 +176,7 @@ const CreateStudentPage: React.FC = () => {
             form.classTime,
             contractMonths,
         );
-    }, [form.classDays, form.classDuration, form.startDate, contractMonths]);
+    }, [form.classDays, form.classDuration, form.startDate, form.classTime, contractMonths, checkAvailability]);
 
     // Handle input changes
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -573,13 +565,6 @@ const CreateStudentPage: React.FC = () => {
                                     c => c.scheduleId === scheduleId
                                 );
                                 if (!conflict) return;
-                                setRescheduleTarget({
-                                    scheduleId,
-                                    studentId,
-                                    conflictDate: conflict.date,
-                                    conflictTime: conflict.startTime,
-                                    conflictDuration: conflict.durationMin,
-                                });
                             }}
                         />
                     )}

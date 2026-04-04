@@ -61,7 +61,6 @@ export const DashboardPage: React.FC = () => {
 
     const [activeTab, setActiveTab] = useState<TabType>('calendario');
     const [searchQuery, setSearchQuery] = useState('');
-    const [now, setNow] = useState(() => new Date());
 
     const TODAY_DAY_VALUE = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'][new Date().getDay()];
     const [selectedDay, setSelectedDay] = useState(TODAY_DAY_VALUE);
@@ -90,7 +89,7 @@ export const DashboardPage: React.FC = () => {
 
     // Atualiza o relógio a cada minuto para detectar início/fim de aulas
     useEffect(() => {
-        const id = setInterval(() => setNow(new Date()), 60_000);
+        const id = setInterval(() => new Date(), 60_000);
         return () => clearInterval(id);
     }, []);
 

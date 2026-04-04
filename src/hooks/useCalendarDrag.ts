@@ -231,7 +231,7 @@ export function useCalendarDrag({
     }, [updateDragPosition, calendarBodyRef, visibleDatesRef]);
 
     // ── Mouse up (click vs drop) ─────────────────────────────────────────────
-    const handleMouseUp = useCallback((_: MouseEvent) => {
+    const handleMouseUp = useCallback((_mouseEvent: MouseEvent) => {
         // Threshold never crossed → click (open details modal)
         if (pendingDragRef.current) {
             const ev = pendingDragRef.current.event;

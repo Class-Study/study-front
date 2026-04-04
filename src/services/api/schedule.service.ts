@@ -11,7 +11,7 @@ const scheduleService = {
     },
 
     // POST /schedule/extra-class
-    createExtraClass: async (payload: CreateExtraClassRequest | any): Promise<void> => {
+    createExtraClass: async (payload: CreateExtraClassRequest): Promise<void> => {
         await api.post('/schedule/extra-class', payload);
     },
 

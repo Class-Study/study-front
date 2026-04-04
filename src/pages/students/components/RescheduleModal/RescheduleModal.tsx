@@ -36,7 +36,7 @@ export const RescheduleModal: React.FC<RescheduleModalProps> = ({
     useEffect(() => {
         void fetch(scheduleId, conflictDate, type);
         return () => clear();
-    }, [scheduleId, studentId]);
+    }, [scheduleId, studentId, conflictDate, type, fetch, clear]);
 
     const formatDate = (dateStr: string) =>
         new Date(dateStr + 'T00:00:00').toLocaleDateString('pt-BR', {

@@ -144,7 +144,7 @@ export const useStudentSchedule = (): StudentScheduleData => {
     }, 60000); // Atualizar a cada minuto
 
     return () => clearInterval(interval);
-  }, [scheduleData]);
+  }, [scheduleData, classDates.length]);
 
   const stats = useMemo(() => {
     const total = classDates.length;

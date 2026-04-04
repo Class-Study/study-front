@@ -29,7 +29,7 @@ import {useCalendarDrag} from '@/hooks/useCalendarDrag.ts';
 import studentService from '@/services/api/student.service.ts';
 import scheduleService from '@/services/api/schedule.service.ts';
 import {Student} from '@/types/student.types.ts';
-import {CalendarEvent, EventType, EventTypeMeta} from '@/types/schedule.types.ts';
+import {CalendarEvent, EventType, EventTypeMeta, CreateExtraClassRequest} from '@/types/schedule.types.ts';
 import styles from './CalendarTab.module.css';
 import Swal from 'sweetalert2';
 
@@ -221,7 +221,7 @@ const CreateClassModal: React.FC<{ onClose: () => void; onCreated: (ev: Calendar
     const [query, setQuery] = useState('');
     const [searchResults, setSearchResults] = useState<{ id: string; name: string }[]>([]);
     const [searching, setSearching] = useState(false);
-    const [selectedStudent, _setSelectedStudent] = useState<Student | null>(null);
+    const [selectedStudent, ] = useState<Student | null>(null);
     const [basicStudent, setBasicStudent] = useState<BasicStudent | null>(null);
 
     const set = <K extends keyof typeof form>(key: K, val: typeof form[K]) => setForm(p => ({...p, [key]: val}));
@@ -233,9 +233,8 @@ const CreateClassModal: React.FC<{ onClose: () => void; onCreated: (ev: Calendar
         }
         setSubmitting(true);
         try {
-            const payload: any = {
+            const payload: CreateExtraClassRequest = {
                 studentId: form.studentId,
-                teacherId: '',
                 type: form.type,
                 date: form.date,
                 startTime: form.time + ':00',
@@ -246,7 +245,6 @@ const CreateClassModal: React.FC<{ onClose: () => void; onCreated: (ev: Calendar
                 const stored = localStorage.getItem('user');
                 if (stored) {
                     const parsed = JSON.parse(stored);
-                    if (parsed?.id) payload.teacherId = parsed.id;
                 }
             } catch { /* silent */ }
             await scheduleService.createExtraClass(payload);
@@ -271,9 +269,9 @@ const CreateClassModal: React.FC<{ onClose: () => void; onCreated: (ev: Calendar
                 text: 'Agendamento realizado com sucesso.',
                 confirmButtonText: 'OK'
             });
-        } catch (err: any) {
-            const status = err?.response?.status;
-            const message = err?.response?.data?.message || err?.response?.data?.error || err?.message;
+        } catch (err: unknown) {
+            const status = (err as any)?.response?.status;
+            const message = (err as any)?.response?.data?.message || (err as any)?.response?.data?.error || (err as any)?.message;
             if (status === 400 || status === 409) {
                 Swal.fire({
                     icon: 'warning',
