@@ -441,7 +441,7 @@ const CreateStudentPage: React.FC = () => {
                                         value={contractMonths}
                                         onChange={e => setContractMonths(Math.min(24, Math.max(1, Number(e.target.value))))}
                                         className={styles.input}
-                                        style={{ width: 100 }}
+                                        style={{width: 100}}
                                     />
                                     <span className={styles.monthsLabel}>meses</span>
                                 </div>
@@ -475,7 +475,7 @@ const CreateStudentPage: React.FC = () => {
             </span>
                             )}
                             <div className={styles.dayPills}>
-                                {DAY_FILTER_OPTIONS.map(({ label, value }) => {
+                                {DAY_FILTER_OPTIONS.map(({label, value}) => {
                                     if (value === 'ALL') return null;
                                     const dayValue = value as ClassDay;
                                     const isSelected = form.classDays.includes(dayValue);
@@ -560,7 +560,7 @@ const CreateStudentPage: React.FC = () => {
                             day={conflictModal.day}
                             availability={conflictModal.avail}
                             onClose={() => setConflictModal(null)}
-                            onViewSchedule={(scheduleId, _studentId) => {
+                            onViewSchedule={(scheduleId) => {
                                 const conflict = conflictModal?.avail.conflicts.find(
                                     c => c.scheduleId === scheduleId
                                 );

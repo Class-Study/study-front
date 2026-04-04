@@ -109,6 +109,37 @@ function generateRecurring(students: Student[], weekDates: Date[]): CalendarEven
     return events;
 }
 
+// ── API Error Interface ───────────────────────────────────────────────────────
+interface ApiErrorResponse {
+    response?: {
+        status?: number;
+        data?: {
+            message?: string;
+            error?: string;
+        };
+    };
+    message?: string;
+}
+
+// ── Error Helper ─────────────────────────────────────────────────────────────
+const extractErrorInfo = (error: unknown): { status?: number; message: string } => {
+    // Type guard to check if error has expected structure
+    const isApiError = (err: unknown): err is ApiErrorResponse => {
+        return typeof err === 'object' && err !== null;
+    };
+
+    if (isApiError(error)) {
+        const status = error.response?.status;
+        const message = error.response?.data?.message || 
+                       error.response?.data?.error || 
+                       error.message || 
+                       'Erro desconhecido';
+        return { status, message };
+    }
+
+    return { message: 'Erro desconhecido' };
+};
+
 // ── Hook ─────────────────────────────────────────────────────────────────────
 export function useCalendarEvents() {
     const {students} = useStudents();
@@ -218,8 +249,8 @@ export function useCalendarEvents() {
             });
         } catch (err: unknown) {
             setExtraEvents(previous);
-            const message = (err as any)?.response?.data?.message || 'Não foi possível remarcar a aula.';
-            Swal.fire({icon: 'error', title: 'Erro', text: message});
+            const { message } = extractErrorInfo(err);
+            Swal.fire({icon: 'error', title: 'Erro', text: message || 'Não foi possível remarcar a aula.'});
         }
     }, [pendingReschedule, extraEvents]);
 
