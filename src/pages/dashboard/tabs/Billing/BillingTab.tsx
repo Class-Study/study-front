@@ -70,10 +70,10 @@ function getClassDatesForMonth(monthIso: string, weekDays: string[]): Date[] {
   return result;
 }
 
-function statusVariant(status: BillingStatus): 'paid' | 'pending' | 'late' | 'waiting' {
+function statusVariant(status: BillingStatus): 'paid' | 'pending' | 'late' | 'warning' {
   if (status === 'PAID') return 'paid';
   if (status === 'OVERDUE') return 'late';
-  if (status === 'AWAITING_CONFIRMATION') return 'waiting';
+  if (status === 'AWAITING_CONFIRMATION') return 'warning';
   return 'pending';
 }
 
