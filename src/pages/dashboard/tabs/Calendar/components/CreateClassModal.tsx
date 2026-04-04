@@ -10,6 +10,37 @@ import styles from '../CalendarTab.module.css';
 
 const DURATION_OPTS = [30, 45, 60, 90, 120];
 
+// ── API Error Interface ───────────────────────────────────────────────────────
+interface ApiErrorResponse {
+    response?: {
+        status?: number;
+        data?: {
+            message?: string;
+            error?: string;
+        };
+    };
+    message?: string;
+}
+
+// ── Error Helper ─────────────────────────────────────────────────────────────
+const extractErrorInfo = (error: unknown): { status?: number; message: string } => {
+    // Type guard to check if error has expected structure
+    const isApiError = (err: unknown): err is ApiErrorResponse => {
+        return typeof err === 'object' && err !== null;
+    };
+
+    if (isApiError(error)) {
+        const status = error.response?.status;
+        const message = error.response?.data?.message || 
+                       error.response?.data?.error || 
+                       error.message || 
+                       'Erro desconhecido';
+        return { status, message };
+    }
+
+    return { message: 'Erro desconhecido' };
+};
+
 interface Props {
     onClose: () => void;
     onCreated: (ev: CalendarEvent) => void;
@@ -65,8 +96,7 @@ export const CreateClassModal: React.FC<Props> = ({onClose, onCreated}) => {
                 confirmButtonText: 'OK'
             });
         } catch (err: unknown) {
-            const status = (err as any)?.response?.status;
-            const message = (err as any)?.response?.data?.message || (err as any)?.response?.data?.error || (err as any)?.message;
+            const { status, message } = extractErrorInfo(err);
             if (status === 400 || status === 409) Swal.fire({icon: 'warning', title: 'Atenção', text: message || 'Dados inválidos ou conflito de horário.'});
             else Swal.fire({icon: 'error', title: 'Erro', text: 'Não foi possível criar um novo agendamento.'});
         } finally { setSubmitting(false); }
@@ -129,4 +159,3 @@ export const CreateClassModal: React.FC<Props> = ({onClose, onCreated}) => {
         </div>
     );
 };
-

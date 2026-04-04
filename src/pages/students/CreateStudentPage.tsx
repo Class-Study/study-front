@@ -102,7 +102,7 @@ const CreateStudentPage: React.FC = () => {
 
     useEffect(() => {
         fetchLevelProfiles();
-    }, []);
+    }, [fetchLevelProfiles]);
 
     // Get selected level profile
     const selectedLevelProfile = levelProfiles.find(
@@ -560,7 +560,7 @@ const CreateStudentPage: React.FC = () => {
                             day={conflictModal.day}
                             availability={conflictModal.avail}
                             onClose={() => setConflictModal(null)}
-                            onViewSchedule={(scheduleId, studentId) => {
+                            onViewSchedule={(scheduleId, _studentId) => {
                                 const conflict = conflictModal?.avail.conflicts.find(
                                     c => c.scheduleId === scheduleId
                                 );

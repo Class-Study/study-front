@@ -27,7 +27,6 @@ export const ConflictDetailModal: React.FC<ConflictDetailModalProps> = ({
                                                                             day,
                                                                             availability,
                                                                             onClose,
-                                                                            onViewSchedule: _onViewSchedule,
                                                                         }) => {
 
     const [rescheduleTarget, setRescheduleTarget] = useState<{

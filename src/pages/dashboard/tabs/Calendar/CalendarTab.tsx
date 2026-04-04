@@ -40,6 +40,37 @@ const HOUR_PX = 64;
 const MIN_PX = HOUR_PX / 60;
 const GRID_H = (END_HOUR - START_HOUR) * HOUR_PX;
 
+// ── API Error Interface ───────────────────────────────────────────────────────
+interface ApiErrorResponse {
+    response?: {
+        status?: number;
+        data?: {
+            message?: string;
+            error?: string;
+        };
+    };
+    message?: string;
+}
+
+// ── Error Helper ─────────────────────────────────────────────────────────────
+const extractErrorInfo = (error: unknown): { status?: number; message: string } => {
+    // Type guard to check if error has expected structure
+    const isApiError = (err: unknown): err is ApiErrorResponse => {
+        return typeof err === 'object' && err !== null;
+    };
+
+    if (isApiError(error)) {
+        const status = error.response?.status;
+        const message = error.response?.data?.message || 
+                       error.response?.data?.error || 
+                       error.message || 
+                       'Erro desconhecido';
+        return { status, message };
+    }
+
+    return { message: 'Erro desconhecido' };
+};
+
 // ── Localização ───────────────────────────────────────────────────────────────
 const PT_SHORT = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 const PT_LONG = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
@@ -241,12 +272,7 @@ const CreateClassModal: React.FC<{ onClose: () => void; onCreated: (ev: Calendar
                 durationMin: form.duration,
                 title: form.type.toString()
             };
-            try {
-                const stored = localStorage.getItem('user');
-                if (stored) {
-                    const parsed = JSON.parse(stored);
-                }
-            } catch { /* silent */ }
+            
             await scheduleService.createExtraClass(payload);
             const newEvent: CalendarEvent = {
                 id: crypto.randomUUID().toString(),
@@ -270,8 +296,8 @@ const CreateClassModal: React.FC<{ onClose: () => void; onCreated: (ev: Calendar
                 confirmButtonText: 'OK'
             });
         } catch (err: unknown) {
-            const status = (err as any)?.response?.status;
-            const message = (err as any)?.response?.data?.message || (err as any)?.response?.data?.error || (err as any)?.message;
+            const { status, message } = extractErrorInfo(err);
+            
             if (status === 400 || status === 409) {
                 Swal.fire({
                     icon: 'warning',
@@ -279,7 +305,11 @@ const CreateClassModal: React.FC<{ onClose: () => void; onCreated: (ev: Calendar
                     text: message || 'Dados inválidos ou conflito de horário.'
                 });
             } else {
-                Swal.fire({icon: 'error', title: 'Erro', text: 'Não foi possível criar um novo agendamento.'});
+                Swal.fire({
+                    icon: 'error', 
+                    title: 'Erro', 
+                    text: 'Não foi possível criar um novo agendamento.'
+                });
             }
         } finally {
             setSubmitting(false);
