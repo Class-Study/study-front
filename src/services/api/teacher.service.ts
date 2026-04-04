@@ -3,6 +3,7 @@ import {
   Teacher,
   CreateTeacherRequest,
   UpdateTeacherRequest,
+  TeacherConfigResponse,
 } from '@/types/teacher.types';
 import { PageResponse } from '@/types/api.types';
 
@@ -32,19 +33,18 @@ const teacherService = {
     return data;
   },
 
-  update: async (
-    id: string,
-    payload: UpdateTeacherRequest,
-  ): Promise<Teacher> => {
-    const { data } = await api.patch<Teacher>(
-      `/teachers/${id}`,
-      payload,
-    );
-    return data;
+  update: async (payload: UpdateTeacherRequest): Promise<void> => {
+    await api.patch(`/teachers`, payload);
   },
 
   delete: async (id: string): Promise<void> => {
     await api.delete(`/teachers/${id}`);
+  },
+
+  // Configuration methods
+  getConfig: async (): Promise<TeacherConfigResponse> => {
+    const { data } = await api.get<TeacherConfigResponse>('/teachers/config');
+    return data;
   },
 };
 

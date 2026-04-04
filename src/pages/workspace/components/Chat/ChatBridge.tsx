@@ -12,6 +12,7 @@ interface ChatBridgeProps {
         id?: string;
         name?: string;
         email?: string;
+        phone?: string;
         role?: string;
     };
     messagesRef: React.MutableRefObject<ChatMessage[]>;
@@ -34,6 +35,7 @@ export const ChatBridge: React.FC<ChatBridgeProps> = ({
         id: user.id ?? '',
         name: user.name ?? '',
         email: user.email ?? '',
+        phone: user.phone ?? '',
         role: user.role as UserRole,
     };
 

@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { ThemeToggle } from '@/components/ui/ThemeToggle/ThemeToggle';
+import { ProfessorConfigModal } from './ProfessorConfigModal.tsx';
 import styles from './Header.module.css';
 
 export interface BreadcrumbItem {
@@ -35,6 +36,7 @@ const getAvatarTone = (name?: string | null): number => {
 export const Header: React.FC<HeaderProps> = ({ breadcrumb, breadcrumbItems }) => {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
+  const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
   const hasBreadcrumbItems = (breadcrumbItems?.length ?? 0) > 0;
 
   const initials = getInitials(user?.name);
@@ -81,7 +83,11 @@ export const Header: React.FC<HeaderProps> = ({ breadcrumb, breadcrumbItems }) =
 
         <ThemeToggle />
 
-        <div className={`${styles.avatar} ${avatarToneClass}`} title={userName}>
+        <div 
+          className={`${styles.avatar} ${avatarToneClass}`} 
+          title={userName}
+          onClick={() => setIsConfigModalOpen(true)}
+        >
           {initials}
         </div>
 
@@ -96,6 +102,14 @@ export const Header: React.FC<HeaderProps> = ({ breadcrumb, breadcrumbItems }) =
           </button>
         </div>
       </div>
+
+      {/* Professor Config Modal */}
+      {isConfigModalOpen && (
+        <ProfessorConfigModal 
+          isOpen={isConfigModalOpen}
+          onClose={() => setIsConfigModalOpen(false)}
+        />
+      )}
     </header>
   );
 };
