@@ -53,8 +53,9 @@ export const StudentScheduleTab: React.FC = () => {
     return <div className={styles.error}>{error}</div>;
   }
 
-  // Encontrar a próxima aula
-  const nextClass = classDates.find(classDate => classDate.isNextClass || classDate.isToday);
+  // Encontrar a próxima aula ou aula ao vivo
+  const nextClass = classDates.find(classDate => classDate.isLive) || 
+                   classDates.find(classDate => classDate.isNextClass || classDate.isToday);
 
   const classTypeLabel: Record<string, string> = {
     RECORRENTE: 'Recorrente',
@@ -78,16 +79,18 @@ export const StudentScheduleTab: React.FC = () => {
       {/* Card da próxima aula em destaque */}
       {nextClass && (
         <div
-          className={`${styles.nextClassCard} ${nextClass.isToday ? styles.nextClassCardToday : ''}`}
-          onClick={nextClass.isToday ? () => navigate('/me/workspace') : undefined}
-          role={nextClass.isToday ? 'button' : undefined}
-          tabIndex={nextClass.isToday ? 0 : undefined}
-          onKeyDown={nextClass.isToday ? (e) => e.key === 'Enter' && navigate('/me/workspace') : undefined}
+          className={`${styles.nextClassCard} ${nextClass.isLive || nextClass.isToday ? styles.nextClassCardToday : ''}`}
+          onClick={nextClass.isLive || nextClass.isToday ? () => navigate('/me/workspace') : undefined}
+          role={nextClass.isLive || nextClass.isToday ? 'button' : undefined}
+          tabIndex={nextClass.isLive || nextClass.isToday ? 0 : undefined}
+          onKeyDown={nextClass.isLive || nextClass.isToday ? (e) => e.key === 'Enter' && navigate('/me/workspace') : undefined}
         >
           <div className={styles.nextClassHeader}>
             <h3 className={styles.nextClassTitle}>
-              {nextClass.isToday
+              {nextClass.isLive
                 ? <><span className={styles.pulseDot} />Aula Agora</>
+                : nextClass.isToday
+                ? <><span className={styles.pulseDot} />Aula Hoje</>
                 : '→ Próxima Aula'
               }
             </h3>
@@ -175,13 +178,15 @@ export const StudentScheduleTab: React.FC = () => {
           <div className={styles.classListContainer}>
             <div className={styles.classList} ref={classListRef}>
               {classDates.map((classDate) => {
-                const isCurrentClass = classDate.isToday || classDate.isNextClass;
+                const isCurrentClass = classDate.isLive || classDate.isToday || classDate.isNextClass;
                 return (
                   <div 
                     key={classDate.id}
                     ref={isCurrentClass ? currentClassRef : null}
                     className={`${styles.classItem} ${
                       classDate.isPast ? styles.past : ''
+                    } ${
+                      classDate.isLive ? styles.live : ''
                     } ${
                       classDate.isToday ? styles.today : ''
                     } ${
@@ -210,10 +215,11 @@ export const StudentScheduleTab: React.FC = () => {
                   </div>
                   
                   <div className={styles.classStatus}>
-                    {classDate.isPast && <span className={styles.statusCompleted}>✓ Realizada</span>}
-                    {classDate.isToday && <span className={styles.statusToday}><span className={styles.pulseDotSmall} />Hoje</span>}
-                    {classDate.isNextClass && <span className={styles.statusNext}>→ Próxima</span>}
-                    {!classDate.isPast && !classDate.isToday && !classDate.isNextClass && (
+                    {classDate.isLive && <span className={styles.statusLive}><span className={styles.pulseDotSmall} />Ao Vivo</span>}
+                    {!classDate.isLive && classDate.isPast && <span className={styles.statusCompleted}>✓ Realizada</span>}
+                    {!classDate.isLive && !classDate.isPast && classDate.isToday && <span className={styles.statusToday}><span className={styles.pulseDotSmall} />Hoje</span>}
+                    {!classDate.isLive && !classDate.isPast && !classDate.isToday && classDate.isNextClass && <span className={styles.statusNext}>→ Próxima</span>}
+                    {!classDate.isLive && !classDate.isPast && !classDate.isToday && !classDate.isNextClass && (
                       <span className={styles.statusScheduled}>⏰ Agendada</span>
                     )}
                     <span className={`${styles.classTypeTag} ${classTypeBadgeClass[classDate.classType]}`}>

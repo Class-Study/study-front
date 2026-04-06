@@ -12,6 +12,7 @@ export interface ClassDate {
   isPast: boolean;
   isToday: boolean;
   isNextClass: boolean;
+  isLive: boolean; // Nova propriedade para indicar que a aula está acontecendo agora
 }
 
 export interface StudentScheduleData {
@@ -50,15 +51,22 @@ const mapClassDates = (response: StudentScheduleResponse
     const [hours, minutes] = cls.time.split(':').map(Number);
     const classDateTime = new Date(year, month - 1, day, hours, minutes);
     
-    // Verificar se a aula já passou baseado na data/hora atual
-    const hasPassedByTime = classDateTime < now;
+    // Calcular o horário de fim da aula
+    const classDuration = response.classDuration; // em minutos
+    const classEndTime = new Date(classDateTime.getTime() + classDuration * 60 * 1000);
+    
+    // Verificar se a aula está acontecendo agora (entre início e fim)
+    const isLive = now >= classDateTime && now <= classEndTime;
+    
+    // Verificar se a aula já passou completamente (passou do horário de fim)
+    const hasPassedByTime = now > classEndTime;
     
     // isPast considera tanto o status da API quanto se já passou o horário
     const isPast = cls.status === 'COMPLETED' || cls.status === 'CANCELLED' || hasPassedByTime;
     
-    // isToday só é verdade se for hoje E ainda não passou o horário
+    // isToday é verdade se for hoje E ainda não passou o horário completamente
     const isTodayByDate = localDate.getTime() === today.getTime();
-    const isToday = isTodayByDate && !hasPassedByTime;
+    const isToday = isTodayByDate && !isPast && !isLive;
 
     return {
       id: cls.id,
@@ -68,14 +76,15 @@ const mapClassDates = (response: StudentScheduleResponse
       isPast,
       isToday,
       isNextClass: false, // Será calculado depois
+      isLive, // Aula acontecendo agora
     };
   });
 };
 
 // Calcula qual é a próxima aula
 const calculateNextClass = (classDates: ClassDate[]): ClassDate[] => {
-  // Filtrar apenas aulas futuras (não passou e não foi cancelada/completada)
-  const futureClasses = classDates.filter(cls => !cls.isPast);
+  // Filtrar apenas aulas futuras (não passou, não foi cancelada/completada e não está ao vivo)
+  const futureClasses = classDates.filter(cls => !cls.isPast && !cls.isLive);
   
   if (futureClasses.length === 0) {
     return classDates; // Se não há aulas futuras, retorna sem modificar
@@ -99,7 +108,7 @@ const calculateNextClass = (classDates: ClassDate[]): ClassDate[] => {
   
   return classDates.map(cls => ({
     ...cls,
-    isNextClass: cls.id === nextClassId && !cls.isPast && !cls.isToday
+    isNextClass: cls.id === nextClassId && !cls.isPast && !cls.isToday && !cls.isLive
   }));
 };
 
