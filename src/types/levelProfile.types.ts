@@ -7,7 +7,8 @@ export type StudyMaterialType = 'VIDEO' | 'DOCUMENT' | 'LINK';
 export interface StudyMaterial {
   id: string;
   levelFolderId: string;
-  subfolderType: string;
+  subfolderId?: string;
+  subfolderType?: string; // legado — mantido para compatibilidade
   title: string;
   type: 'VIDEO' | 'DOCUMENT' | 'LINK';
   url?: string;
@@ -22,6 +23,7 @@ export interface StudyMaterial {
 export interface LevelFolderTemplate {
   id: string;
   levelFolderId: string;
+  subfolderId?: string;
   title: string;
   type: 'EXERCISE' | 'WORKSPACE';
   originalFilename?: string;
@@ -31,20 +33,33 @@ export interface LevelFolderTemplate {
 
 export interface CreateLevelFolderTemplateRequest {
   title: string;
-  type: 'EXERCISE' | 'WORKSPACE';
+  type: string;
   originalFilename?: string;
   convertedHtml: string;
   propagateToStudents: boolean;
 }
 
-// Nova estrutura para subpastas
+// Subpasta real persistida no banco
 export interface LevelSubfolder {
   id: string;
+  levelFolderId: string;
   name: string;
-  type: 'EXERCISES' | 'STUDY_MATERIALS';
   position: number;
   templates: LevelFolderTemplate[];
   studyMaterials: StudyMaterial[];
+  createdBy?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface CreateLevelSubfolderRequest {
+  name: string;
+  position?: number;
+}
+
+export interface UpdateLevelSubfolderRequest {
+  name?: string;
+  position?: number;
 }
 
 export interface LevelFolder {
@@ -52,9 +67,8 @@ export interface LevelFolder {
   name: string;
   position: number;
   initialFiles: number;
-  // Nova estrutura hierárquica
   subfolders: LevelSubfolder[];
-  // Manter compatibilidade com estrutura antiga (será removido no futuro)
+  // Legado — templates sem subfolder
   templates: LevelFolderTemplate[];
 }
 
@@ -102,7 +116,7 @@ export interface ListLevelProfilesResponse {
 export interface ActivityTemplate {
   tempId: string;
   folderId: string;
-  subfolderId?: string; // Nova propriedade para subpastas
+  subfolderId?: string;
   title: string;
   type: 'EXERCISE' | 'WORKSPACE';
   file: File;
@@ -135,7 +149,7 @@ export interface PendingStudyMaterial {
 
 export interface PendingTemplate {
   tempId: string;
-  subfolderId: string; // Atualizado para usar subpasta
+  subfolderId: string;
   folderId: string;
   title: string;
   type: ContentType;
@@ -143,4 +157,3 @@ export interface PendingTemplate {
   convertedHtml: string;
   propagateToStudents: boolean;
 }
-

@@ -4,7 +4,8 @@ import api from './client';
 export interface StudyMaterialResponse {
   id: string;
   levelFolderId: string;
-  subfolderType: string;
+  subfolderId?: string;
+  subfolderType?: string; // legado
   title: string;
   type: 'VIDEO' | 'DOCUMENT' | 'LINK';
   url?: string;
@@ -36,28 +37,28 @@ export interface UpdateStudyMaterialRequest {
 }
 
 const studyMaterialService = {
-  // Listar materiais de uma subpasta específica
+  // Listar materiais de uma subpasta (subfolderId = UUID real)
   listBySubfolder: async (
-    profileId: string, 
-    folderId: string, 
-    subfolderId: string
+    profileId: string,
+    folderId: string,
+    subfolderId: string,
   ): Promise<StudyMaterialResponse[]> => {
     const { data } = await api.get<StudyMaterialResponse[]>(
-      `/level-profiles/${profileId}/folders/${folderId}/subfolders/${subfolderId}/materials`
+      `/level-profiles/${profileId}/folders/${folderId}/subfolders/${subfolderId}/materials`,
     );
     return data;
   },
 
   // Criar material de estudo
   create: async (
-    profileId: string, 
-    folderId: string, 
-    subfolderId: string, 
-    payload: CreateStudyMaterialRequest
+    profileId: string,
+    folderId: string,
+    subfolderId: string,
+    payload: CreateStudyMaterialRequest,
   ): Promise<StudyMaterialResponse> => {
     const { data } = await api.post<StudyMaterialResponse>(
       `/level-profiles/${profileId}/folders/${folderId}/subfolders/${subfolderId}/materials`,
-      payload
+      payload,
     );
     return data;
   },
@@ -65,14 +66,14 @@ const studyMaterialService = {
   // Atualizar material de estudo
   update: async (
     profileId: string,
-    folderId: string, 
+    folderId: string,
     subfolderId: string,
     materialId: string,
-    payload: UpdateStudyMaterialRequest
+    payload: UpdateStudyMaterialRequest,
   ): Promise<StudyMaterialResponse> => {
     const { data } = await api.patch<StudyMaterialResponse>(
       `/level-profiles/${profileId}/folders/${folderId}/subfolders/${subfolderId}/materials/${materialId}`,
-      payload
+      payload,
     );
     return data;
   },
@@ -80,15 +81,14 @@ const studyMaterialService = {
   // Deletar material de estudo
   delete: async (
     profileId: string,
-    folderId: string, 
+    folderId: string,
     subfolderId: string,
-    materialId: string
+    materialId: string,
   ): Promise<void> => {
     await api.delete(
-      `/level-profiles/${profileId}/folders/${folderId}/subfolders/${subfolderId}/materials/${materialId}`
+      `/level-profiles/${profileId}/folders/${folderId}/subfolders/${subfolderId}/materials/${materialId}`,
     );
   },
 };
 
 export default studyMaterialService;
-

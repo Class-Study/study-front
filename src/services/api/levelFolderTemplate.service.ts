@@ -5,6 +5,7 @@ import {
 } from '@/types/levelProfile.types';
 
 const levelFolderTemplateService = {
+  // ─── Legado (sem subfolder) ───────────────────────────
   create: async (
     profileId: string,
     folderId: string,
@@ -34,6 +35,42 @@ const levelFolderTemplateService = {
   ): Promise<void> => {
     await api.delete(
       `/level-profiles/${profileId}/folders/${folderId}/templates/${templateId}`,
+    );
+  },
+
+  // ─── Novo — via subfolder real ────────────────────────
+  createInSubfolder: async (
+    profileId: string,
+    folderId: string,
+    subfolderId: string,
+    payload: CreateLevelFolderTemplateRequest,
+  ): Promise<LevelFolderTemplate> => {
+    const { data } = await api.post<LevelFolderTemplate>(
+      `/level-profiles/${profileId}/folders/${folderId}/subfolders/${subfolderId}/templates`,
+      payload,
+    );
+    return data;
+  },
+
+  listBySubfolder: async (
+    profileId: string,
+    folderId: string,
+    subfolderId: string,
+  ): Promise<LevelFolderTemplate[]> => {
+    const { data } = await api.get<LevelFolderTemplate[]>(
+      `/level-profiles/${profileId}/folders/${folderId}/subfolders/${subfolderId}/templates`,
+    );
+    return data;
+  },
+
+  deleteFromSubfolder: async (
+    profileId: string,
+    folderId: string,
+    subfolderId: string,
+    templateId: string,
+  ): Promise<void> => {
+    await api.delete(
+      `/level-profiles/${profileId}/folders/${folderId}/subfolders/${subfolderId}/templates/${templateId}`,
     );
   },
 };
