@@ -1,6 +1,7 @@
 import React from 'react';
 import type { NewLevelForm } from '@/types/levelTab.types.ts';
 import { toSlug } from '@/utils/levelTab.utils.ts';
+import { IconPicker } from './IconPicker.tsx';
 import styles from '../LevelTab.module.css';
 
 interface CreateLevelFormProps {
@@ -47,13 +48,9 @@ export const CreateLevelForm: React.FC<CreateLevelFormProps> = ({
 
       <div className={styles.formField}>
         <label className={styles.formLabel}>Emoji / Ícone</label>
-        <input
-          className={styles.formInput}
-          type="text"
-          placeholder="⭐"
-          maxLength={4}
+        <IconPicker
           value={form.icon}
-          onChange={(event) => handleFieldChange('icon', event.target.value)}
+          onChange={(icon) => handleFieldChange('icon', icon)}
         />
       </div>
 

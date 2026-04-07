@@ -1,13 +1,16 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import type { LevelFolderTemplate, LevelSubfolder } from '@/types/levelProfile.types.ts';
-import type { PendingMaterial, PendingTemplateExtended, PreviewState } from '../../../../../types/levelTab.types.ts';
-import { convertMaterialType, getMaterialTypeLabel, getTemplateTypeLabel } from '../../../../../utils/levelTab.utils.ts';
+import type { PendingMaterial, PendingTemplateExtended, PreviewState } from '@/types/levelTab.types.ts';
+import { convertMaterialType, getMaterialTypeLabel, getTemplateTypeLabel } from '@/utils/levelTab.utils.ts';
+import { ChevronDown } from 'lucide-react';
+import Swal from 'sweetalert2';
 import styles from '../LevelTab.module.css';
 
 interface SubfolderCardProps {
   subfolder: LevelSubfolder;
   folderId: string;
   selectedLevelId: string;
+  isFolderOpen: boolean;
 
   // Pending items
   sfPendingTemplates: PendingTemplateExtended[];
@@ -26,11 +29,7 @@ interface SubfolderCardProps {
   fileInputRef: React.RefObject<HTMLInputElement> | React.MutableRefObject<HTMLInputElement | null>;
 
   // Subfolder edit state
-  isEditing: boolean;
-  editingSubfolderName: string;
-  setEditingSubfolderId: React.Dispatch<React.SetStateAction<string | null>>;
-  setEditingSubfolderName: React.Dispatch<React.SetStateAction<string>>;
-  handleRenameSubfolder: (folderId: string, subfolderId: string) => Promise<void>;
+  handleRenameSubfolder: (folderId: string, subfolderId: string, newName: string) => Promise<void>;
   handleDeleteSubfolder: (folderId: string, subfolderId: string, name: string) => Promise<void>;
 
   // Handlers
@@ -49,6 +48,7 @@ export const SubfolderCard: React.FC<SubfolderCardProps> = ({
   subfolder,
   folderId,
   selectedLevelId,
+  isFolderOpen,
   sfPendingTemplates,
   sfPendingMaterials,
   activeTab,
@@ -59,10 +59,6 @@ export const SubfolderCard: React.FC<SubfolderCardProps> = ({
   isDragging,
   setIsDragging,
   fileInputRef,
-  isEditing,
-  editingSubfolderName,
-  setEditingSubfolderId,
-  setEditingSubfolderName,
   handleRenameSubfolder,
   handleDeleteSubfolder,
   handleFileConvert,
@@ -75,63 +71,104 @@ export const SubfolderCard: React.FC<SubfolderCardProps> = ({
 }) => {
   const savedTemplates = subfolder.templates ?? [];
   const savedMaterials = subfolder.studyMaterials ?? [];
+  const [isOpen, setIsOpen] = useState(false);
+  const [displayName, setDisplayName] = useState(subfolder.name); // Nome exibido (com optimistic update)
+
+  // Fecha a subpasta automaticamente quando a pasta pai fecha
+  useEffect(() => {
+    if (!isFolderOpen) {
+      setIsOpen(false);
+    }
+  }, [isFolderOpen]);
+
+  // Função para abrir modal de renomeação
+  const handleOpenRenameModal = async () => {
+    const confirmButtonColor = getComputedStyle(document.documentElement).getPropertyValue('--color-accent').trim() || '#0066cc';
+    const cancelButtonColor = getComputedStyle(document.documentElement).getPropertyValue('--color-blue').trim() || '#6b7280';
+    const backgroundColor = getComputedStyle(document.documentElement).getPropertyValue('--color-bg-card').trim() || '#fff';
+    const colorText = getComputedStyle(document.documentElement).getPropertyValue('--color-text-primary').trim() || '#000';
+
+    const { value: newName } = await Swal.fire({
+      title: 'Renomear subpasta',
+      input: 'text',
+      inputValue: displayName,
+      inputPlaceholder: 'Digite o novo nome',
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonColor,
+      cancelButtonColor,
+      confirmButtonText: 'Confirmar',
+      color: colorText,
+      cancelButtonText: 'Cancelar',
+      background: backgroundColor,
+      inputValidator: (value) => {
+        if (!value || !value.trim()) {
+          return 'O nome não pode estar vazio';
+        }
+        return null;
+      },
+    });
+
+    if (newName && newName.trim() !== displayName) {
+      const trimmedName = newName.trim();
+      const previousName = displayName;
+      
+      // Optimistic update: atualiza o nome imediatamente
+      setDisplayName(trimmedName);
+      
+      try {
+        // Chama handleRenameSubfolder passando o novo nome como parâmetro
+        await handleRenameSubfolder(folderId, subfolder.id, trimmedName);
+      } catch (error) {
+        // Se falhar, reverte para o nome anterior
+        setDisplayName(previousName);
+      }
+    }
+  };
 
   return (
     <div className={styles.subfolderCard}>
-      {/* Header */}
-      <div className={styles.subfolderHeader}>
-        {isEditing ? (
-          <div style={{ display: 'flex', gap: '4px', flex: 1 }}>
-            <input
-              className={styles.folderNameInput}
-              type="text"
-              value={editingSubfolderName}
-              onChange={(e) => setEditingSubfolderName(e.target.value)}
-              style={{ flex: 1, fontSize: '13px', padding: '2px 6px' }}
-              autoFocus
-            />
-            <button
-              type="button"
-              className={styles.addSubfolderBtn}
-              onClick={() => void handleRenameSubfolder(folderId, subfolder.id)}
-            >
-              ✓
-            </button>
-            <button
-              type="button"
-              className={styles.removeTemplateBtn}
-              onClick={() => setEditingSubfolderId(null)}
-            >
-              ✕
-            </button>
-          </div>
-        ) : (
-          <>
-            <div className={styles.subfolderName}>📂 {subfolder.name}</div>
-            <div style={{ display: 'flex', gap: '4px' }}>
-              <button
-                type="button"
-                className={styles.viewTemplateBtn}
-                title="Renomear"
-                onClick={() => {
-                  setEditingSubfolderId(subfolder.id);
-                  setEditingSubfolderName(subfolder.name);
-                }}
-              >
-                ✏️
-              </button>
-              <button
-                type="button"
-                className={styles.removeTemplateBtn}
-                title="Deletar subpasta"
-                onClick={() => void handleDeleteSubfolder(folderId, subfolder.id, subfolder.name)}
-              >
-                🗑️
-              </button>
-            </div>
-          </>
-        )}
-      </div>
+      {/* Accordion Header */}
+      <button
+        type="button"
+        className={styles.subfolderAccordionHeader}
+        onClick={() => setIsOpen(!isOpen)}
+      >
+        <div className={styles.subfolderAccordionHeaderContent}>
+          <ChevronDown
+            size={20}
+            className={`${styles.chevronIcon} ${isOpen ? styles.chevronIconOpen : ''}`}
+          />
+          <div className={styles.subfolderName}>📂 {displayName}</div>
+        </div>
+        <div className={styles.subfolderHeaderActions}>
+          <button
+            type="button"
+            className={styles.viewTemplateBtn}
+            title="Renomear"
+            onClick={(e) => {
+              e.stopPropagation();
+              void handleOpenRenameModal();
+            }}
+          >
+            ✏️
+          </button>
+          <button
+            type="button"
+            className={styles.removeTemplateBtn}
+            title="Deletar subpasta"
+            onClick={(e) => {
+              e.stopPropagation();
+              void handleDeleteSubfolder(folderId, subfolder.id, subfolder.name);
+            }}
+          >
+            ✕
+          </button>
+        </div>
+      </button>
+
+      {/* Accordion Content */}
+      <div className={`${styles.subfolderAccordionContent} ${isOpen ? styles.subfolderAccordionContentOpen : ''}`}>
 
       {/* Inner tabs: Exercícios | Material de Estudos */}
       <div className={styles.managementTabs} style={{ padding: '0 8px', marginBottom: '4px' }}>
@@ -497,9 +534,12 @@ export const SubfolderCard: React.FC<SubfolderCardProps> = ({
           )}
         </>
       )}
+      </div>
     </div>
   );
 };
+
+
 
 
 

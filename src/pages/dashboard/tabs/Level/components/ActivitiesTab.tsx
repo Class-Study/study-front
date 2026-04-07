@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import type { LevelFolderTemplate, LevelProfile } from '@/types/levelProfile.types.ts';
 import type { PendingMaterial, PendingTemplateExtended, PreviewState } from '../../../../../types/levelTab.types.ts';
+import { ChevronDown } from 'lucide-react';
 import { getFolderName } from '@/utils/levelTab.utils.ts';
 import { SubfolderCard } from './SubfolderCard.tsx';
 import styles from '../LevelTab.module.css';
@@ -35,11 +36,7 @@ interface ActivitiesTabProps {
   setNewSubfolderName: React.Dispatch<React.SetStateAction<Record<string, string>>>;
   creatingSubfolder: string | null;
   handleCreateSubfolder: (folderId: string) => Promise<void>;
-  editingSubfolderId: string | null;
-  setEditingSubfolderId: React.Dispatch<React.SetStateAction<string | null>>;
-  editingSubfolderName: string;
-  setEditingSubfolderName: React.Dispatch<React.SetStateAction<string>>;
-  handleRenameSubfolder: (folderId: string, subfolderId: string) => Promise<void>;
+  handleRenameSubfolder: (folderId: string, subfolderId: string, newName: string) => Promise<void>;
   handleDeleteSubfolder: (folderId: string, subfolderId: string, name: string) => Promise<void>;
 
   // Handlers
@@ -74,10 +71,6 @@ export const ActivitiesTab: React.FC<ActivitiesTabProps> = ({
   setNewSubfolderName,
   creatingSubfolder,
   handleCreateSubfolder,
-  editingSubfolderId,
-  setEditingSubfolderId,
-  editingSubfolderName,
-  setEditingSubfolderName,
   handleRenameSubfolder,
   handleDeleteSubfolder,
   handleFileConvert,
@@ -86,19 +79,50 @@ export const ActivitiesTab: React.FC<ActivitiesTabProps> = ({
   handleDeleteTemplate,
   handleDeleteMaterial,
   setPreview,
-}) => (
-  <div className={styles.managementBody}>
-    {saveSuccess && <div className={styles.successBanner}>{saveSuccessMessage}</div>}
-    {saveError && <div className={styles.errorBanner}>{saveError}</div>}
+}) => {
+  // Estado para rastrear quais pastas estão abertas
+  const [openFolders, setOpenFolders] = useState<Set<string>>(new Set());
 
-    {selectedLevel.folders.map((folder, index) => {
-      const subfolders = folder.subfolders ?? [];
+  const toggleFolder = (folderId: string) => {
+    setOpenFolders((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(folderId)) {
+        newSet.delete(folderId);
+      } else {
+        newSet.add(folderId);
+      }
+      return newSet;
+    });
+  };
 
-      return (
-        <section key={folder.id} className={styles.modalFolderCard}>
-          <div className={styles.modalFolderHeader}>
-            <div className={styles.modalFolderName}>📁 {getFolderName(folder, index)}</div>
-          </div>
+  return (
+    <div className={styles.managementBody}>
+      {saveSuccess && <div className={styles.successBanner}>{saveSuccessMessage}</div>}
+      {saveError && <div className={styles.errorBanner}>{saveError}</div>}
+
+      {selectedLevel.folders.map((folder, index) => {
+        const subfolders = folder.subfolders ?? [];
+        const isFolderOpen = openFolders.has(folder.id);
+
+        return (
+          <section key={folder.id} className={styles.modalFolderCard}>
+            {/* Folder Accordion Header */}
+            <button
+              type="button"
+              className={styles.folderAccordionHeader}
+              onClick={() => toggleFolder(folder.id)}
+            >
+              <div className={styles.folderAccordionHeaderContent}>
+                <ChevronDown
+                  size={20}
+                  className={`${styles.chevronIcon} ${isFolderOpen ? styles.chevronIconOpen : ''}`}
+                />
+                <div className={styles.modalFolderName}>📁 {getFolderName(folder, index)}</div>
+              </div>
+            </button>
+
+            {/* Folder Accordion Content */}
+            <div className={`${styles.folderAccordionContent} ${isFolderOpen ? styles.folderAccordionContentOpen : ''}`}>
 
           {/* Criar subpasta */}
           <div style={{ display: 'flex', gap: '6px', padding: '0 12px 8px', alignItems: 'center' }}>
@@ -134,6 +158,7 @@ export const ActivitiesTab: React.FC<ActivitiesTabProps> = ({
               subfolder={subfolder}
               folderId={folder.id}
               selectedLevelId={selectedLevel.id}
+              isFolderOpen={isFolderOpen}
               sfPendingTemplates={pendingTemplates[subfolder.id] ?? []}
               sfPendingMaterials={pendingMaterials[subfolder.id] ?? []}
               activeTab={subfolderInnerTab[subfolder.id] ?? 'exercises'}
@@ -144,10 +169,6 @@ export const ActivitiesTab: React.FC<ActivitiesTabProps> = ({
               isDragging={isDragging}
               setIsDragging={setIsDragging}
               fileInputRef={fileInputRef}
-              isEditing={editingSubfolderId === subfolder.id}
-              editingSubfolderName={editingSubfolderName}
-              setEditingSubfolderId={setEditingSubfolderId}
-              setEditingSubfolderName={setEditingSubfolderName}
               handleRenameSubfolder={handleRenameSubfolder}
               handleDeleteSubfolder={handleDeleteSubfolder}
               handleFileConvert={handleFileConvert}
@@ -159,9 +180,11 @@ export const ActivitiesTab: React.FC<ActivitiesTabProps> = ({
               setPendingMaterials={setPendingMaterials}
             />
           ))}
-        </section>
-      );
-    })}
-  </div>
-);
+            </div>
+          </section>
+        );
+      })}
+    </div>
+  );
+};
 

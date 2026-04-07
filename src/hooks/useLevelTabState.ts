@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import {useEffect, useMemo, useRef, useState} from 'react';
 import * as mammoth from 'mammoth';
-import { useLevelProfiles } from '@/hooks/useLevelProfiles.ts';
+import {useLevelProfiles} from '@/hooks/useLevelProfiles.ts';
 import levelFolderTemplateService from '@/services/api/levelFolderTemplate.service.ts';
 import levelProfileService from '@/services/api/levelProfile.service.ts';
 import levelSubfolderService from '@/services/api/levelSubfolder.service.ts';
@@ -9,6 +9,7 @@ import type {
   CreateLevelProfileRequest,
   LevelFolderTemplate,
   LevelProfile,
+  LevelSubfolder,
   UpdateLevelProfileRequest,
 } from '@/types/levelProfile.types.ts';
 import type {
@@ -28,6 +29,7 @@ import {
   isDocxFile,
   toSlug,
 } from '../utils/levelTab.utils.ts';
+import Swal from 'sweetalert2';
 
 export function useLevelTabState() {
   const { levelProfiles, loading, error, fetchLevelProfiles } = useLevelProfiles();
@@ -60,6 +62,14 @@ export function useLevelTabState() {
   const [subfolderInnerTab, setSubfolderInnerTab] = useState<Record<string, 'exercises' | 'materials'>>({});
   const [preview, setPreview] = useState<PreviewState>({ ...EMPTY_PREVIEW });
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  // ── Utility functions ──────────────────────────────────────────────────
+  const getSwalColors = () => ({
+    confirmButtonColor: getComputedStyle(document.documentElement).getPropertyValue('--color-danger').trim() || '#d33',
+    cancelButtonColor: getComputedStyle(document.documentElement).getPropertyValue('--color-blue').trim() || '#3085d6',
+    backgroundColor: getComputedStyle(document.documentElement).getPropertyValue('--color-bg-card').trim() || '#fff',
+    colorText: getComputedStyle(document.documentElement).getPropertyValue('--color-text-primary').trim() || '#000',
+  });
 
   // ── Effects ──────────────────────────────────────────────────────────
   useEffect(() => {
@@ -242,10 +252,14 @@ export function useLevelTabState() {
       propagateToStudents: propagate,
     };
     const compositeKey = preview.subfolderId;
+    
+    // Atualiza o estado primeiro (antes de fechar o modal)
     setPendingTemplates((prev) => ({
       ...prev,
       [compositeKey]: [...(prev[compositeKey] ?? []), newTemplate],
     }));
+    
+    // Depois fecha o modal
     setPreview({ ...EMPTY_PREVIEW });
     setActiveUploadSubfolder(null);
     setIsPropagateModalOpen(false);
@@ -275,8 +289,25 @@ export function useLevelTabState() {
 
   // ── Delete material / template ──────────────────────────────────────
   const handleDeleteMaterial = async (profileId: string, folderId: string, subfolderId: string, materialId: string): Promise<void> => {
+    const { confirmButtonColor, cancelButtonColor, backgroundColor, colorText } = getSwalColors();
+
+    const result = await Swal.fire({
+      title: 'Deletar material?',
+      text: 'Esta ação não pode ser desfeita!',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor,
+      cancelButtonColor,
+      confirmButtonText: 'Sim, deletar',
+      color: colorText,
+      cancelButtonText: 'Cancelar',
+      background: backgroundColor,
+      focusCancel: true,
+    });
+    if (!result.isConfirmed) return;
+    
     try {
-      await studyMaterialService.delete(profileId, folderId, subfolderId, materialId);
+      // Optimistic update: remove o material imediatamente do state
       setSelectedLevel((prev) => {
         if (!prev) return prev;
         return {
@@ -291,7 +322,14 @@ export function useLevelTabState() {
           }),
         };
       });
+
+      // Faz a requisição de delete
+      await studyMaterialService.delete(profileId, folderId, subfolderId, materialId);
+      
+      // Sincroniza com o servidor
       void fetchLevelProfiles();
+      
+      // Feedback de sucesso
       setSaveSuccessMessage('✓ Material removido com sucesso');
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
@@ -303,11 +341,54 @@ export function useLevelTabState() {
   };
 
   const handleDeleteTemplate = async (profileId: string, folderId: string, subfolderId: string, templateId: string): Promise<void> => {
+    const { confirmButtonColor, cancelButtonColor, backgroundColor, colorText } = getSwalColors();
+
+    const result = await Swal.fire({
+      title: 'Deletar exercício?',
+      text: 'Esta ação não pode ser desfeita!',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor,
+      cancelButtonColor,
+      confirmButtonText: 'Sim, deletar',
+      color: colorText,
+      cancelButtonText: 'Cancelar',
+      background: backgroundColor,
+      focusCancel: true,
+    });
+    if (!result.isConfirmed) return;
+
     try {
+      // Optimistic update: remove o exercício imediatamente do state
+      setSelectedLevel((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          folders: prev.folders.map((folder) => {
+            if (folder.id !== folderId) return folder;
+            const updatedSubfolders = (folder.subfolders ?? []).map((sf) => {
+              if (sf.id !== subfolderId) return sf;
+              return { ...sf, templates: sf.templates?.filter((t) => t.id !== templateId) ?? [] };
+            });
+            return { ...folder, subfolders: updatedSubfolders };
+          }),
+        };
+      });
+
+      // Faz a requisição de delete
       await levelFolderTemplateService.deleteFromSubfolder(profileId, folderId, subfolderId, templateId);
+      
+      // Sincroniza com o servidor
       await fetchLevelProfiles();
-    } catch {
-      console.error('Erro ao deletar template');
+      
+      // Feedback de sucesso
+      setSaveSuccessMessage('✓ Exercício removido com sucesso');
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 3000);
+    } catch (error) {
+      console.error('Erro ao deletar template:', error);
+      setSaveError('Erro ao remover exercício. Tente novamente.');
+      setTimeout(() => setSaveError(null), 5000);
     }
   };
 
@@ -341,12 +422,36 @@ export function useLevelTabState() {
               convertedHtml: template.convertedHtml,
               propagateToStudents: template.propagateToStudents,
             })
-            .then(() => {
+            .then((createdTemplate) => {
               if (template.propagateToStudents) propagatedInBatch = true;
+              
+              // Optimistic update: remove do pending e adiciona ao selectedLevel
               setPendingTemplates((prev) => ({
                 ...prev,
                 [subfolderKey]: (prev[subfolderKey] ?? []).filter((item) => item.tempId !== template.tempId),
               }));
+              
+              // Atualiza selectedLevel para exibir imediatamente
+              setSelectedLevel((prev) => {
+                if (!prev) return prev;
+                return {
+                  ...prev,
+                  folders: prev.folders.map((folder) => {
+                    if (folder.id !== template.folderId) return folder;
+                    return {
+                      ...folder,
+                      subfolders: (folder.subfolders ?? []).map((sf) => {
+                        if (sf.id !== template.subfolderId) return sf;
+                        return {
+                          ...sf,
+                          templates: [...(sf.templates ?? []), createdTemplate],
+                        };
+                      }),
+                    };
+                  }),
+                };
+              });
+              
               totalSaved++;
             });
           promises.push(promise);
@@ -373,11 +478,31 @@ export function useLevelTabState() {
                 description: material.description,
                 propagateToStudents: material.propagateToStudents,
               })
-              .then(() => {
+              .then((createdMaterial) => {
                 setPendingMaterials((prev) => ({
                   ...prev,
                   [subfolderKey]: (prev[subfolderKey] ?? []).filter((item) => item.tempId !== material.tempId),
                 }));
+                // Atualiza selectedLevel para exibir imediatamente
+                setSelectedLevel((prev) => {
+                  if (!prev) return prev;
+                  return {
+                    ...prev,
+                    folders: prev.folders.map((folder) => {
+                      if (folder.id !== targetFolderId) return folder;
+                      return {
+                        ...folder,
+                        subfolders: (folder.subfolders ?? []).map((sf) => {
+                          if (sf.id !== subfolderKey) return sf;
+                          return {
+                            ...sf,
+                            studyMaterials: [...(sf.studyMaterials ?? []), createdMaterial],
+                          };
+                        }),
+                      };
+                    }),
+                  };
+                });
                 totalSaved++;
               });
             promises.push(promise);
@@ -460,8 +585,32 @@ export function useLevelTabState() {
     if (!name || !selectedLevel) return;
     setCreatingSubfolder(folderId);
     try {
-      await levelSubfolderService.create(selectedLevel.id, folderId, { name });
+      const createdSubfolderResponse = await levelSubfolderService.create(selectedLevel.id, folderId, { name });
+      // Converte LevelSubfolderResponse para LevelSubfolder adicionando os arrays vazios
+      const createdSubfolder: LevelSubfolder = {
+        ...createdSubfolderResponse,
+        templates: [],
+        studyMaterials: [],
+      };
       setNewSubfolderName((prev) => ({ ...prev, [folderId]: '' }));
+      // Atualiza selectedLevel para exibir imediatamente
+      setSelectedLevel((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          folders: prev.folders.map((folder) => {
+            if (folder.id !== folderId) return folder;
+            // Corrige: se subfolders for undefined, inicializa como array vazio
+            const subfolders = Array.isArray(folder.subfolders) ? folder.subfolders : [];
+            // Evita duplicidade: só adiciona se não existir subfolder com mesmo id
+            if (subfolders.some((sf) => sf.id === createdSubfolder.id)) return folder;
+            return {
+              ...folder,
+              subfolders: [...subfolders, createdSubfolder] as LevelSubfolder[],
+            };
+          }),
+        };
+      });
       await fetchLevelProfiles();
     } catch {
       setSaveError('Erro ao criar subpasta.');
@@ -470,10 +619,11 @@ export function useLevelTabState() {
     }
   };
 
-  const handleRenameSubfolder = async (folderId: string, subfolderId: string): Promise<void> => {
-    if (!selectedLevel || !editingSubfolderName.trim()) return;
+  const handleRenameSubfolder = async (folderId: string, subfolderId: string, newName: string): Promise<void> => {
+    if (!selectedLevel || !newName.trim()) return;
+    
     try {
-      await levelSubfolderService.update(selectedLevel.id, folderId, subfolderId, { name: editingSubfolderName.trim() });
+      await levelSubfolderService.update(selectedLevel.id, folderId, subfolderId, { name: newName.trim() });
       await fetchLevelProfiles();
     } catch {
       setSaveError('Erro ao renomear.');
@@ -482,12 +632,50 @@ export function useLevelTabState() {
   };
 
   const handleDeleteSubfolder = async (folderId: string, subfolderId: string, subfolderName: string): Promise<void> => {
-    if (!selectedLevel || !confirm(`Deletar "${subfolderName}" e todo o conteúdo dentro?`)) return;
+    if (!selectedLevel) return;
+
+    const { confirmButtonColor, cancelButtonColor, backgroundColor, colorText } = getSwalColors();
+
+    const result = await Swal.fire({
+      title: `Deletar "${subfolderName}"?`,
+      text: 'Todo o conteúdo dentro será removido. Esta ação não pode ser desfeita!',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor,
+      cancelButtonColor,
+      confirmButtonText: 'Sim, deletar',
+      color: colorText,
+      cancelButtonText: 'Cancelar',
+      background: backgroundColor,
+      focusCancel: true,
+    });
+    if (!result.isConfirmed) return;
     try {
+      // Optimistic update: remove a subpasta imediatamente do state
+      setSelectedLevel((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          folders: prev.folders.map((folder) => {
+            if (folder.id !== folderId) return folder;
+            return {
+              ...folder,
+              subfolders: (folder.subfolders ?? []).filter((sf) => sf.id !== subfolderId),
+            };
+          }),
+        };
+      });
+      // Faz a requisição de delete
       await levelSubfolderService.delete(selectedLevel.id, folderId, subfolderId);
+      // Sincroniza com o servidor
       await fetchLevelProfiles();
-    } catch {
-      setSaveError('Erro ao deletar subpasta.');
+      // Feedback de sucesso
+      setSaveSuccessMessage('✓ Subpasta removida com sucesso');
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 3000);
+    } catch (error) {
+      setSaveError('Erro ao deletar subpasta. Tente novamente.');
+      setTimeout(() => setSaveError(null), 5000);
     }
   };
 
@@ -608,7 +796,3 @@ export function useLevelTabState() {
     toSlug,
   };
 }
-
-export type LevelTabState = ReturnType<typeof useLevelTabState>;
-
-
