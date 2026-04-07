@@ -60,6 +60,7 @@ textarea:focus::placeholder {
   --color-gold: #b8960c;
   --color-success: #2d8a5d;
   --color-danger: #c43a3a;
+  --color-error: #c43a3a;
   --color-warning: #c47a1e;
 
   /* Bordas e sombras */
@@ -118,6 +119,7 @@ textarea:focus::placeholder {
   --color-gold: #f0c040;
   --color-success: #7ce8b8;
   --color-danger: #e87c7c;
+  --color-error: #e87c7c;
   --color-warning: #e8b87c;
 
   /* Bordas e sombras */

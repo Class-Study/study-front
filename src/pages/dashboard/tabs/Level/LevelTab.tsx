@@ -5,16 +5,19 @@ import { Modal } from '@/components/ui/Modal/Modal.tsx';
 import { useLevelProfiles } from '@/hooks/useLevelProfiles.ts';
 import levelFolderTemplateService from '@/services/api/levelFolderTemplate.service.ts';
 import levelProfileService from '@/services/api/levelProfile.service.ts';
+import studyMaterialService from '@/services/api/studyMaterial.service.ts';
 import {
   CreateLevelProfileRequest,
   LevelFolder,
   LevelFolderTemplate,
   LevelProfile,
+  LevelSubfolder,
   UpdateLevelProfileRequest,
 } from '@/types/levelProfile.types.ts';
 import styles from './LevelTab.module.css';
 
 type TemplateType = 'EXERCISE' | 'WORKSPACE';
+type MaterialType = 'VIDEO' | 'DOCUMENT' | 'LINK';
 type ModalTab = 'activities' | 'edit';
 
 interface NewFolderRow {
@@ -30,9 +33,22 @@ interface NewLevelForm {
   folders: NewFolderRow[];
 }
 
-interface PendingTemplate {
+interface PendingMaterial {
+  tempId: string;
+  subfolderId: string;
+  title: string;
+  type: MaterialType;
+  url?: string;
+  convertedHtml?: string;
+  originalFilename?: string;
+  description?: string;
+  propagateToStudents: boolean;
+}
+
+interface PendingTemplateExtended {
   tempId: string;
   folderId: string;
+  subfolderId: string;
   title: string;
   type: TemplateType;
   fileName: string;
@@ -45,10 +61,14 @@ interface PreviewState {
   html: string;
   fileName: string;
   folderId: string;
+  subfolderId: string;
   title: string;
   type: TemplateType;
+  materialType?: MaterialType;
+  url?: string;
+  description?: string;
   propagateToStudents: boolean;
-  mode: 'upload' | 'view' | 'freetext';
+  mode: 'upload_exercise' | 'upload_material' | 'view' | 'freetext_exercise' | 'link_material';
 }
 
 const createTempId = (): string => {
@@ -57,6 +77,40 @@ const createTempId = (): string => {
   }
 
   return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+};
+
+// Função para migrar estrutura antiga para nova (para compatibilidade)
+const migrateToNewStructure = (folder: LevelFolder): LevelFolder => {
+  // Se já tem subfolders e elas têm conteúdo, usar as existentes
+  if (folder.subfolders && folder.subfolders.length > 0) {
+    return folder;
+  }
+
+  // Criar subpastas padrão sempre
+  const exercisesSubfolder: LevelSubfolder = {
+    id: 'exercises', // Usar ID fixo que corresponde ao backend
+    name: 'Exercícios',
+    type: 'EXERCISES',
+    position: 1,
+    templates: folder.templates ?? [], // Migrar templates existentes
+    studyMaterials: [],
+  };
+
+  const materialsSubfolder: LevelSubfolder = {
+    id: 'materials', // Usar ID fixo que corresponde ao backend
+    name: 'Material de Estudos', 
+    type: 'STUDY_MATERIALS',
+    position: 2,
+    templates: [],
+    studyMaterials: [], // Será preenchido pela API
+  };
+
+
+  return {
+    ...folder,
+    subfolders: [exercisesSubfolder, materialsSubfolder],
+    templates: folder.templates ?? [], // Manter para compatibilidade
+  };
 };
 
 const DEFAULT_FOLDERS = (): NewFolderRow[] => [
@@ -81,11 +135,34 @@ const toSlug = (name: string): string =>
     .replace(/\s+/g, '-')
     .replace(/[^a-z0-9-]/g, '');
 
-const getFolderName = (folder: LevelFolder, index: number): string =>
-  folder.name?.trim() || `${index + 1} — Pasta`;
+const getFolderName = (folder: LevelFolder, index: number): string => {
+  return folder.name || `Pasta ${index + 1}`;
+};
 
 const getTemplateTypeLabel = (type: TemplateType): string =>
   type === 'EXERCISE' ? 'Exercício' : 'Workspace';
+
+const getMaterialTypeLabel = (type: MaterialType): string => {
+  switch (type) {
+    case 'VIDEO': return 'Vídeo';
+    case 'DOCUMENT': return 'Documento';
+    case 'LINK': return 'Link Externo';
+    default: return 'Material';
+  }
+};
+
+// Função para converter tipo do backend para tipo local
+const convertMaterialType = (backendType: string): MaterialType => {
+  switch (backendType.toUpperCase()) {
+    case 'VIDEO': return 'VIDEO';
+    case 'DOCUMENT': return 'DOCUMENT';
+    case 'LINK': return 'LINK';
+    default: return 'LINK';
+  }
+};
+
+const getSubfolderIcon = (type: 'EXERCISES' | 'STUDY_MATERIALS'): string =>
+  type === 'EXERCISES' ? '📝' : '📚';
 
 const getLevelTone = (code: string): 'basic' | 'intermediate' | 'advanced' | 'custom' => {
   if (code === 'basic') return 'basic';
@@ -126,7 +203,8 @@ export const LevelTab: React.FC = () => {
   const [creating, setCreating] = useState(false);
   const [formError, setFormError] = useState('');
   const [form, setForm] = useState<NewLevelForm>(createInitialForm);
-  const [pendingTemplates, setPendingTemplates] = useState<Record<string, PendingTemplate[]>>({});
+  const [pendingTemplates, setPendingTemplates] = useState<Record<string, PendingTemplateExtended[]>>({});
+  const [pendingMaterials, setPendingMaterials] = useState<Record<string, PendingMaterial[]>>({});
   const [selectedLevel, setSelectedLevel] = useState<LevelProfile | null>(null);
   const [managementTab, setManagementTab] = useState<ModalTab>('activities');
   const [editForm, setEditForm] = useState<NewLevelForm>(createInitialForm);
@@ -139,6 +217,7 @@ export const LevelTab: React.FC = () => {
   const [isPropagateModalOpen, setIsPropagateModalOpen] = useState(false);
   const [savingTemplate, setSavingTemplate] = useState(false);
   const [activeUploadFolder, setActiveUploadFolder] = useState<string | null>(null);
+  const [activeUploadSubfolder, setActiveUploadSubfolder] = useState<string | null>(null);
   const [isConverting, setIsConverting] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [preview, setPreview] = useState<PreviewState>({
@@ -146,10 +225,11 @@ export const LevelTab: React.FC = () => {
     html: '',
     fileName: '',
     folderId: '',
+    subfolderId: '',
     title: '',
     type: 'EXERCISE',
     propagateToStudents: false,
-    mode: 'upload',
+    mode: 'upload_exercise',
   });
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -162,9 +242,23 @@ export const LevelTab: React.FC = () => {
 
     const updated = levelProfiles.find((profile) => profile.id === selectedLevel.id);
     if (updated) {
-      setSelectedLevel(updated);
+      // Preservar subfolders/studyMaterials já carregados da API
+      setSelectedLevel((prev) => {
+        if (!prev) return updated;
+        return {
+          ...updated,
+          folders: updated.folders.map((folder) => {
+            const prevFolder = prev.folders.find((f) => f.id === folder.id);
+            if (prevFolder?.subfolders && prevFolder.subfolders.length > 0) {
+              return { ...folder, subfolders: prevFolder.subfolders };
+            }
+            return folder;
+          }),
+        };
+      });
     }
-  }, [levelProfiles, selectedLevel]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [levelProfiles]);
 
   useEffect(() => {
     if (!isPropagateModalOpen) return;
@@ -316,13 +410,86 @@ export const LevelTab: React.FC = () => {
     }
   };
 
-  const openManagementModal = (level: LevelProfile, tab: ModalTab): void => {
+  const openManagementModal = async (level: LevelProfile, tab: ModalTab): Promise<void> => {
     setSelectedLevel(level);
     setManagementTab(tab);
     setEditForm(createEditForm(level));
     setEditError('');
     setSaveError(null);
     setSaveSuccess(false);
+    
+    // Carregar materiais de estudo existentes quando abrir a aba de atividades
+    if (tab === 'activities') {
+      try {
+        // Carregar materiais para todas as pastas
+        const materialsPromises = level.folders.map(async (folder) => {
+          try {
+            const materials = await studyMaterialService.listBySubfolder(
+              level.id, 
+              folder.id, 
+              'materials' // Usar ID fixo
+            );
+            console.log(materials)
+            return { folderId: folder.id, materials };
+          } catch (error) {
+            console.warn(`Erro ao carregar materiais da pasta ${folder.id}:`, error);
+            return { folderId: folder.id, materials: [] };
+          }
+        });
+
+        const results = await Promise.all(materialsPromises);
+        
+        // Atualizar o estado com os materiais carregados
+        setSelectedLevel((prev) => {
+          if (!prev) return prev;
+          
+          return {
+            ...prev,
+            folders: prev.folders.map((folder) => {
+              const folderResult = results.find(r => r.folderId === folder.id);
+              if (!folderResult || folderResult.materials.length === 0) {
+                return migrateToNewStructure(folder); // Usar estrutura padrão se não há materiais
+              }
+              console.log(folderResult)
+              
+              const migratedFolder = migrateToNewStructure(folder);
+              const updatedSubfolders = migratedFolder.subfolders?.map((subfolder) => {
+                if (subfolder.id !== 'materials') return subfolder; // Só atualizar subpasta de materiais
+                
+                // Converter materiais do backend para formato local
+                const localMaterials = folderResult.materials.map((material) => ({
+                  id: material.id,
+                  levelFolderId: material.levelFolderId,
+                  subfolderType: material.subfolderType,
+                  title: material.title,
+                  type: material.type,
+                  url: material.url,
+                  convertedHtml: material.convertedHtml,
+                  originalFilename: material.originalFilename,
+                  description: material.description,
+                  createdBy: material.createdBy,
+                  createdAt: material.createdAt,
+                  updatedAt: material.updatedAt,
+                }));
+                
+                return {
+                  ...subfolder,
+                  studyMaterials: localMaterials
+                };
+              }) ?? [];
+
+              return {
+                ...folder,
+                subfolders: updatedSubfolders
+              };
+            }),
+          };
+        });
+      } catch (error) {
+        console.error('Erro ao carregar materiais de estudo:', error);
+        // Não bloquear a abertura do modal por erro de carregamento
+      }
+    }
   };
 
   const closeManagementModal = (): void => {
@@ -336,7 +503,7 @@ export const LevelTab: React.FC = () => {
     setIsDragging(false);
   };
 
-  const handleFileConvert = async (file: File, folderId: string): Promise<void> => {
+  const handleFileConvert = async (file: File, folderId: string, subfolderId: string, subfolderType?: 'EXERCISES' | 'STUDY_MATERIALS'): Promise<void> => {
     if (!isDocxFile(file)) return;
 
     setIsConverting(true);
@@ -344,15 +511,19 @@ export const LevelTab: React.FC = () => {
       const arrayBuffer = await file.arrayBuffer();
       const result = await mammoth.convertToHtml({ arrayBuffer });
 
+      const isMaterial = subfolderType === 'STUDY_MATERIALS';
+
       setPreview({
         isOpen: true,
         html: result.value,
         fileName: file.name,
         folderId,
+        subfolderId,
         title: file.name.replace(/\.docx$/i, '').replace(/_/g, ' '),
         type: 'EXERCISE',
+        materialType: isMaterial ? 'DOCUMENT' : undefined,
         propagateToStudents: false,
-        mode: 'upload',
+        mode: isMaterial ? 'upload_material' : 'upload_exercise',
       });
     } catch (err) {
       console.error('Erro ao converter .docx:', err);
@@ -367,9 +538,10 @@ export const LevelTab: React.FC = () => {
 
     setSavingTemplate(true);
 
-    const newTemplate: PendingTemplate = {
+    const newTemplate: PendingTemplateExtended = {
       tempId: createTempId(),
       folderId: preview.folderId,
+      subfolderId: preview.subfolderId,
       title: preview.title.trim(),
       type: preview.type,
       fileName: preview.fileName,
@@ -377,9 +549,10 @@ export const LevelTab: React.FC = () => {
       propagateToStudents: propagate,
     };
 
+    const compositeKey = `${preview.folderId}-${preview.subfolderId}`;
     setPendingTemplates((prev) => ({
       ...prev,
-      [preview.folderId]: [...(prev[preview.folderId] ?? []), newTemplate],
+      [compositeKey]: [...(prev[compositeKey] ?? []), newTemplate],
     }));
 
     setPreview({
@@ -387,12 +560,14 @@ export const LevelTab: React.FC = () => {
       html: '',
       fileName: '',
       folderId: '',
+      subfolderId: '',
       title: '',
       type: 'EXERCISE',
       propagateToStudents: false,
-      mode: 'upload',
+      mode: 'upload_exercise',
     });
     setActiveUploadFolder(null);
+    setActiveUploadSubfolder(null);
     setIsPropagateModalOpen(false);
     setSavingTemplate(false);
   };
@@ -400,12 +575,14 @@ export const LevelTab: React.FC = () => {
   const handleViewSavedTemplate = (
     template: LevelFolderTemplate,
     folderId: string,
+    subfolderId: string,
   ): void => {
     setPreview({
       isOpen: true,
       html: template.convertedHtml ?? '',
       fileName: template.originalFilename ?? template.title,
       folderId,
+      subfolderId,
       title: template.title,
       type: template.type,
       propagateToStudents: false,
@@ -413,11 +590,56 @@ export const LevelTab: React.FC = () => {
     });
   };
 
-  const removePendingTemplate = (folderId: string, tempId: string): void => {
+  const removePendingTemplate = (subfolderId: string, tempId: string): void => {
     setPendingTemplates((prev) => ({
       ...prev,
-      [folderId]: (prev[folderId] ?? []).filter((template) => template.tempId !== tempId),
+      [subfolderId]: (prev[subfolderId] ?? []).filter((template) => template.tempId !== tempId),
     }));
+  };
+
+  const handleDeleteMaterial = async (profileId: string, folderId: string, subfolderId: string, materialId: string): Promise<void> => {
+    try {
+      await studyMaterialService.delete(profileId, folderId, subfolderId, materialId);
+      
+      // Atualizar o estado local removendo o material
+      setSelectedLevel((prev) => {
+        if (!prev) return prev;
+
+        return {
+          ...prev,
+          folders: prev.folders.map((folder) => {
+            if (folder.id !== folderId) return folder;
+            
+            const migratedFolder = migrateToNewStructure(folder);
+            const updatedSubfolders = migratedFolder.subfolders?.map((subfolder) => {
+              if (subfolder.id !== subfolderId) return subfolder;
+              
+              return {
+                ...subfolder,
+                studyMaterials: subfolder.studyMaterials?.filter(material => material.id !== materialId) ?? []
+              };
+            }) ?? [];
+
+            return {
+              ...folder,
+              subfolders: updatedSubfolders
+            };
+          }),
+        };
+      });
+
+      // Refresh da lista geral
+      void fetchLevelProfiles();
+      
+      setSaveSuccessMessage('✓ Material removido com sucesso');
+      setSaveSuccess(true);
+      
+      setTimeout(() => setSaveSuccess(false), 3000);
+    } catch (error) {
+      console.error('Erro ao deletar material:', error);
+      setSaveError('Erro ao remover material. Tente novamente.');
+      setTimeout(() => setSaveError(null), 5000);
+    }
   };
 
   const handleDeleteTemplate = async (
@@ -436,9 +658,20 @@ export const LevelTab: React.FC = () => {
   const handleSaveAll = async (): Promise<void> => {
     if (!selectedLevel) return;
 
-    const selectedFolderIds = new Set(selectedLevel.folders.map((folder) => folder.id));
-    const pendingEntries = Object.entries(pendingTemplates).filter(([folderId]) =>
-      selectedFolderIds.has(folderId),
+    // Calcular subpastas para incluir materiais pendentes
+    const selectedMaterialKeys = new Set<string>();
+    selectedLevel.folders.forEach(folder => {
+      selectedMaterialKeys.add(`${folder.id}-materials`);
+    });
+
+    const pendingTemplateEntries = Object.entries(pendingTemplates).filter(([key]) =>
+      selectedLevel.folders.some(folder => 
+        key === `${folder.id}-exercises` || key === `${folder.id}-materials`
+      )
+    );
+    
+    const pendingMaterialEntries = Object.entries(pendingMaterials).filter(([key]) =>
+      selectedMaterialKeys.has(key)
     );
 
     setSaving(true);
@@ -448,11 +681,13 @@ export const LevelTab: React.FC = () => {
       const promises: Promise<void>[] = [];
       const savedTemplates: Array<{ folderId: string; template: LevelFolderTemplate }> = [];
       let propagatedInBatch = false;
+      let totalSaved = 0;
 
-      pendingEntries.forEach(([folderId, templates]) => {
+      // Salvar templates pendentes
+      pendingTemplateEntries.forEach(([subfolderId, templates]) => {
         templates.forEach((template) => {
           const promise = levelFolderTemplateService
-            .create(selectedLevel.id, folderId, {
+            .create(selectedLevel.id, template.folderId, {
               title: template.title,
               type: template.type,
               ...(template.fileName ? { originalFilename: template.fileName } : {}),
@@ -465,7 +700,7 @@ export const LevelTab: React.FC = () => {
               }
 
               savedTemplates.push({
-                folderId,
+                folderId: template.folderId,
                 template: {
                   ...saved,
                   convertedHtml: template.convertedHtml,
@@ -474,11 +709,95 @@ export const LevelTab: React.FC = () => {
 
               setPendingTemplates((prev) => ({
                 ...prev,
-                [folderId]: (prev[folderId] ?? []).filter((item) => item.tempId !== template.tempId),
+                [subfolderId]: (prev[subfolderId] ?? []).filter((item) => item.tempId !== template.tempId),
               }));
+
+              totalSaved++;
             });
 
           promises.push(promise);
+        });
+      });
+
+      // Salvar materiais pendentes
+      pendingMaterialEntries.forEach(([materialKey, materials]) => {
+        materials.forEach((material) => {
+          // Extrair folderId da chave (formato: "folderId-materials")
+          const folderId = materialKey.replace('-materials', '');
+          const targetFolder = selectedLevel.folders.find(f => f.id === folderId);
+          
+          if (targetFolder) {
+            const promise = studyMaterialService
+               .create(selectedLevel.id, targetFolder.id, 'materials', {
+                 title: material.title,
+                 type: material.type,
+                 url: material.url,
+                 convertedHtml: material.convertedHtml,
+                 originalFilename: material.originalFilename,
+                 description: material.description,
+                 propagateToStudents: material.propagateToStudents,
+               })
+              .then((savedMaterial) => {
+                // Converter resposta do backend para formato local
+                const localMaterial = {
+                  id: savedMaterial.id,
+                  levelFolderId: savedMaterial.levelFolderId,
+                  subfolderType: savedMaterial.subfolderType,
+                  title: savedMaterial.title,
+                  type: savedMaterial.type,
+                  url: savedMaterial.url,
+                  convertedHtml: savedMaterial.convertedHtml,
+                  originalFilename: savedMaterial.originalFilename,
+                  description: savedMaterial.description,
+                  createdBy: savedMaterial.createdBy,
+                  createdAt: savedMaterial.createdAt,
+                  updatedAt: savedMaterial.updatedAt,
+                };
+                
+                // Atualizar estado local com material salvo
+                setSelectedLevel((prev) => {
+                  if (!prev) return prev;
+
+                  return {
+                    ...prev,
+                    folders: prev.folders.map((folder) => {
+                      if (folder.id !== targetFolder.id) return folder;
+                      
+                      const migratedFolder = migrateToNewStructure(folder);
+                      const updatedSubfolders = migratedFolder.subfolders?.map((subfolder) => {
+                        if (subfolder.id !== 'materials') return subfolder;
+                        
+                        return {
+                          ...subfolder,
+                          studyMaterials: [...(subfolder.studyMaterials ?? []), localMaterial]
+                        };
+                      }) ?? [];
+
+                      return {
+                        ...folder,
+                        subfolders: updatedSubfolders
+                      };
+                    }),
+                  };
+                });
+
+                setPendingMaterials((prev) => ({
+                  ...prev,
+                  [materialKey]: (prev[materialKey] ?? []).filter((item) => item.tempId !== material.tempId),
+                }));
+
+                totalSaved++;
+              });
+
+            promises.push(promise);
+          } else {
+            // Fallback: apenas remove do estado local se não encontrar a pasta
+            setPendingMaterials((prev) => ({
+              ...prev,
+              [materialKey]: (prev[materialKey] ?? []).filter((item) => item.tempId !== material.tempId),
+            }));
+            totalSaved++;
+          }
         });
       });
 
@@ -505,8 +824,8 @@ export const LevelTab: React.FC = () => {
 
       setSaveSuccessMessage(
         propagatedInBatch
-          ? '✓ Templates salvos e atribuídos aos alunos atuais deste nível.'
-          : '✓ Templates salvos com sucesso',
+          ? `✓ ${totalSaved} itens salvos e atribuídos aos alunos atuais deste nível.`
+          : `✓ ${totalSaved} itens salvos com sucesso`,
       );
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
@@ -620,13 +939,29 @@ export const LevelTab: React.FC = () => {
   };
 
   const selectedLevelToneClass = selectedLevel ? getLevelToneClass(getLevelTone(selectedLevel.code)) : '';
-  const selectedFolderIds = new Set((selectedLevel?.folders ?? []).map((folder) => folder.id));
-  const selectedPendingEntries = Object.entries(pendingTemplates).filter(([folderId]) => selectedFolderIds.has(folderId));
-  const hasPendingTemplates = selectedPendingEntries.some(([, list]) => list.length > 0);
-  const hasPendingPropagation = selectedPendingEntries.some(([, list]) =>
+  
+  // Calcular subpastas para incluir materiais pendentes
+  const selectedSubfolderIds = new Set<string>();
+  selectedLevel?.folders.forEach((folder) => {
+    selectedSubfolderIds.add(`${folder.id}-exercises`);
+    selectedSubfolderIds.add(`${folder.id}-materials`);
+  });
+  
+  const selectedPendingTemplates = Object.entries(pendingTemplates).filter(([subfolderId]) => selectedSubfolderIds.has(subfolderId));
+  const selectedPendingMaterials = Object.entries(pendingMaterials).filter(([subfolderId]) => selectedSubfolderIds.has(subfolderId));
+  
+  const hasPendingTemplates = selectedPendingTemplates.some(([, list]) => list.length > 0);
+  const hasPendingMaterials = selectedPendingMaterials.some(([, list]) => list.length > 0);
+  const hasPendingContent = hasPendingTemplates || hasPendingMaterials;
+  
+  const hasPendingPropagation = selectedPendingTemplates.some(([, list]) =>
     list.some((template) => template.propagateToStudents),
   );
-  const totalPending = selectedPendingEntries.reduce((acc, [, list]) => acc + list.length, 0);
+  
+  const totalPendingTemplates = selectedPendingTemplates.reduce((acc, [, list]) => acc + list.length, 0);
+  const totalPendingMaterials = selectedPendingMaterials.reduce((acc, [, list]) => acc + list.length, 0);
+  const totalPending = totalPendingTemplates + totalPendingMaterials;
+
 
   const modalTitle = selectedLevel ? (
     <div className={`${styles.modalTitleWrap} ${styles.modalTitleWithActions}`}>
@@ -641,7 +976,7 @@ export const LevelTab: React.FC = () => {
         </div>
       </div>
 
-      {hasPendingTemplates && (
+      {hasPendingContent && (
         <button
           type="button"
           className={styles.saveAllBtn}
@@ -792,11 +1127,11 @@ export const LevelTab: React.FC = () => {
             <article
               key={level.id}
               className={styles.levelCard}
-              onClick={() => openManagementModal(level, 'activities')}
+              onClick={() => void openManagementModal(level, 'activities')}
               onKeyDown={(event) => {
                 if (event.key === 'Enter' || event.key === ' ') {
                   event.preventDefault();
-                  openManagementModal(level, 'activities');
+                  void openManagementModal(level, 'activities');
                 }
               }}
               role="button"
@@ -821,12 +1156,22 @@ export const LevelTab: React.FC = () => {
                 {[...folders]
                   .sort((a, b) => a.position - b.position)
                   .map((folder, index) => {
-                    const templateCount = folder.templates?.length ?? 0;
+                    // Migrar para nova estrutura se necessário
+                    const migratedFolder = migrateToNewStructure(folder);
+                    const totalTemplates = migratedFolder.subfolders?.reduce(
+                      (acc, subfolder) => acc + (subfolder.templates?.length ?? 0),
+                      0
+                    ) ?? (folder.templates?.length ?? 0);
+                    const totalMaterials = migratedFolder.subfolders?.reduce(
+                      (acc, subfolder) => acc + (subfolder.studyMaterials?.length ?? 0),
+                      0
+                    ) ?? 0;
+                    const totalContent = totalTemplates + totalMaterials;
 
                     return (
                       <div key={folder.id} className={styles.folderListItem}>
                         <span className={styles.folderListName}>{getFolderName(folder, index)}</span>
-                        <span className={styles.folderListCount}>{templateCount > 0 ? `${templateCount} arqs` : '0 arqs'}</span>
+                        <span className={styles.folderListCount}>{totalContent > 0 ? `${totalContent} itens` : '0 itens'}</span>
                       </div>
                     );
                   })}
@@ -840,7 +1185,7 @@ export const LevelTab: React.FC = () => {
                   title={level.isSystem ? 'Perfil de sistema' : 'Editar nível'}
                   onClick={(event) => {
                     event.stopPropagation();
-                    openManagementModal(level, 'edit');
+                    void openManagementModal(level, 'edit');
                   }}
                 >
                   Editar
@@ -884,8 +1229,8 @@ export const LevelTab: React.FC = () => {
               )}
 
               {selectedLevel.folders.map((folder, index) => {
-                const savedTemplates = folder.templates ?? [];
-                const folderPendingTemplates = pendingTemplates[folder.id] ?? [];
+                // Migrar para nova estrutura se necessário
+                const migratedFolder = migrateToNewStructure(folder);
                 const isUploadOpen = activeUploadFolder === folder.id;
 
                 return (
@@ -897,165 +1242,432 @@ export const LevelTab: React.FC = () => {
                         className={styles.addTemplateBtn}
                         onClick={() => {
                           setActiveUploadFolder((prev) => (prev === folder.id ? null : folder.id));
+                          setActiveUploadSubfolder(null);
                         }}
                       >
                         {isUploadOpen ? 'Fechar' : '+ Adicionar'}
                       </button>
                     </div>
 
-                    {savedTemplates.length === 0 && folderPendingTemplates.length === 0 ? (
-                      <div className={styles.emptyTemplates}>Nenhum template ainda.</div>
-                    ) : (
-                      <>
-                        {savedTemplates.map((template) => (
-                          <div key={template.id} className={styles.templateItem}>
-                            <div className={styles.templateInfo}>
-                              <span className={styles.templateTitle}>{template.title}</span>
-                              <span className={styles.templateType}>{getTemplateTypeLabel(template.type)}</span>
-                              {template.originalFilename && (
-                                <span className={styles.templateFile}>{template.originalFilename}</span>
-                              )}
-                            </div>
-                            <div className={styles.templateActions}>
-                              <button
-                                type="button"
-                                className={styles.viewTemplateBtn}
-                                title="Visualizar conteudo"
-                                onClick={() => {
-                                  void handleViewSavedTemplate(template, folder.id);
-                                }}
-                              >
-                                👁
-                              </button>
-                              <button
-                                type="button"
-                                className={styles.removeTemplateBtn}
-                                onClick={() => {
-                                  void handleDeleteTemplate(selectedLevel.id, folder.id, template.id);
-                                }}
-                              >
-                                ✕
-                              </button>
-                            </div>
-                          </div>
-                        ))}
+                        {/* Renderizar subpastas */}
+                    {migratedFolder.subfolders?.map((subfolder) => {
+                      const savedTemplates = subfolder.templates ?? [];
+                      const savedMaterials = subfolder.studyMaterials ?? [];
+                      
+                      // Criar chaves para pending baseadas na pasta e tipo de subpasta  
+                      const templateKey = `${folder.id}-${subfolder.id}`;
+                      const materialKey = `${folder.id}-materials`;
+                      
+                      const subfolderPendingTemplates = pendingTemplates[templateKey] ?? [];
+                      const subfolderPendingMaterials = subfolder.type === 'STUDY_MATERIALS' 
+                        ? (pendingMaterials[materialKey] ?? [])
+                        : [];
+                        
+                      const hasContent = savedTemplates.length > 0 || savedMaterials.length > 0 || 
+                                       subfolderPendingTemplates.length > 0 || subfolderPendingMaterials.length > 0;
+                      const subfolderCompositeKey = `${folder.id}-${subfolder.id}`;
+                      const isSubfolderUploadOpen = activeUploadSubfolder === subfolderCompositeKey;
 
-                        {folderPendingTemplates.map((template) => (
-                          <div
-                            key={template.tempId}
-                            className={`${styles.templateItem} ${styles.templatePending}`}
-                          >
-                            <div className={styles.templateInfo}>
-                              <span className={styles.templateTitle}>{template.title}</span>
-                              <span className={styles.templateType}>{getTemplateTypeLabel(template.type)}</span>
-                              <span className={styles.pendingBadge}>Não salvo</span>
+                      return (
+                        <div key={subfolder.id} className={styles.subfolderCard}>
+                          <div className={styles.subfolderHeader}>
+                            <div className={styles.subfolderName}>
+                              {getSubfolderIcon(subfolder.type)} {subfolder.name}
                             </div>
-                            <div className={styles.templateActions}>
+                            {isUploadOpen && (
                               <button
                                 type="button"
-                                className={styles.viewTemplateBtn}
-                                title="Visualizar conteudo"
+                                className={styles.addSubfolderBtn}
                                 onClick={() => {
-                                  setPreview({
-                                    isOpen: true,
-                                    html: template.convertedHtml,
-                                    fileName: template.fileName,
-                                    folderId: folder.id,
-                                    title: template.title,
-                                    type: template.type,
-                                    propagateToStudents: template.propagateToStudents,
-                                    mode: 'view',
-                                  });
+                                  setActiveUploadSubfolder(
+                                    isSubfolderUploadOpen ? null : subfolderCompositeKey
+                                  );
                                 }}
                               >
-                                👁
+                                {isSubfolderUploadOpen ? 'Fechar' : '+ Adicionar'}
                               </button>
-                              <button
-                                type="button"
-                                className={styles.removeTemplateBtn}
-                                onClick={() => {
-                                  removePendingTemplate(folder.id, template.tempId);
-                                }}
-                              >
-                                ✕
-                              </button>
-                            </div>
+                            )}
                           </div>
-                        ))}
-                      </>
-                    )}
 
-                    {isUploadOpen && (
-                      <div className={styles.uploadSection}>
-                        <div
-                          className={`${styles.dropzone} ${isDragging ? styles.dropzoneActive : ''}`}
-                          onDragOver={(event) => {
-                            event.preventDefault();
-                            setIsDragging(true);
-                          }}
-                          onDragLeave={() => setIsDragging(false)}
-                          onDrop={(event) => {
-                            event.preventDefault();
-                            setIsDragging(false);
-                            const file = event.dataTransfer.files[0] ?? null;
-                            if (file) {
-                              void handleFileConvert(file, folder.id);
-                            }
-                          }}
-                          onClick={() => fileInputRef.current?.click()}
-                          role="presentation"
-                        >
-                          {isConverting ? (
-                            <span className={styles.dropzoneConverting}>Convertendo...</span>
+                          {!hasContent && !isSubfolderUploadOpen ? (
+                            <div className={styles.emptyTemplates}>
+                              {subfolder.type === 'EXERCISES' ? 'Nenhum exercício ainda.' : 'Nenhum material ainda.'}
+                            </div>
                           ) : (
                             <>
-                              <span className={styles.dropzoneText}>Arraste um arquivo .docx aqui</span>
-                              <span className={styles.dropzoneSubtext}>ou clique para selecionar</span>
+                              {/* Templates salvos */}
+                              {savedTemplates.map((template) => (
+                                <div key={template.id} className={styles.templateItem}>
+                                  <div className={styles.templateInfo}>
+                                    <span className={styles.templateTitle}>{template.title}</span>
+                                    <span className={styles.templateType}>{getTemplateTypeLabel(template.type)}</span>
+                                    {template.originalFilename && (
+                                      <span className={styles.templateFile}>{template.originalFilename}</span>
+                                    )}
+                                  </div>
+                                  <div className={styles.templateActions}>
+                                    <button
+                                      type="button"
+                                      className={styles.viewTemplateBtn}
+                                      title="Visualizar conteúdo"
+                                      onClick={() => {
+                                        handleViewSavedTemplate(template, folder.id, subfolder.id);
+                                      }}
+                                    >
+                                      👁
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className={styles.removeTemplateBtn}
+                                      onClick={() => {
+                                        void handleDeleteTemplate(selectedLevel.id, folder.id, template.id);
+                                      }}
+                                    >
+                                      ✕
+                                    </button>
+                                  </div>
+                                </div>
+                              ))}
+
+                              {/* Materiais de estudo salvos */}
+                              {savedMaterials.map((material) => (
+                                <div key={material.id} className={styles.materialItem}>
+                                  <div className={styles.materialInfo}>
+                                    <span className={styles.materialTitle}>{material.title}</span>
+                                    <span className={styles.materialType}>{getMaterialTypeLabel(convertMaterialType(material.type))}</span>
+                                    {material.originalFilename && (
+                                      <span className={styles.templateFile}>{material.originalFilename}</span>
+                                    )}
+                                    {material.description && (
+                                      <span className={styles.materialDescription}>{material.description}</span>
+                                    )}
+                                  </div>
+                                  <div className={styles.materialActions}>
+                                    {material.convertedHtml && (
+                                      <button
+                                        type="button"
+                                        className={styles.viewTemplateBtn}
+                                        title="Visualizar conteúdo"
+                                        onClick={() => {
+                                          setPreview({
+                                            isOpen: true,
+                                            html: material.convertedHtml ?? '',
+                                            fileName: material.originalFilename ?? material.title,
+                                            folderId: folder.id,
+                                            subfolderId: subfolder.id,
+                                            title: material.title,
+                                            type: 'EXERCISE',
+                                            propagateToStudents: false,
+                                            mode: 'view',
+                                          });
+                                        }}
+                                      >
+                                        👁
+                                      </button>
+                                    )}
+                                    {material.url && (
+                                      <a
+                                        href={material.url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className={styles.viewMaterialBtn}
+                                        title={`Abrir ${convertMaterialType(material.type) === 'VIDEO' ? 'vídeo' : 'link'}`}
+                                      >
+                                        {convertMaterialType(material.type) === 'VIDEO' ? '🎥' : '🔗'}
+                                      </a>
+                                    )}
+                                    <button
+                                      type="button"
+                                      className={styles.removeMaterialBtn}
+                                      title="Remover material"
+                                      onClick={() => {
+                                        void handleDeleteMaterial(selectedLevel.id, folder.id, subfolder.id, material.id);
+                                      }}
+                                    >
+                                      ✕
+                                    </button>
+                                  </div>
+                                </div>
+                              ))}
+
+                              {/* Templates pendentes */}
+                              {subfolderPendingTemplates.map((template) => (
+                                <div
+                                  key={template.tempId}
+                                  className={`${styles.templateItem} ${styles.templatePending}`}
+                                >
+                                  <div className={styles.templateInfo}>
+                                    <span className={styles.templateTitle}>{template.title}</span>
+                                    <span className={styles.templateType}>{getTemplateTypeLabel(template.type)}</span>
+                                    <span className={styles.pendingBadge}>Não salvo</span>
+                                  </div>
+                                  <div className={styles.templateActions}>
+                                    <button
+                                      type="button"
+                                      className={styles.viewTemplateBtn}
+                                      title="Visualizar conteúdo"
+                                      onClick={() => {
+                                        setPreview({
+                                          isOpen: true,
+                                          html: template.convertedHtml,
+                                          fileName: template.fileName,
+                                          folderId: folder.id,
+                                          subfolderId: subfolder.id,
+                                          title: template.title,
+                                          type: template.type,
+                                          propagateToStudents: template.propagateToStudents,
+                                          mode: 'view',
+                                        });
+                                      }}
+                                    >
+                                      👁
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className={styles.removeTemplateBtn}
+                                      onClick={() => {
+                                        removePendingTemplate(templateKey, template.tempId);
+                                      }}
+                                    >
+                                      ✕
+                                    </button>
+                                  </div>
+                                </div>
+                              ))}
+
+                              {/* Materiais pendentes */}
+                              {subfolderPendingMaterials.map((material) => (
+                                <div
+                                  key={material.tempId}
+                                  className={`${styles.materialItem} ${styles.materialPending}`}
+                                >
+                                  <div className={styles.materialInfo}>
+                                    <span className={styles.materialTitle}>{material.title}</span>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                                      <span className={styles.materialType}>{getMaterialTypeLabel(material.type)}</span>
+                                      <span className={styles.pendingBadge}>Não salvo</span>
+                                    </div>
+                                    {material.originalFilename && (
+                                      <span className={styles.templateFile}>{material.originalFilename}</span>
+                                    )}
+                                    {material.description && (
+                                      <span className={styles.materialDescription}>{material.description}</span>
+                                    )}
+                                  </div>
+                                  <div className={styles.materialActions}>
+                                    {material.convertedHtml && (
+                                      <button
+                                        type="button"
+                                        className={styles.viewTemplateBtn}
+                                        title="Visualizar conteúdo"
+                                        onClick={() => {
+                                          setPreview({
+                                            isOpen: true,
+                                            html: material.convertedHtml ?? '',
+                                            fileName: material.originalFilename ?? material.title,
+                                            folderId: folder.id,
+                                            subfolderId: subfolder.id,
+                                            title: material.title,
+                                            type: 'EXERCISE',
+                                            propagateToStudents: false,
+                                            mode: 'view',
+                                          });
+                                        }}
+                                      >
+                                        👁
+                                      </button>
+                                    )}
+                                    {material.url && (
+                                      <a
+                                        href={material.url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className={styles.viewMaterialBtn}
+                                        title={`Abrir ${material.type === 'VIDEO' ? 'vídeo' : 'link'}`}
+                                      >
+                                        {material.type === 'VIDEO' ? '🎥' : '🔗'}
+                                      </a>
+                                    )}
+                                    <button
+                                      type="button"
+                                      className={styles.removeMaterialBtn}
+                                      title="Remover material"
+                                      onClick={() => {
+                                        const materialKey = `${folder.id}-materials`;
+                                        setPendingMaterials((prev) => ({
+                                          ...prev,
+                                          [materialKey]: (prev[materialKey] ?? []).filter(
+                                            (m) => m.tempId !== material.tempId
+                                          ),
+                                        }));
+                                      }}
+                                    >
+                                      ✕
+                                    </button>
+                                  </div>
+                                </div>
+                              ))}
                             </>
                           )}
+
+                          {/* Upload section para subpasta específica */}
+                          {isSubfolderUploadOpen && (
+                            <div className={styles.uploadSection}>
+                              {subfolder.type === 'EXERCISES' ? (
+                                <>
+                                  <div
+                                    className={`${styles.dropzone} ${isDragging ? styles.dropzoneActive : ''}`}
+                                    onDragOver={(event) => {
+                                      event.preventDefault();
+                                      setIsDragging(true);
+                                    }}
+                                    onDragLeave={() => setIsDragging(false)}
+                                    onDrop={(event) => {
+                                      event.preventDefault();
+                                      setIsDragging(false);
+                                      const file = event.dataTransfer.files[0] ?? null;
+                                      if (file) {
+                                        void handleFileConvert(file, folder.id, subfolder.id, subfolder.type);
+                                      }
+                                    }}
+                                    onClick={() => fileInputRef.current?.click()}
+                                    role="presentation"
+                                  >
+                                    {isConverting ? (
+                                      <span className={styles.dropzoneConverting}>Convertendo...</span>
+                                    ) : (
+                                      <>
+                                        <span className={styles.dropzoneText}>Arraste um arquivo .docx aqui</span>
+                                        <span className={styles.dropzoneSubtext}>ou clique para selecionar</span>
+                                      </>
+                                    )}
+                                  </div>
+
+                                  <input
+                                    ref={fileInputRef}
+                                    className={styles.fileInput}
+                                    type="file"
+                                    accept=".docx"
+                                    onChange={(event) => {
+                                      const file = event.target.files?.[0];
+                                      if (file) {
+                                        void handleFileConvert(file, folder.id, subfolder.id, subfolder.type);
+                                      }
+                                      event.target.value = '';
+                                    }}
+                                  />
+
+                                  <div className={styles.freeTextDivider}>
+                                    <span className={styles.freeTextDividerLine} />
+                                    <span className={styles.freeTextDividerText}>ou</span>
+                                    <span className={styles.freeTextDividerLine} />
+                                  </div>
+
+                                  <button
+                                    type="button"
+                                    className={styles.btnFreeText}
+                                    onClick={() => {
+                                      setActiveUploadFolder(null);
+                                      setActiveUploadSubfolder(null);
+                                      setPreview({
+                                        isOpen: true,
+                                        html: '<p></p>',
+                                        fileName: '',
+                                        folderId: folder.id,
+                                        subfolderId: subfolder.id,
+                                        title: '',
+                                        type: 'EXERCISE',
+                                        propagateToStudents: false,
+                                        mode: 'freetext_exercise',
+                                      });
+                                    }}
+                                  >
+                                    ✏️ Criar atividade manualmente (texto livre)
+                                  </button>
+                                </>
+                              ) : (
+                                // Upload para materiais de estudo
+                                <div className={styles.materialUploadOptions}>
+
+                                  <button
+                                    type="button"
+                                    className={styles.btnUploadMaterial}
+                                    onClick={() => {
+                                      setActiveUploadFolder(null);
+                                      setActiveUploadSubfolder(null);
+                                      setPreview({
+                                        isOpen: true,
+                                        html: '',
+                                        fileName: '',
+                                        folderId: folder.id,
+                                        subfolderId: subfolder.id,
+                                        title: '',
+                                        type: 'EXERCISE',
+                                        materialType: 'LINK',
+                                        url: '',
+                                        description: '',
+                                        propagateToStudents: false,
+                                        mode: 'link_material',
+                                      });
+                                    }}
+                                  >
+                                    🔗 Adicionar Link
+                                  </button>
+
+                                  <div className={styles.freeTextDivider}>
+                                    <span className={styles.freeTextDividerLine} />
+                                    <span className={styles.freeTextDividerText}>ou</span>
+                                    <span className={styles.freeTextDividerLine} />
+                                  </div>
+
+                                  <div
+                                    className={`${styles.dropzone} ${isDragging ? styles.dropzoneActive : ''}`}
+                                    onDragOver={(event) => {
+                                      event.preventDefault();
+                                      setIsDragging(true);
+                                    }}
+                                    onDragLeave={() => setIsDragging(false)}
+                                    onDrop={(event) => {
+                                      event.preventDefault();
+                                      setIsDragging(false);
+                                      const file = event.dataTransfer.files[0] ?? null;
+                                      if (file) {
+                                        void handleFileConvert(file, folder.id, subfolder.id, subfolder.type);
+                                      }
+                                    }}
+                                    onClick={() => fileInputRef.current?.click()}
+                                    role="presentation"
+                                  >
+                                    {isConverting ? (
+                                      <span className={styles.dropzoneConverting}>Convertendo documento...</span>
+                                    ) : (
+                                      <>
+                                        <span className={styles.dropzoneText}>Arraste um documento .docx aqui</span>
+                                        <span className={styles.dropzoneSubtext}>ou clique para selecionar arquivo</span>
+                                      </>
+                                    )}
+                                  </div>
+
+                                  <input
+                                    ref={fileInputRef}
+                                    className={styles.fileInput}
+                                    type="file"
+                                    accept=".docx"
+                                    onChange={(event) => {
+                                      const file = event.target.files?.[0];
+                                      if (file) {
+                                        void handleFileConvert(file, folder.id, subfolder.id, subfolder.type);
+                                      }
+                                      event.target.value = '';
+                                    }}
+                                  />
+                                </div>
+                              )}
+                            </div>
+                          )}
                         </div>
-
-                        <input
-                          ref={fileInputRef}
-                          className={styles.fileInput}
-                          type="file"
-                          accept=".docx"
-                          onChange={(event) => {
-                            const file = event.target.files?.[0];
-                            if (file && activeUploadFolder) {
-                              void handleFileConvert(file, activeUploadFolder);
-                            }
-                            event.target.value = '';
-                          }}
-                        />
-
-                        <div className={styles.freeTextDivider}>
-                          <span className={styles.freeTextDividerLine} />
-                          <span className={styles.freeTextDividerText}>ou</span>
-                          <span className={styles.freeTextDividerLine} />
-                        </div>
-
-                        <button
-                          type="button"
-                          className={styles.btnFreeText}
-                          onClick={() => {
-                            setActiveUploadFolder(null);
-                            setPreview({
-                              isOpen: true,
-                              html: '<p></p>',
-                              fileName: '',
-                              folderId: folder.id,
-                              title: '',
-                              type: 'EXERCISE',
-                              propagateToStudents: false,
-                              mode: 'freetext',
-                            });
-                          }}
-                        >
-                          ✏️ Criar atividade manualmente (texto livre)
-                        </button>
-                      </div>
-                    )}
+                      );
+                    })}
                   </section>
                 );
               })}
@@ -1161,131 +1773,414 @@ export const LevelTab: React.FC = () => {
 
     <Modal
       isOpen={preview.isOpen}
-      onClose={() => setPreview((prev) => ({ ...prev, isOpen: false }))}
+      onClose={() => setPreview({
+        isOpen: false,
+        html: '',
+        fileName: '',
+        folderId: '',
+        subfolderId: '',
+        title: '',
+        type: 'EXERCISE',
+        propagateToStudents: false,
+        mode: 'upload_exercise',
+      })}
       size="lg"
-      title={preview.mode === 'view' ? preview.title : preview.mode === 'freetext' ? 'Nova Atividade Livre' : `Preview — ${preview.fileName}`}
+      title={
+        preview.mode === 'view' ? preview.title :
+        preview.mode === 'freetext_exercise' ? 'Nova Atividade Livre' :
+        preview.mode === 'link_material' ? 'Novo Material de Estudo' :
+        preview.mode === 'upload_material' ? 'Upload de Material' :
+        `Preview — ${preview.fileName}`
+      }
     >
       <div className={styles.previewModalContent}>
-        {preview.mode === 'upload' && (
-          <div className={styles.previewFormRow}>
-            <div className={styles.previewField}>
-              <label className={styles.previewLabel}>Título da atividade</label>
-              <input
-                type="text"
-                className={styles.previewInput}
-                value={preview.title}
-                onChange={(event) => setPreview((prev) => ({ ...prev, title: event.target.value }))}
-                placeholder="Nome da atividade"
-              />
-            </div>
-
-            <div className={styles.previewFieldSmall}>
-              <label className={styles.previewLabel}>Tipo</label>
-              <select disabled
-                className={styles.previewInput}
-                value={preview.type}
-                onChange={(event) =>
-                  setPreview((prev) => ({ ...prev, type: event.target.value as TemplateType }))
-                }
-              >
-                <option value="EXERCISE">Exercício</option>
-              </select>
-            </div>
-          </div>
-        )}
-
-        {preview.mode === 'freetext' && (
-          <div className={styles.previewFormRow}>
-            <div className={styles.previewField}>
-              <label className={styles.previewLabel}>Título da atividade</label>
-              <input
-                type="text"
-                className={styles.previewInput}
-                value={preview.title}
-                onChange={(event) => setPreview((prev) => ({ ...prev, title: event.target.value }))}
-                placeholder="Ex: Exercício — Tempos Verbais"
-              />
-            </div>
-
-            <div className={styles.previewFieldSmall}>
-              <label className={styles.previewLabel}>Tipo</label>
-              <select disabled
-                className={styles.previewInput}
-                value={preview.type}
-                onChange={(event) =>
-                  setPreview((prev) => ({ ...prev, type: event.target.value as TemplateType }))
-                }
-              >
-                <option value="EXERCISE">Exercício</option>
-              </select>
-            </div>
-          </div>
-        )}
-
-        {preview.mode === 'upload' && (
+        {preview.mode === 'link_material' && (
           <>
+            <div className={styles.previewNote}>
+              📚 <strong>Material de Estudo:</strong> Adicione links para vídeos (YouTube, Vimeo, etc.) ou outros recursos externos que complementem o aprendizado do aluno.
+            </div>
+
+            <div className={styles.previewFormRow}>
+              <div className={styles.previewField}>
+                <label className={styles.previewLabel}>Título do Material</label>
+                <input
+                  type="text"
+                  className={styles.previewInput}
+                  value={preview.title}
+                  onChange={(event) => setPreview((prev) => ({ ...prev, title: event.target.value }))}
+                  placeholder="Ex: Vídeo Explicativo - Present Perfect"
+                />
+              </div>
+
+              <div className={styles.previewFieldSmall}>
+                <label className={styles.previewLabel}>Tipo</label>
+                <select
+                  className={styles.previewInput}
+                  value={preview.materialType ?? 'VIDEO'}
+                  onChange={(event) =>
+                    setPreview((prev) => ({ ...prev, materialType: event.target.value as MaterialType }))
+                  }
+                >
+                  <option value="VIDEO">Vídeo</option>
+                  <option value="LINK">Link Externo</option>
+                </select>
+              </div>
+            </div>
+
+              <div className={styles.previewField}>
+                <label className={styles.previewLabel}>URL</label>
+                <input
+                  type="url"
+                  className={styles.previewInput}
+                  value={preview.url ?? ''}
+                  onChange={(event) => setPreview((prev) => ({ ...prev, url: event.target.value }))}
+                  placeholder={
+                    preview.materialType === 'VIDEO' 
+                      ? "https://youtube.com/watch?v=... ou https://vimeo.com/..."
+                      : "https://site.com/recurso ou https://exemplo.com/material"
+                  }
+                />
+              </div>
+
+            <div className={styles.previewField}>
+              <label className={styles.previewLabel}>Descrição (opcional)</label>
+              <textarea
+                className={styles.previewInput}
+                rows={3}
+                value={preview.description ?? ''}
+                onChange={(event) => setPreview((prev) => ({ ...prev, description: event.target.value }))}
+                placeholder="Descrição breve sobre este material de estudo"
+              />
+            </div>
+
+            <div className={styles.previewActions}>
+              <button
+                type="button"
+                className={styles.cancelBtn}
+                onClick={() => setPreview({
+                  isOpen: false,
+                  html: '',
+                  fileName: '',
+                  folderId: '',
+                  subfolderId: '',
+                  title: '',
+                  type: 'EXERCISE',
+                  propagateToStudents: false,
+                  mode: 'upload_exercise',
+                })}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                className={styles.submitBtn}
+                onClick={() => {
+                  // Criar chave única baseada na pasta ativa
+                  const materialKey = `${preview.folderId}-materials`;
+                  
+                  // Criar material pendente
+                  const newMaterial: PendingMaterial = {
+                    tempId: createTempId(),
+                    subfolderId: materialKey,
+                    title: preview.title,
+                    type: preview.materialType ?? 'VIDEO',
+                    url: preview.url,
+                    description: preview.description,
+                    propagateToStudents: false,
+                  };
+
+                  setPendingMaterials((prev) => ({
+                    ...prev,
+                    [materialKey]: [...(prev[materialKey] ?? []), newMaterial],
+                  }));
+
+                  setPreview({
+                    isOpen: false,
+                    html: '',
+                    fileName: '',
+                    folderId: '',
+                    subfolderId: '',
+                    title: '',
+                    type: 'EXERCISE',
+                    propagateToStudents: false,
+                    mode: 'upload_exercise',
+                  });
+                }}
+                disabled={!preview.title.trim() || !preview.url?.trim()}
+              >
+                Salvar Material
+              </button>
+            </div>
+          </>
+        )}
+
+        {preview.mode === 'upload_exercise' && (
+          <>
+            <div className={styles.previewFormRow}>
+              <div className={styles.previewField}>
+                <label className={styles.previewLabel}>Título da atividade</label>
+                <input
+                  type="text"
+                  className={styles.previewInput}
+                  value={preview.title}
+                  onChange={(event) => setPreview((prev) => ({ ...prev, title: event.target.value }))}
+                  placeholder="Nome da atividade"
+                />
+              </div>
+
+              <div className={styles.previewFieldSmall}>
+                <label className={styles.previewLabel}>Tipo</label>
+                <select
+                  className={styles.previewInput}
+                  value={preview.type}
+                  onChange={(event) =>
+                    setPreview((prev) => ({ ...prev, type: event.target.value as TemplateType }))
+                  }
+                >
+                  <option value="EXERCISE">Exercício</option>
+                  <option value="WORKSPACE">Workspace</option>
+                </select>
+              </div>
+            </div>
+
             <div className={styles.previewEditorWrapper}>
-              <DocxPreviewEditor html={preview.html} editable={false} />
+              <DocxPreviewEditor
+                html={preview.html}
+                editable={false}
+                onChange={(html) => setPreview((prev) => ({ ...prev, html }))}
+              />
             </div>
 
             <div className={styles.previewNote}>
               ⚠️ Este é o visual exato que o aluno verá no workspace. O conteúdo será salvo ao clicar em "Salvar tudo".
             </div>
+
+            <div className={styles.previewActions}>
+              <button
+                type="button"
+                className={styles.cancelBtn}
+                onClick={() => setPreview({
+                  isOpen: false,
+                  html: '',
+                  fileName: '',
+                  folderId: '',
+                  subfolderId: '',
+                  title: '',
+                  type: 'EXERCISE',
+                  propagateToStudents: false,
+                  mode: 'upload_exercise',
+                })}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                className={styles.submitBtn}
+                onClick={() => setIsPropagateModalOpen(true)}
+                disabled={!preview.title.trim() || savingTemplate}
+              >
+                {savingTemplate ? 'Salvando...' : 'Salvar template'}
+              </button>
+            </div>
           </>
         )}
 
-        {preview.mode === 'freetext' && (
-          <div className={styles.previewEditorWrapper}>
-            <DocxPreviewEditor
-              html={preview.html}
-              editable
-              onChange={(html) => setPreview((prev) => ({ ...prev, html }))}
-            />
-          </div>
+        {preview.mode === 'upload_material' && (
+          <>
+            <div className={styles.previewFormRow}>
+              <div className={styles.previewField}>
+                <label className={styles.previewLabel}>Título do material</label>
+                <input
+                  type="text"
+                  className={styles.previewInput}
+                  value={preview.title}
+                  onChange={(event) => setPreview((prev) => ({ ...prev, title: event.target.value }))}
+                  placeholder="Nome do material de estudo"
+                />
+              </div>
+            </div>
+
+            <div className={styles.previewField} style={{ marginBottom: '12px' }}>
+              <label className={styles.previewLabel}>Descrição (opcional)</label>
+              <textarea
+                className={styles.previewInput}
+                rows={2}
+                value={preview.description ?? ''}
+                onChange={(event) => setPreview((prev) => ({ ...prev, description: event.target.value }))}
+                placeholder="Descrição breve sobre este material de estudo"
+              />
+            </div>
+
+            <div className={styles.previewEditorWrapper}>
+              <DocxPreviewEditor
+                html={preview.html}
+                editable
+                onChange={(html) => setPreview((prev) => ({ ...prev, html }))}
+              />
+            </div>
+
+            <div className={styles.previewNote}>
+              ⚠️ Este é o visual exato que o aluno verá. O conteúdo será salvo ao clicar em "Salvar tudo".
+            </div>
+
+            <div className={styles.previewActions}>
+              <button
+                type="button"
+                className={styles.cancelBtn}
+                onClick={() => setPreview({
+                  isOpen: false,
+                  html: '',
+                  fileName: '',
+                  folderId: '',
+                  subfolderId: '',
+                  title: '',
+                  type: 'EXERCISE',
+                  propagateToStudents: false,
+                  mode: 'upload_exercise',
+                })}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                className={styles.submitBtn}
+                onClick={() => {
+                  const materialKey = `${preview.folderId}-materials`;
+
+                  const newMaterial: PendingMaterial = {
+                    tempId: createTempId(),
+                    subfolderId: materialKey,
+                    title: preview.title.trim(),
+                    type: 'DOCUMENT',
+                    convertedHtml: preview.html,
+                    originalFilename: preview.fileName,
+                    description: preview.description,
+                    propagateToStudents: false,
+                  };
+
+                  setPendingMaterials((prev) => ({
+                    ...prev,
+                    [materialKey]: [...(prev[materialKey] ?? []), newMaterial],
+                  }));
+
+                  setPreview({
+                    isOpen: false,
+                    html: '',
+                    fileName: '',
+                    folderId: '',
+                    subfolderId: '',
+                    title: '',
+                    type: 'EXERCISE',
+                    propagateToStudents: false,
+                    mode: 'upload_exercise',
+                  });
+                }}
+                disabled={!preview.title.trim()}
+              >
+                Salvar Material
+              </button>
+            </div>
+          </>
         )}
 
-        {preview.mode === 'view' && !preview.html && (
-          <div className={styles.noPreviewMsg}>
-            Preview não disponível para este template.
-          </div>
-        )}
+        {preview.mode === 'freetext_exercise' && (
+          <>
+            <div className={styles.previewFormRow}>
+              <div className={styles.previewField}>
+                <label className={styles.previewLabel}>Título da atividade</label>
+                <input
+                  type="text"
+                  className={styles.previewInput}
+                  value={preview.title}
+                  onChange={(event) => setPreview((prev) => ({ ...prev, title: event.target.value }))}
+                  placeholder="Ex: Exercício — Tempos Verbais"
+                />
+              </div>
 
-        {preview.mode === 'view' && preview.html && (
-          <div className={styles.previewEditorWrapper}>
-            <DocxPreviewEditor html={preview.html} editable={false} />
-          </div>
-        )}
+              <div className={styles.previewFieldSmall}>
+                <label className={styles.previewLabel}>Tipo</label>
+                <select disabled
+                  className={styles.previewInput}
+                  value={preview.type}
+                  onChange={(event) =>
+                    setPreview((prev) => ({ ...prev, type: event.target.value as TemplateType }))
+                  }
+                >
+                  <option value="EXERCISE">Exercício</option>
+                </select>
+              </div>
+            </div>
 
-        {(preview.mode === 'upload' || preview.mode === 'freetext') && (
-          <div className={styles.previewActions}>
-            <button
-              type="button"
-              className={styles.cancelBtn}
-              onClick={() => setPreview((prev) => ({ ...prev, isOpen: false }))}
-            >
-              Cancelar
-            </button>
-            <button
-              type="button"
-              className={styles.submitBtn}
-              onClick={() => setIsPropagateModalOpen(true)}
-              disabled={!preview.title.trim() || savingTemplate}
-            >
-              {savingTemplate ? 'Salvando...' : 'Salvar template'}
-            </button>
-          </div>
+            <div className={styles.previewEditorWrapper}>
+              <DocxPreviewEditor
+                html={preview.html}
+                editable
+                onChange={(html) => setPreview((prev) => ({ ...prev, html }))}
+              />
+            </div>
+
+            <div className={styles.previewActions}>
+              <button
+                type="button"
+                className={styles.cancelBtn}
+                onClick={() => setPreview({
+                  isOpen: false,
+                  html: '',
+                  fileName: '',
+                  folderId: '',
+                  subfolderId: '',
+                  title: '',
+                  type: 'EXERCISE',
+                  propagateToStudents: false,
+                  mode: 'upload_exercise',
+                })}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                className={styles.submitBtn}
+                onClick={() => setIsPropagateModalOpen(true)}
+                disabled={!preview.title.trim() || savingTemplate}
+              >
+                {savingTemplate ? 'Salvando...' : 'Salvar template'}
+              </button>
+            </div>
+          </>
         )}
 
         {preview.mode === 'view' && (
-          <div className={styles.previewActions}>
-            <button
-              type="button"
-              className={styles.cancelBtn}
-              onClick={() => setPreview((prev) => ({ ...prev, isOpen: false }))}
-            >
-              Fechar
-            </button>
-          </div>
+          <>
+            {!preview.html ? (
+              <div className={styles.noPreviewMsg}>
+                Preview não disponível para este template.
+              </div>
+            ) : (
+              <div className={styles.previewEditorWrapper}>
+                <DocxPreviewEditor html={preview.html} editable={false} />
+              </div>
+            )}
+
+            <div className={styles.previewActions}>
+              <button
+                type="button"
+                className={styles.cancelBtn}
+                onClick={() => setPreview({
+                  isOpen: false,
+                  html: '',
+                  fileName: '',
+                  folderId: '',
+                  subfolderId: '',
+                  title: '',
+                  type: 'EXERCISE',
+                  propagateToStudents: false,
+                  mode: 'upload_exercise',
+                })}
+              >
+                Fechar
+              </button>
+            </div>
+          </>
         )}
       </div>
     </Modal>

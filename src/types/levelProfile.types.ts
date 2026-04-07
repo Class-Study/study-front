@@ -1,5 +1,24 @@
 export type LevelName = string;
 
+// Tipos estendidos para incluir materiais de estudo
+export type ContentType = 'EXERCISE' | 'WORKSPACE' | 'STUDY_MATERIAL';
+export type StudyMaterialType = 'VIDEO' | 'DOCUMENT' | 'LINK';
+
+export interface StudyMaterial {
+  id: string;
+  levelFolderId: string;
+  subfolderType: string;
+  title: string;
+  type: 'VIDEO' | 'DOCUMENT' | 'LINK';
+  url?: string;
+  convertedHtml?: string;
+  originalFilename?: string;
+  description?: string;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface LevelFolderTemplate {
   id: string;
   levelFolderId: string;
@@ -18,11 +37,24 @@ export interface CreateLevelFolderTemplateRequest {
   propagateToStudents: boolean;
 }
 
+// Nova estrutura para subpastas
+export interface LevelSubfolder {
+  id: string;
+  name: string;
+  type: 'EXERCISES' | 'STUDY_MATERIALS';
+  position: number;
+  templates: LevelFolderTemplate[];
+  studyMaterials: StudyMaterial[];
+}
+
 export interface LevelFolder {
   id: string;
   name: string;
   position: number;
   initialFiles: number;
+  // Nova estrutura hierárquica
+  subfolders: LevelSubfolder[];
+  // Manter compatibilidade com estrutura antiga (será removido no futuro)
   templates: LevelFolderTemplate[];
 }
 
@@ -70,9 +102,45 @@ export interface ListLevelProfilesResponse {
 export interface ActivityTemplate {
   tempId: string;
   folderId: string;
+  subfolderId?: string; // Nova propriedade para subpastas
   title: string;
   type: 'EXERCISE' | 'WORKSPACE';
   file: File;
   fileName: string;
   previewHtml?: string;
 }
+
+// Novos tipos para requests de material de estudo
+export interface CreateStudyMaterialRequest {
+  title: string;
+  type: 'VIDEO' | 'DOCUMENT' | 'LINK';
+  url?: string;
+  convertedHtml?: string;
+  originalFilename?: string;
+  description?: string;
+  propagateToStudents: boolean;
+}
+
+export interface PendingStudyMaterial {
+  tempId: string;
+  subfolderId: string;
+  title: string;
+  type: StudyMaterialType;
+  url?: string;
+  convertedHtml?: string;
+  originalFilename?: string;
+  description?: string;
+  propagateToStudents: boolean;
+}
+
+export interface PendingTemplate {
+  tempId: string;
+  subfolderId: string; // Atualizado para usar subpasta
+  folderId: string;
+  title: string;
+  type: ContentType;
+  fileName: string;
+  convertedHtml: string;
+  propagateToStudents: boolean;
+}
+
