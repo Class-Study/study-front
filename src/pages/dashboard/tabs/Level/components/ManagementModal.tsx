@@ -50,7 +50,7 @@ interface ManagementModalProps {
   setEditingSubfolderId: React.Dispatch<React.SetStateAction<string | null>>;
   editingSubfolderName: string;
   setEditingSubfolderName: React.Dispatch<React.SetStateAction<string>>;
-  handleRenameSubfolder: (folderId: string, subfolderId: string) => Promise<void>;
+  handleRenameSubfolder: (folderId: string, subfolderId: string, newName: string) => Promise<void>;
   handleDeleteSubfolder: (folderId: string, subfolderId: string, name: string) => Promise<void>;
   handleFileConvert: (file: File, folderId: string, subfolderId: string, contentMode: 'exercise' | 'material') => Promise<void>;
   handleViewSavedTemplate: (template: LevelFolderTemplate, folderId: string, subfolderId: string) => void;
@@ -146,10 +146,6 @@ export const ManagementModal: React.FC<ManagementModalProps> = (props) => {
               setNewSubfolderName={props.setNewSubfolderName}
               creatingSubfolder={props.creatingSubfolder}
               handleCreateSubfolder={props.handleCreateSubfolder}
-              editingSubfolderId={props.editingSubfolderId}
-              setEditingSubfolderId={props.setEditingSubfolderId}
-              editingSubfolderName={props.editingSubfolderName}
-              setEditingSubfolderName={props.setEditingSubfolderName}
               handleRenameSubfolder={props.handleRenameSubfolder}
               handleDeleteSubfolder={props.handleDeleteSubfolder}
               handleFileConvert={props.handleFileConvert}
