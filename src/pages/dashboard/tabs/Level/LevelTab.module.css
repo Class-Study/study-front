@@ -1122,6 +1122,33 @@
     border: 1px solid var(--color-border);
 }
 
+.subfolderCardPending {
+    border: 1px dashed var(--color-accent, #0066cc);
+    background: var(--color-bg-tertiary);
+    opacity: 0.92;
+}
+
+.propagateToggle {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    color: var(--color-text-secondary);
+    cursor: pointer;
+    white-space: nowrap;
+    padding: 2px 6px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--color-border);
+    background: var(--color-bg-secondary);
+    user-select: none;
+}
+
+.propagateToggle input {
+    margin: 0;
+    cursor: pointer;
+    accent-color: var(--color-accent, #0066cc);
+}
+
 .subfolderHeader {
     display: flex;
     align-items: center;

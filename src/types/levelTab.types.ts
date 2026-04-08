@@ -15,6 +15,13 @@ export interface NewLevelForm {
   folders: NewFolderRow[];
 }
 
+export interface PendingSubfolder {
+  tempId: string;      // usado como chave em pendingTemplates/pendingMaterials
+  folderId: string;    // id da pasta pai
+  name: string;
+  propagateToStudents: boolean;
+}
+
 export interface PendingMaterial {
   tempId: string;
   subfolderId: string;
@@ -24,7 +31,6 @@ export interface PendingMaterial {
   convertedHtml?: string;
   originalFilename?: string;
   description?: string;
-  propagateToStudents: boolean;
 }
 
 export interface PendingTemplateExtended {
@@ -32,10 +38,9 @@ export interface PendingTemplateExtended {
   folderId: string;
   subfolderId: string;
   title: string;
-  type: TemplateType;
+  type: string;
   fileName: string;
   convertedHtml: string;
-  propagateToStudents: boolean;
 }
 
 export interface PreviewState {
@@ -45,11 +50,10 @@ export interface PreviewState {
   folderId: string;
   subfolderId: string;
   title: string;
-  type: TemplateType;
+  type: string;
   materialType?: MaterialType;
   url?: string;
   description?: string;
-  propagateToStudents: boolean;
   mode: 'upload_exercise' | 'upload_material' | 'view' | 'freetext_exercise' | 'link_material';
 }
 

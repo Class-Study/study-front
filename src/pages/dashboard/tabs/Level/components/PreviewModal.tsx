@@ -1,7 +1,7 @@
 import React from 'react';
 import DocxPreviewEditor from '@/components/ui/DocxPreviewEditor/DocxPreviewEditor.tsx';
 import { Modal } from '@/components/ui/Modal/Modal.tsx';
-import type { MaterialType, PendingMaterial, PreviewState, TemplateType } from '../../../../../types/levelTab.types.ts';
+import type { MaterialType, PendingMaterial, PreviewState, TemplateType } from '@/types/levelTab.types.ts';
 import { createTempId, EMPTY_PREVIEW } from '@/utils/levelTab.utils.ts';
 import styles from '../LevelTab.module.css';
 
@@ -9,18 +9,17 @@ interface PreviewModalProps {
   preview: PreviewState;
   setPreview: React.Dispatch<React.SetStateAction<PreviewState>>;
   savingTemplate: boolean;
-  setIsPropagateModalOpen: React.Dispatch<React.SetStateAction<boolean>>;
   setPendingMaterials: React.Dispatch<React.SetStateAction<Record<string, PendingMaterial[]>>>;
+  handleSaveTemplate: () => Promise<void>;
 }
 
 export const PreviewModal: React.FC<PreviewModalProps> = ({
   preview,
   setPreview,
   savingTemplate,
-  setIsPropagateModalOpen,
   setPendingMaterials,
+  handleSaveTemplate,
 }) => {
-  const closePreview = () => setPreview({ ...EMPTY_PREVIEW });
 
   const modalTitle =
     preview.mode === 'view'
@@ -34,7 +33,7 @@ export const PreviewModal: React.FC<PreviewModalProps> = ({
             : `Preview — ${preview.fileName}`;
 
   return (
-    <Modal isOpen={preview.isOpen} onClose={closePreview} size="lg" title={modalTitle}>
+    <Modal isOpen={preview.isOpen} onClose={() => {}} size="lg" title={modalTitle}>
       <div className={styles.previewModalContent}>
         {/* ── Link Material ──────────────────────────────────────── */}
         {preview.mode === 'link_material' && (
@@ -101,7 +100,11 @@ export const PreviewModal: React.FC<PreviewModalProps> = ({
             </div>
 
             <div className={styles.previewActions}>
-              <button type="button" className={styles.cancelBtn} onClick={closePreview}>
+              <button
+                type="button"
+                className={styles.cancelBtn}
+                onClick={() => setPreview((prev) => ({ ...prev, isOpen: false }))}
+              >
                 Cancelar
               </button>
               <button
@@ -116,13 +119,12 @@ export const PreviewModal: React.FC<PreviewModalProps> = ({
                     type: preview.materialType ?? 'VIDEO',
                     url: preview.url,
                     description: preview.description,
-                    propagateToStudents: false,
                   };
                   setPendingMaterials((prev) => ({
                     ...prev,
                     [sfKey]: [...(prev[sfKey] ?? []), newMaterial],
                   }));
-                  closePreview();
+                  setPreview((prev) => ({ ...prev, isOpen: false }));
                 }}
                 disabled={!preview.title.trim() || !preview.url?.trim()}
               >
@@ -176,13 +178,13 @@ export const PreviewModal: React.FC<PreviewModalProps> = ({
             </div>
 
             <div className={styles.previewActions}>
-              <button type="button" className={styles.cancelBtn} onClick={closePreview}>
+              <button type="button" className={styles.cancelBtn}>
                 Cancelar
               </button>
               <button
                 type="button"
                 className={styles.submitBtn}
-                onClick={() => setIsPropagateModalOpen(true)}
+                onClick={() => void handleSaveTemplate()}
                 disabled={!preview.title.trim() || savingTemplate}
               >
                 {savingTemplate ? 'Salvando...' : 'Salvar template'}
@@ -232,7 +234,7 @@ export const PreviewModal: React.FC<PreviewModalProps> = ({
             </div>
 
             <div className={styles.previewActions}>
-              <button type="button" className={styles.cancelBtn} onClick={closePreview}>
+              <button type="button" className={styles.cancelBtn}>
                 Cancelar
               </button>
               <button
@@ -248,13 +250,11 @@ export const PreviewModal: React.FC<PreviewModalProps> = ({
                     convertedHtml: preview.html,
                     originalFilename: preview.fileName,
                     description: preview.description,
-                    propagateToStudents: false,
                   };
                   setPendingMaterials((prev) => ({
                     ...prev,
                     [sfKey]: [...(prev[sfKey] ?? []), newMaterial],
                   }));
-                  closePreview();
                 }}
                 disabled={!preview.title.trim()}
               >
@@ -303,13 +303,13 @@ export const PreviewModal: React.FC<PreviewModalProps> = ({
             </div>
 
             <div className={styles.previewActions}>
-              <button type="button" className={styles.cancelBtn} onClick={closePreview}>
+              <button type="button" className={styles.cancelBtn}>
                 Cancelar
               </button>
               <button
                 type="button"
                 className={styles.submitBtn}
-                onClick={() => setIsPropagateModalOpen(true)}
+                onClick={() => void handleSaveTemplate()}
                 disabled={!preview.title.trim() || savingTemplate}
               >
                 {savingTemplate ? 'Salvando...' : 'Salvar template'}
@@ -330,7 +330,7 @@ export const PreviewModal: React.FC<PreviewModalProps> = ({
             )}
 
             <div className={styles.previewActions}>
-              <button type="button" className={styles.cancelBtn} onClick={closePreview}>
+              <button type="button" className={styles.cancelBtn}>
                 Fechar
               </button>
             </div>

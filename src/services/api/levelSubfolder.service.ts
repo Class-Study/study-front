@@ -1,5 +1,11 @@
 import api from './client';
-import type { LevelSubfolder, CreateLevelSubfolderRequest, UpdateLevelSubfolderRequest } from '@/types/levelProfile.types';
+import type {
+  CreateLevelSubfolderRequest,
+  UpdateLevelSubfolderRequest,
+  CreateSubfoldersBatchRequest,
+  UpdateSubfolderWithContentsRequest,
+  LevelSubfolder,
+} from '@/types/levelProfile.types';
 
 export interface LevelSubfolderResponse {
   id: string;
@@ -31,6 +37,18 @@ const levelSubfolderService = {
     return data;
   },
 
+  createBatch: async (
+    profileId: string,
+    folderId: string,
+    payload: CreateSubfoldersBatchRequest,
+  ): Promise<any> => {
+    const { data } = await api.post<any>(
+      `/level-profiles/${profileId}/folders/${folderId}/subfolders/batch`,
+      payload,
+    );
+    return data;
+  },
+
   update: async (
     profileId: string,
     folderId: string,
@@ -42,6 +60,18 @@ const levelSubfolderService = {
       payload,
     );
     return data;
+  },
+
+  updateWithContents: async (
+    profileId: string,
+    folderId: string,
+    subfolderId: string,
+    payload: UpdateSubfolderWithContentsRequest,
+  ): Promise<void> => {
+    await api.put(
+      `/level-profiles/${profileId}/folders/${folderId}/subfolders/${subfolderId}`,
+      payload,
+    );
   },
 
   delete: async (

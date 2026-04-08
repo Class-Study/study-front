@@ -97,7 +97,6 @@ export const EMPTY_PREVIEW = {
   subfolderId: '',
   title: '',
   type: 'EXERCISE' as TemplateType,
-  propagateToStudents: false,
   mode: 'upload_exercise' as const,
 };
 

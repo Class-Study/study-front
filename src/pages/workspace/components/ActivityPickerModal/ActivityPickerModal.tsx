@@ -193,16 +193,16 @@ export const ActivityPickerModal: React.FC<ActivityPickerModalProps> = ({
                                         }
                                         <span className={styles.folderName}>{folder.name}</span>
                                         <span className={styles.folderCount}>
-                                        {folder.activities.length}
+                                        {(folder.activities ?? []).length}
                                     </span>
                                     </button>
 
                                     {isOpen && (
                                         <div className={styles.folderChildren}>
-                                            {folder.activities.length === 0 && (
+                                            {(folder.activities ?? []).length === 0 && (
                                                 <p className={styles.emptyFolder}>Pasta vazia</p>
                                             )}
-                                            {folder.activities.map((activity) => (
+                                            {(folder.activities ?? []).map((activity) => (
                                                 <ActivityRow
                                                     key={activity.id}
                                                     activity={activity}

@@ -24,7 +24,6 @@ export interface CreateStudyMaterialRequest {
   convertedHtml?: string;
   originalFilename?: string;
   description?: string;
-  propagateToStudents: boolean;
 }
 
 export interface UpdateStudyMaterialRequest {
@@ -37,18 +36,6 @@ export interface UpdateStudyMaterialRequest {
 }
 
 const studyMaterialService = {
-  // Listar materiais de uma subpasta (subfolderId = UUID real)
-  listBySubfolder: async (
-    profileId: string,
-    folderId: string,
-    subfolderId: string,
-  ): Promise<StudyMaterialResponse[]> => {
-    const { data } = await api.get<StudyMaterialResponse[]>(
-      `/level-profiles/${profileId}/folders/${folderId}/subfolders/${subfolderId}/materials`,
-    );
-    return data;
-  },
-
   // Criar material de estudo
   create: async (
     profileId: string,

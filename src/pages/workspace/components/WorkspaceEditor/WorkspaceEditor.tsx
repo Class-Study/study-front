@@ -124,11 +124,6 @@ export const WorkspaceEditor: React.FC<WorkspaceEditorProps> = ({
   }, [onScrollChange]);
 
   useEffect(() => {
-    if (editor && activity) editor.commands.setContent(activity.convertedHtml);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activity?.id]);
-
-  useEffect(() => {
     if (editor) editor.setEditable(editable);
   }, [editor, editable]);
 
