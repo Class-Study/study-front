@@ -7,7 +7,51 @@ import {
   WorkspaceActivity,
   WorkspaceData,
   WorkspaceFolder,
+  WorkspaceSubfolder,
 } from '@/types/workspace.types';
+
+
+// ─── Normaliza resposta do backend ────────────────────────────────────────────
+
+const normalizeFolders = (data: WorkspaceData): WorkspaceData => ({
+  ...data,
+  folders: [...data.folders]
+    .sort((a, b) => a.position - b.position)
+    .map((folder) => {
+      if (folder.subfolders && folder.subfolders.length > 0) return folder;
+      const legacyActivities = (folder.activities ?? []) as WorkspaceActivity[];
+      if (legacyActivities.length === 0) return { ...folder, subfolders: [] };
+      return {
+        ...folder,
+        subfolders: [
+          {
+            id: `${folder.id}-default`,
+            name: folder.name,
+            folderId: folder.id,
+            position: 0,
+            activities: legacyActivities,
+          } as WorkspaceSubfolder,
+        ],
+      };
+    }),
+});
+
+// ─── Helper: encontra atividade em subpastas ──────────────────────────────────
+
+const findActivity = (
+  workspace: WorkspaceData,
+  activityId: string,
+): { activity: WorkspaceActivity; folderId: string; subfolderId: string } | null => {
+  for (const folder of workspace.folders) {
+    for (const sf of (folder.subfolders ?? []) as WorkspaceSubfolder[]) {
+      const found = (sf.activities ?? []).find((a) => a.id === activityId);
+      if (found) return { activity: found, folderId: folder.id, subfolderId: sf.id };
+    }
+  }
+  return null;
+};
+
+// ─── Hook ─────────────────────────────────────────────────────────────────────
 
 export const useWorkspace = (studentId: string, studentView: boolean = false) => {
   const [workspace, setWorkspace] = useState<WorkspaceData | null>(null);
@@ -24,20 +68,18 @@ export const useWorkspace = (studentId: string, studentView: boolean = false) =>
     setError(null);
     setAccessDenied(false);
 
+
     try {
       const data = studentView
         ? await workspaceService.getMyWorkspace()
         : await workspaceService.getWorkspace(studentId);
-      setWorkspace({
-        ...data,
-        folders: [...data.folders].sort((a, b) => a.position - b.position),
-      });
+      setWorkspace(normalizeFolders(data));
     } catch (err) {
       if (axios.isAxiosError(err) && err.response?.status === 403) {
         setAccessDenied(true);
         setError('Acesso negado a este workspace.');
       } else {
-      setError('Erro ao carregar workspace do aluno.');
+        setError('Erro ao carregar workspace do aluno.');
       }
     } finally {
       setLoading(false);
@@ -46,16 +88,14 @@ export const useWorkspace = (studentId: string, studentView: boolean = false) =>
 
   useEffect(() => {
     return () => {
-      if (saveTimeoutRef.current) {
-        clearTimeout(saveTimeoutRef.current);
-      }
+      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
     };
   }, []);
 
+  // ── saveContent ─────────────────────────────────────────────────────────────
+
   const saveContent = useCallback((activityId: string, html: string) => {
-    if (saveTimeoutRef.current) {
-      clearTimeout(saveTimeoutRef.current);
-    }
+    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
 
     saveTimeoutRef.current = setTimeout(async () => {
       setSaving(true);
@@ -63,17 +103,20 @@ export const useWorkspace = (studentId: string, studentView: boolean = false) =>
         await workspaceService.updateContent(activityId, html);
         setWorkspace((prev) => {
           if (!prev) return prev;
-
           return {
             ...prev,
             folders: prev.folders.map((folder) => ({
               ...folder,
-              activities: folder.activities.map((activity) => (
-                activity.id === activityId
-                  ? { ...activity, convertedHtml: html }
-                  : activity
-              )),
+              subfolders: (folder.subfolders ?? []).map((sf) => ({
+                ...sf,
+                activities: (sf.activities ?? []).map((a) =>
+                  a.id === activityId ? { ...a, convertedHtml: html } : a,
+                ),
+              })),
             })),
+            workspaces: (prev.workspaces ?? []).map((ws) =>
+              ws.id === activityId ? { ...ws, convertedHtml: html } : ws,
+            ),
           };
         });
       } catch {
@@ -83,6 +126,8 @@ export const useWorkspace = (studentId: string, studentView: boolean = false) =>
       }
     }, 2000);
   }, []);
+
+  // ── createActivity ──────────────────────────────────────────────────────────
 
   const createActivity = useCallback(async (
     folderId: string,
@@ -99,24 +144,45 @@ export const useWorkspace = (studentId: string, studentView: boolean = false) =>
         originalFilename: originalFilename ?? '',
       });
 
+      const newActivity = activity as unknown as WorkspaceActivity;
+
       setWorkspace((prev) => {
         if (!prev) return prev;
         return {
           ...prev,
-          folders: prev.folders.map((folder) => (
-            folder.id === folderId
-              ? { ...folder, activities: [...folder.activities, activity as unknown as WorkspaceActivity] }
-              : folder
-          )),
+          folders: prev.folders.map((folder) => {
+            if (folder.id !== folderId) return folder;
+            const subs = (folder.subfolders ?? []) as WorkspaceSubfolder[];
+            if (subs.length > 0) {
+              return {
+                ...folder,
+                subfolders: subs.map((sf, i) =>
+                  i === 0 ? { ...sf, activities: [...(sf.activities ?? []), newActivity] } : sf,
+                ),
+              };
+            }
+            return {
+              ...folder,
+              subfolders: [{
+                id: `${folderId}-default`,
+                name: folder.name,
+                folderId,
+                position: 0,
+                activities: [newActivity],
+              } as WorkspaceSubfolder],
+            };
+          }),
         };
       });
 
-      return activity as unknown as WorkspaceActivity;
+      return newActivity;
     } catch {
       console.error('Erro ao criar atividade');
       return null;
     }
   }, [studentId]);
+
+  // ── createFolder ────────────────────────────────────────────────────────────
 
   const createFolder = useCallback(async (name: string): Promise<WorkspaceFolder | null> => {
     try {
@@ -124,10 +190,10 @@ export const useWorkspace = (studentId: string, studentView: boolean = false) =>
 
       setWorkspace((prev) => {
         if (!prev) return prev;
-
         return {
           ...prev,
-          folders: [...prev.folders, folder].sort((a, b) => a.position - b.position),
+          folders: [...prev.folders, { ...folder, subfolders: [] }]
+            .sort((a, b) => a.position - b.position),
         };
       });
 
@@ -138,71 +204,57 @@ export const useWorkspace = (studentId: string, studentView: boolean = false) =>
     }
   }, [studentId]);
 
+  // ── moveActivity ────────────────────────────────────────────────────────────
+
   const moveActivity = useCallback(async (
     activityId: string,
     targetFolderId: string,
   ): Promise<boolean> => {
-    if (!workspace) {
-      return false;
-    }
+    if (!workspace) return false;
 
-    let sourceFolderId: string | null = null;
-    let sourceActivity: WorkspaceActivity | null = null;
+    const location = findActivity(workspace, activityId);
+    if (!location || location.folderId === targetFolderId) return true;
 
-    workspace.folders.forEach((folder) => {
-      const found = folder.activities.find((activity) => activity.id === activityId);
-      if (found) {
-        sourceFolderId = folder.id;
-        sourceActivity = found;
-      }
-    });
-
-    if (!sourceFolderId || !sourceActivity || sourceFolderId === targetFolderId) {
-      return true;
-    }
-
+    const { activity: srcActivity, folderId: srcFolderId } = location;
     const previousWorkspace = workspace;
 
     setWorkspace((prev) => {
       if (!prev) return prev;
 
-      const targetFolderExists = prev.folders.some((folder) => folder.id === targetFolderId);
-      if (!targetFolderExists) {
-        return prev;
-      }
+      const targetFolder = prev.folders.find((f) => f.id === targetFolderId);
+      if (!targetFolder) return prev;
+
+      const targetSubs = (targetFolder.subfolders ?? []) as WorkspaceSubfolder[];
+      const destSubId = targetSubs[0]?.id ?? `${targetFolderId}-default`;
+      const moved = { ...srcActivity, folderId: targetFolderId, subfolderId: destSubId };
 
       return {
         ...prev,
         folders: prev.folders.map((folder) => {
-          if (folder.id === sourceFolderId) {
+          if (folder.id === srcFolderId) {
             return {
               ...folder,
-              activities: folder.activities.filter((activity) => activity.id !== activityId),
+              subfolders: (folder.subfolders ?? []).map((sf) => ({
+                ...sf,
+                activities: (sf.activities ?? []).filter((a) => a.id !== activityId),
+              })),
             };
           }
-
-          if (folder.id === targetFolderId && sourceActivity) {
-            return {
-              ...folder,
-              activities: [
-                ...folder.activities,
-                {
-                  ...sourceActivity,
-                  folderId: targetFolderId,
-                },
-              ],
-            };
+          if (folder.id === targetFolderId) {
+            const updatedSubs = targetSubs.length > 0
+              ? targetSubs.map((sf, i) =>
+                  i === 0 ? { ...sf, activities: [...(sf.activities ?? []), moved] } : sf,
+                )
+              : [{ id: destSubId, name: targetFolder.name, folderId: targetFolderId, position: 0, activities: [moved] } as WorkspaceSubfolder];
+            return { ...folder, subfolders: updatedSubs };
           }
-
           return folder;
         }),
       };
     });
 
     try {
-      await activityService.move(activityId, {
-        targetFolderId,
-      });
+      await activityService.move(activityId, { targetFolderId });
       return true;
     } catch {
       setWorkspace(previousWorkspace);
@@ -210,18 +262,17 @@ export const useWorkspace = (studentId: string, studentView: boolean = false) =>
     }
   }, [workspace]);
 
+  // ── Derivados ───────────────────────────────────────────────────────────────
+
+  /** Atividades do tipo WORKSPACE (seção "Workspaces" da sidebar) */
   const workspaceActivities = useMemo(
-    () => workspace?.folders
-      .flatMap((folder) => folder.activities)
-      .filter((activity) => activity.type === 'WORKSPACE') ?? [],
+    () => workspace?.workspaces ?? [],
     [workspace],
   );
 
+  /** Pastas com subpastas para a seção "Exercícios" da sidebar */
   const exerciseFolders = useMemo(
-    () => workspace?.folders.map((folder) => ({
-      ...folder,
-      activities: folder.activities.filter((activity) => activity.type === 'EXERCISE'),
-    })) ?? [],
+    () => workspace?.folders ?? [],
     [workspace],
   );
 

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { ArrowRight, ChevronRight, FolderClosed, PanelLeftClose } from 'lucide-react';
+import { ArrowRight, ChevronRight, ExternalLink, FolderClosed, PanelLeftClose } from 'lucide-react';
 import {
   DragDropContext,
   Draggable,
@@ -7,8 +7,31 @@ import {
   DropResult,
 } from '@hello-pangea/dnd';
 import { Modal } from '@/components/ui/Modal/Modal';
-import { WorkspaceActivity, WorkspaceFolder } from '@/types/workspace.types';
+import { MaterialType, WorkspaceActivity, WorkspaceFolder, WorkspaceSubfolder } from '@/types/workspace.types';
 import styles from './WorkspaceSidebar.module.css';
+
+// ─── Helpers de material ──────────────────────────────────────────────────────
+
+const MATERIAL_ICONS: Record<MaterialType, string> = {
+  DOC: '📄',
+  VIDEO: '🎬',
+  LINK: '🔗',
+};
+
+const getMaterialIcon = (materialType?: MaterialType): string =>
+  materialType ? (MATERIAL_ICONS[materialType] ?? '📚') : '📚';
+
+/** Retorna true para materiais que abrem em nova aba (VIDEO e LINK) */
+const isExternalMaterial = (activity: WorkspaceActivity): boolean =>
+  activity.type === 'MATERIAL' &&
+  (activity.materialType === 'VIDEO' || activity.materialType === 'LINK') &&
+  !!activity.externalUrl;
+
+const handleExternalClick = (activity: WorkspaceActivity): void => {
+  if (activity.externalUrl) {
+    window.open(activity.externalUrl, '_blank', 'noopener,noreferrer');
+  }
+};
 
 interface WorkspaceSidebarProps {
   folders: WorkspaceFolder[];
@@ -76,13 +99,16 @@ export const WorkspaceSidebar: React.FC<WorkspaceSidebarProps> = ({
   const canCreateFolder = allowCreateFolder ?? canCreate;
   const canUploadToFolder = allowUploadToFolder ?? canCreate;
 
-  const activeFolderId = folders.find((f) =>
-    f.activities.some((a) => a.id === activeActivityId),
-  )?.id;
+  const activeFolderId = folders.find((f) => {
+    const subfolders = (f.subfolders as WorkspaceSubfolder[]) ?? [];
+    return subfolders.some((sf) => sf.activities?.some((a) => a.id === activeActivityId));
+  })?.id;
 
   const [openFolders, setOpenFolders] = useState<Set<string>>(
     () => new Set(activeFolderId ? [activeFolderId] : []),
   );
+  const [openSubfolders, setOpenSubfolders] = useState<Set<string>>(new Set());
+  const [openGroups, setOpenGroups] = useState<Set<string>>(new Set()); // "subfolderId-exercises" ou "subfolderId-materials"
   const [pendingMove, setPendingMove] = useState<PendingMove | null>(null);
   const [confirmingMove, setConfirmingMove] = useState(false);
 
@@ -93,6 +119,30 @@ export const WorkspaceSidebar: React.FC<WorkspaceSidebarProps> = ({
         next.delete(folderId);
       } else {
         next.add(folderId);
+      }
+      return next;
+    });
+  };
+
+  const toggleSubfolder = (subfolderId: string): void => {
+    setOpenSubfolders((prev) => {
+      const next = new Set(prev);
+      if (next.has(subfolderId)) {
+        next.delete(subfolderId);
+      } else {
+        next.add(subfolderId);
+      }
+      return next;
+    });
+  };
+
+  const toggleGroup = (groupId: string): void => {
+    setOpenGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(groupId)) {
+        next.delete(groupId);
+      } else {
+        next.add(groupId);
       }
       return next;
     });
@@ -132,11 +182,31 @@ export const WorkspaceSidebar: React.FC<WorkspaceSidebarProps> = ({
       return;
     }
 
-    const sourceFolder = folders.find((folder) =>
-      folder.activities.some((activity) => activity.id === result.draggableId),
-    );
+    // Busca a pasta source procurando a atividade em subfolders
+    let sourceFolder: WorkspaceFolder | undefined;
+    let activity: WorkspaceActivity | undefined;
+
+    sourceFolder = folders.find((folder) => {
+      const subfolders = (folder.subfolders as WorkspaceSubfolder[]) ?? [];
+      return subfolders.some((sf) =>
+        sf.activities?.some((act) => act.id === result.draggableId),
+      );
+    });
+
+    if (sourceFolder) {
+      const subfolders = (sourceFolder.subfolders as WorkspaceSubfolder[]) ?? [];
+      for (const subfolder of subfolders) {
+        activity = subfolder.activities?.find((act) => act.id === result.draggableId);
+        if (activity) break;
+      }
+    }
+
+    // Fallback para atividades legado (se ainda existirem em folder.activities)
+    if (!activity && sourceFolder?.activities) {
+      activity = sourceFolder.activities.find((item) => item.id === result.draggableId);
+    }
+
     const targetFolder = folders.find((folder) => folder.id === destinationFolderId);
-    const activity = sourceFolder?.activities.find((item) => item.id === result.draggableId);
 
     if (!sourceFolder || !targetFolder || !activity) {
       return;
@@ -239,68 +309,189 @@ export const WorkspaceSidebar: React.FC<WorkspaceSidebarProps> = ({
         <div className={styles.sectionLabel}>Exercícios</div>
         {folders.map((folder) => {
           const isOpen = openFolders.has(folder.id);
+          // Conta atividades em subpastas
+          const subfolders = (folder.subfolders as WorkspaceSubfolder[]) ?? [];
+          const activitiesCount = subfolders
+            .reduce((sum: number, sf) => sum + (sf.activities?.length ?? 0), 0);
+          
           return (
-            <Droppable key={folder.id} droppableId={folder.id}>
-              {(provided, snapshot) => (
-            <div key={folder.id} ref={provided.innerRef} {...provided.droppableProps}>
+            <div key={folder.id}>
+              {/* PASTA ACCORDION */}
               <div
                 role="button"
                 tabIndex={0}
-                className={`${styles.folderRow} ${snapshot.isDraggingOver ? styles.folderRowDragOver : ''}`}
+                className={`${styles.folderRow}`}
                 onClick={() => toggleFolder(folder.id)}
                 onKeyDown={(e) => e.key === 'Enter' && toggleFolder(folder.id)}
               >
                 <span className={styles.folderIcon}>📁</span>
                 <span className={styles.folderName}>{folder.name}</span>
+                <span className={styles.folderCount}>{activitiesCount}</span>
                 <ChevronRight
                   size={12}
                   className={`${styles.folderChevron} ${isOpen ? styles.folderChevronOpen : ''}`}
                 />
               </div>
 
+              {/* CONTEÚDO DA PASTA (SUBPASTAS) */}
               {isOpen && (
                 <div className={styles.folderChildren}>
-                  {folder.activities.length === 0 ? (
-                    <div className={styles.emptyFolder}>Vazio</div>
+                  {!subfolders || subfolders.length === 0 ? (
+                    <div className={styles.emptyFolder}>Nenhuma subpasta</div>
                   ) : (
-                    folder.activities.map((activity, index) => (
-                      <Draggable key={activity.id} draggableId={activity.id} index={index} isDragDisabled={!canMove}>
-                        {(dragProvided, dragSnapshot) => (
+                    subfolders.map((subfolder: WorkspaceSubfolder) => {
+                      const isSubfolderOpen = openSubfolders.has(subfolder.id);
+                      const exercisesCount = (subfolder.activities ?? []).filter((a: WorkspaceActivity) => a.type === 'EXERCISE').length;
+                      const materialsCount = (subfolder.activities ?? []).filter((a: WorkspaceActivity) => a.type === 'MATERIAL').length;
+
+                      return (
+                        <div key={subfolder.id} style={{ marginLeft: '12px' }}>
+                          {/* SUBPASTA ACCORDION */}
                           <div
-                            ref={dragProvided.innerRef}
-                            {...dragProvided.draggableProps}
-                            {...(!canMove ? {} : dragProvided.dragHandleProps)}
                             role="button"
                             tabIndex={0}
-                            className={`${styles.activityItem} ${
-                              activeActivityId === activity.id ? styles.activityItemActive : ''
-                            } ${dragSnapshot.isDragging ? styles.activityDragging : ''}`}
-                            onClick={() => onSelectActivity(activity)}
-                            onKeyDown={(e) => e.key === 'Enter' && onSelectActivity(activity)}
+                            className={`${styles.folderRow}`}
+                            onClick={() => toggleSubfolder(subfolder.id)}
+                            onKeyDown={(e) => e.key === 'Enter' && toggleSubfolder(subfolder.id)}
                           >
-                            <span className={styles.activityIcon}>📄</span>
-                            <span className={styles.activityLabel}>{activity.title}</span>
+                            <span className={styles.folderIcon}>📂</span>
+                            <span className={styles.folderName}>{subfolder.name}</span>
+                            <ChevronRight
+                              size={12}
+                              className={`${styles.folderChevron} ${isSubfolderOpen ? styles.folderChevronOpen : ''}`}
+                            />
                           </div>
-                        )}
-                      </Draggable>
-                    ))
-                  )}
-                  {provided.placeholder}
 
-                  {canUploadToFolder && (
-                    <button
-                      type="button"
-                      className={styles.newFileBtn}
-                      onClick={() => onOpenUploadForFolder(folder.id)}
-                    >
-                      + Novo Arquivo
-                    </button>
+                          {/* CONTEÚDO DA SUBPASTA (EXERCÍCIOS E MATERIAIS) */}
+                          {isSubfolderOpen && (
+                            <div className={styles.folderChildren}>
+                              {/* GRUPO: EXERCÍCIOS */}
+                              {exercisesCount > 0 && (
+                                <div style={{ marginLeft: '12px' }}>
+                                  <div
+                                    role="button"
+                                    tabIndex={0}
+                                    className={`${styles.folderRow}`}
+                                    onClick={() => toggleGroup(`${subfolder.id}-exercises`)}
+                                    onKeyDown={(e) => e.key === 'Enter' && toggleGroup(`${subfolder.id}-exercises`)}
+                                  >
+                                    <span className={styles.folderIcon}>📋</span>
+                                    <span className={styles.folderName}>Exercícios</span>
+                                    <span className={styles.folderCount}>{exercisesCount}</span>
+                                    <ChevronRight
+                                      size={12}
+                                      className={`${styles.folderChevron} ${openGroups.has(`${subfolder.id}-exercises`) ? styles.folderChevronOpen : ''}`}
+                                    />
+                                  </div>
+
+                                  {/* ATIVIDADES DE EXERCÍCIO */}
+                                  {openGroups.has(`${subfolder.id}-exercises`) && (
+                                    <div className={styles.folderChildren}>
+                                      {(subfolder.activities ?? [])
+                                        .filter((a: WorkspaceActivity) => a.type === 'EXERCISE')
+                                        .map((activity: WorkspaceActivity) => (
+                                          <div
+                                            key={activity.id}
+                                            role="button"
+                                            tabIndex={0}
+                                            className={`${styles.activityItem} ${
+                                              activeActivityId === activity.id ? styles.activityItemActive : ''
+                                            }`}
+                                            onClick={() => onSelectActivity(activity)}
+                                            onKeyDown={(e) => e.key === 'Enter' && onSelectActivity(activity)}
+                                            style={{ marginLeft: '12px' }}
+                                          >
+                                            <span className={styles.activityIcon}>📄</span>
+                                            <span className={styles.activityLabel}>{activity.title}</span>
+                                          </div>
+                                        ))}
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+
+                              {/* GRUPO: MATERIAIS */}
+                              {materialsCount > 0 && (
+                                <div style={{ marginLeft: '12px' }}>
+                                  <div
+                                    role="button"
+                                    tabIndex={0}
+                                    className={`${styles.folderRow}`}
+                                    onClick={() => toggleGroup(`${subfolder.id}-materials`)}
+                                    onKeyDown={(e) => e.key === 'Enter' && toggleGroup(`${subfolder.id}-materials`)}
+                                  >
+                                    <span className={styles.folderIcon}>📚</span>
+                                    <span className={styles.folderName}>Materiais</span>
+                                    <span className={styles.folderCount}>{materialsCount}</span>
+                                    <ChevronRight
+                                      size={12}
+                                      className={`${styles.folderChevron} ${openGroups.has(`${subfolder.id}-materials`) ? styles.folderChevronOpen : ''}`}
+                                    />
+                                  </div>
+
+                                  {/* ATIVIDADES DE MATERIAL */}
+                                  {openGroups.has(`${subfolder.id}-materials`) && (
+                                    <div className={styles.folderChildren}>
+                                      {(subfolder.activities ?? [])
+                                        .filter((a: WorkspaceActivity) => a.type === 'MATERIAL')
+                                        .map((activity: WorkspaceActivity) => {
+                                          const external = isExternalMaterial(activity);
+                                          return (
+                                            <div
+                                              key={activity.id}
+                                              role="button"
+                                              tabIndex={0}
+                                              title={external ? activity.externalUrl : activity.title}
+                                              className={`${styles.activityItem} ${
+                                                !external && activeActivityId === activity.id
+                                                  ? styles.activityItemActive
+                                                  : ''
+                                              } ${external ? styles.activityItemExternal : ''}`}
+                                              onClick={() =>
+                                                external
+                                                  ? handleExternalClick(activity)
+                                                  : onSelectActivity(activity)
+                                              }
+                                              onKeyDown={(e) => {
+                                                if (e.key === 'Enter') {
+                                                  external
+                                                    ? handleExternalClick(activity)
+                                                    : onSelectActivity(activity);
+                                                }
+                                              }}
+                                              style={{ marginLeft: '12px' }}
+                                            >
+                                              <span className={styles.activityIcon}>
+                                                {getMaterialIcon(activity.materialType)}
+                                              </span>
+                                              <span className={styles.activityLabel}>{activity.title}</span>
+                                              {external && (
+                                                <ExternalLink
+                                                  size={10}
+                                                  className={styles.externalLinkIcon}
+                                                />
+                                              )}
+                                            </div>
+                                          );
+                                        })}
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+
+                              {/* VAZIO */}
+                              {exercisesCount === 0 && materialsCount === 0 && (
+                                <div className={styles.emptyFolder}>Sem conteúdo</div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })
                   )}
                 </div>
               )}
             </div>
-              )}
-            </Droppable>
           );
         })}
       </div>

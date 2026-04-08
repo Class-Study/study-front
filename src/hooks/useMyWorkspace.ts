@@ -1,30 +1,58 @@
 import {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import axios from 'axios';
 import studentService from '@/services/api/student.service';
-import studentProfileService from '@/services/api/studentProfile.service';
 import activityService from '@/services/api/activity.service';
 import workspaceService from '@/services/api/workspace.service';
-import {WorkspaceActivity, WorkspaceData} from '@/types/workspace.types';
+import {WorkspaceActivity, WorkspaceData, WorkspaceSubfolder} from '@/types/workspace.types';
 import {Classroom} from "@/types/student.types.ts";
 
-const toWorkspaceActivity = (
-    activity: {
-        id: string;
-        title: string;
-        type: 'EXERCISE' | 'WORKSPACE';
-        convertedHtml?: string;
-        folderId?: string;
-        createdAt: string;
-    },
-    folderId: string,
-): WorkspaceActivity => ({
-    id: activity.id,
-    title: activity.title,
-    type: activity.type,
-    convertedHtml: activity.convertedHtml ?? '<p></p>',
-    folderId: activity.folderId ?? folderId,
-    createdAt: activity.createdAt,
+// ─── Normaliza resposta do backend ────────────────────────────────────────────
+// Garante que cada folder tenha `subfolders`. Se o backend ainda retornar o
+// formato legado (activities direto na pasta), envolve em uma subpasta padrão.
+
+const normalizeFolders = (data: WorkspaceData): WorkspaceData => ({
+    ...data,
+    folders: [...data.folders]
+        .sort((a, b) => a.position - b.position)
+        .map((folder) => {
+            // Backend já retornou subfolders → usa como está
+            if (folder.subfolders && folder.subfolders.length > 0) return folder;
+
+            // Legado: activities direto na pasta → wrap em subpasta padrão
+            const legacyActivities = (folder.activities ?? []) as WorkspaceActivity[];
+            if (legacyActivities.length === 0) return {...folder, subfolders: []};
+
+            return {
+                ...folder,
+                subfolders: [
+                    {
+                        id: `${folder.id}-default`,
+                        name: folder.name,
+                        folderId: folder.id,
+                        position: 0,
+                        activities: legacyActivities,
+                    } as WorkspaceSubfolder,
+                ],
+            };
+        }),
 });
+
+// ─── Helper: encontra uma atividade percorrendo subpastas ─────────────────────
+
+const findActivity = (
+    workspace: WorkspaceData,
+    activityId: string,
+): {activity: WorkspaceActivity; folderId: string; subfolderId: string} | null => {
+    for (const folder of workspace.folders) {
+        for (const sf of (folder.subfolders ?? []) as WorkspaceSubfolder[]) {
+            const found = (sf.activities ?? []).find((a) => a.id === activityId);
+            if (found) return {activity: found, folderId: folder.id, subfolderId: sf.id};
+        }
+    }
+    return null;
+};
+
+// ─── Hook ─────────────────────────────────────────────────────────────────────
 
 export const useMyWorkspace = () => {
     const [workspace, setWorkspace] = useState<WorkspaceData | null>(null);
@@ -44,11 +72,8 @@ export const useMyWorkspace = () => {
     const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
     const updateTeacherInfo = useCallback((me: Awaited<ReturnType<typeof studentService.getMe>>) => {
-        const resolvedTeacherName = me.teacher?.name ?? me.teacherName ?? 'Professor';
-        const resolvedTeacherOnline = me.teacher?.isOnline ?? me.teacherOnline ?? false;
-
-        setTeacherName(resolvedTeacherName);
-        setTeacherOnline(resolvedTeacherOnline);
+        setTeacherName(me.teacher?.name ?? me.teacherName ?? 'Professor');
+        setTeacherOnline(me.teacher?.isOnline ?? me.teacherOnline ?? false);
     }, []);
 
     const fetchWorkspace = useCallback(async () => {
@@ -57,10 +82,8 @@ export const useMyWorkspace = () => {
         setAccessDenied(false);
 
         try {
-            const [me, folders] = await Promise.all([
-                studentService.getMe(),
-                studentProfileService.getMyActivityFolders(),
-            ]);
+            // Dados do aluno SEMPRE vêm da API real
+            const me = await studentService.getMe();
 
             setStudentId(me.id);
             setStudentName(me.name);
@@ -71,19 +94,9 @@ export const useMyWorkspace = () => {
             setClassroom(me.classroom ?? null);
             updateTeacherInfo(me);
 
-            setWorkspace({
-                studentId: me.id,
-                folders: [...folders]
-                    .sort((a, b) => a.position - b.position)
-                    .map((folder) => ({
-                        id: folder.id,
-                        name: folder.name,
-                        position: folder.position,
-                        activities: (folder.activities ?? []).map((activity) =>
-                            toWorkspaceActivity(activity, folder.id),
-                        ),
-                    })),
-            });
+            // Workspace (pastas / subpastas / atividades)
+            const data = await workspaceService.getMyWorkspace();
+            setWorkspace(normalizeFolders({...data, studentId: me.id}));
         } catch (err) {
             if (axios.isAxiosError(err) && err.response?.status === 403) {
                 setAccessDenied(true);
@@ -101,32 +114,27 @@ export const useMyWorkspace = () => {
             const me = await studentService.getMe();
             updateTeacherInfo(me);
         } catch {
-            // Keep the last known presence state if refresh fails.
+            // mantém o último estado conhecido
         }
     }, [updateTeacherInfo]);
 
     useEffect(() => {
         return () => {
-            if (saveTimeoutRef.current) {
-                clearTimeout(saveTimeoutRef.current);
-            }
+            if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
         };
     }, []);
 
     useEffect(() => {
-        const intervalId = setInterval(() => {
-            void refreshTeacherPresence();
-        }, 30000);
-
-        return () => {
-            clearInterval(intervalId);
-        };
+        const id = setInterval(() => void refreshTeacherPresence(), 30_000);
+        return () => clearInterval(id);
     }, [refreshTeacherPresence]);
 
+    // ── saveContent ───────────────────────────────────────────────────────────
+    // Debounce de 1.2 s. Atualiza atividade dentro de subpastas (novo modelo)
+    // e também em `workspaces` (atividades ao vivo).
+
     const saveContent = useCallback((activityId: string, html: string) => {
-        if (saveTimeoutRef.current) {
-            clearTimeout(saveTimeoutRef.current);
-        }
+        if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
 
         saveTimeoutRef.current = setTimeout(async () => {
             setSaving(true);
@@ -134,17 +142,20 @@ export const useMyWorkspace = () => {
                 await workspaceService.updateContent(activityId, html);
                 setWorkspace((prev) => {
                     if (!prev) return prev;
-
                     return {
                         ...prev,
                         folders: prev.folders.map((folder) => ({
                             ...folder,
-                            activities: folder.activities.map((activity) => (
-                                activity.id === activityId
-                                    ? {...activity, convertedHtml: html}
-                                    : activity
-                            )),
+                            subfolders: (folder.subfolders ?? []).map((sf) => ({
+                                ...sf,
+                                activities: (sf.activities ?? []).map((a) =>
+                                    a.id === activityId ? {...a, convertedHtml: html} : a,
+                                ),
+                            })),
                         })),
+                        workspaces: (prev.workspaces ?? []).map((ws) =>
+                            ws.id === activityId ? {...ws, convertedHtml: html} : ws,
+                        ),
                     };
                 });
             } catch {
@@ -155,62 +166,62 @@ export const useMyWorkspace = () => {
         }, 1200);
     }, []);
 
+    // ── moveActivity ──────────────────────────────────────────────────────────
+    // Busca a atividade em subpastas, remove da pasta origem e insere na
+    // primeira subpasta da pasta destino (atualização otimista com rollback).
+
     const moveActivity = useCallback(async (
         activityId: string,
         targetFolderId: string,
     ): Promise<boolean> => {
-        if (!workspace) {
-            return false;
-        }
+        if (!workspace) return false;
 
-        let sourceFolderId: string | null = null;
-        let sourceActivity: WorkspaceActivity | null = null;
+        const location = findActivity(workspace, activityId);
+        if (!location || location.folderId === targetFolderId) return true;
 
-        workspace.folders.forEach((folder) => {
-            const found = folder.activities.find((activity) => activity.id === activityId);
-            if (found) {
-                sourceFolderId = folder.id;
-                sourceActivity = found;
-            }
-        });
-
-        if (!sourceFolderId || !sourceActivity || sourceFolderId === targetFolderId) {
-            return true;
-        }
-
+        const {activity: srcActivity, folderId: srcFolderId} = location;
         const previousWorkspace = workspace;
 
         setWorkspace((prev) => {
             if (!prev) return prev;
 
-            const targetFolderExists = prev.folders.some((folder) => folder.id === targetFolderId);
-            if (!targetFolderExists) {
-                return prev;
-            }
+            const targetFolder = prev.folders.find((f) => f.id === targetFolderId);
+            if (!targetFolder) return prev;
+
+            const targetSubs = (targetFolder.subfolders ?? []) as WorkspaceSubfolder[];
+            const destSubId = targetSubs[0]?.id ?? `${targetFolderId}-default`;
 
             return {
                 ...prev,
                 folders: prev.folders.map((folder) => {
-                    if (folder.id === sourceFolderId) {
+                    // Remove da pasta origem
+                    if (folder.id === srcFolderId) {
                         return {
                             ...folder,
-                            activities: folder.activities.filter((activity) => activity.id !== activityId),
+                            subfolders: (folder.subfolders ?? []).map((sf) => ({
+                                ...sf,
+                                activities: (sf.activities ?? []).filter((a) => a.id !== activityId),
+                            })),
                         };
                     }
-
-                    if (folder.id === targetFolderId && sourceActivity) {
-                        return {
-                            ...folder,
-                            activities: [
-                                ...folder.activities,
-                                {
-                                    ...sourceActivity,
-                                    folderId: targetFolderId,
-                                },
-                            ],
-                        };
+                    // Insere na pasta destino (primeira subpasta)
+                    if (folder.id === targetFolderId) {
+                        const moved = {...srcActivity, folderId: targetFolderId, subfolderId: destSubId};
+                        const updatedSubs = targetSubs.length > 0
+                            ? targetSubs.map((sf, i) =>
+                                i === 0
+                                    ? {...sf, activities: [...(sf.activities ?? []), moved]}
+                                    : sf,
+                            )
+                            : [{
+                                id: destSubId,
+                                name: targetFolder.name,
+                                folderId: targetFolderId,
+                                position: 0,
+                                activities: [moved],
+                            } as WorkspaceSubfolder];
+                        return {...folder, subfolders: updatedSubs};
                     }
-
                     return folder;
                 }),
             };
@@ -225,18 +236,17 @@ export const useMyWorkspace = () => {
         }
     }, [workspace]);
 
+    // ── Derivados ─────────────────────────────────────────────────────────────
+
+    /** Atividades do tipo WORKSPACE (seção "Workspaces" da sidebar) */
     const workspaceActivities = useMemo(
-        () => workspace?.folders
-            .flatMap((folder) => folder.activities)
-            .filter((activity) => activity.type === 'WORKSPACE') ?? [],
+        () => workspace?.workspaces ?? [],
         [workspace],
     );
 
+    /** Pastas com subpastas para a seção "Exercícios" da sidebar */
     const exerciseFolders = useMemo(
-        () => workspace?.folders.map((folder) => ({
-            ...folder,
-            activities: folder.activities.filter((activity) => activity.type === 'EXERCISE'),
-        })) ?? [],
+        () => workspace?.folders ?? [],
         [workspace],
     );
 
@@ -259,6 +269,6 @@ export const useMyWorkspace = () => {
         fetchWorkspace,
         saveContent,
         moveActivity,
-        classroom
+        classroom,
     };
 };

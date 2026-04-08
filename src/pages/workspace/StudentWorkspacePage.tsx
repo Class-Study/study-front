@@ -50,7 +50,12 @@ const StudentWorkspacePage: React.FC = () => {
     } = useMyWorkspace();
 
     const allActivities = useMemo(
-        () => workspace?.folders.flatMap((f) => f.activities) ?? [],
+        () => [
+            ...(workspace?.workspaces ?? []),
+            ...(workspace?.folders.flatMap((f) =>
+                (f.subfolders ?? []).flatMap((sf) => sf.activities ?? []),
+            ) ?? []),
+        ],
         [workspace],
     );
 
