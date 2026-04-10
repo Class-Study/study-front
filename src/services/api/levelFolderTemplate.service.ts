@@ -1,6 +1,6 @@
 import api from './client';
 import {
-  LevelFolderTemplate,
+  LevelFolderExercise,
   CreateLevelFolderTemplateRequest,
 } from '@/types/levelProfile.types';
 
@@ -10,8 +10,8 @@ const levelFolderTemplateService = {
     profileId: string,
     folderId: string,
     payload: CreateLevelFolderTemplateRequest,
-  ): Promise<LevelFolderTemplate> => {
-    const { data } = await api.post<LevelFolderTemplate>(
+  ): Promise<LevelFolderExercise> => {
+    const { data } = await api.post<LevelFolderExercise>(
       `/level-profiles/${profileId}/folders/${folderId}/templates`,
       payload,
     );
@@ -21,8 +21,8 @@ const levelFolderTemplateService = {
   listAll: async (
     profileId: string,
     folderId: string,
-  ): Promise<LevelFolderTemplate[]> => {
-    const { data } = await api.get<LevelFolderTemplate[]>(
+  ): Promise<LevelFolderExercise[]> => {
+    const { data } = await api.get<LevelFolderExercise[]>(
       `/level-profiles/${profileId}/folders/${folderId}/templates`,
     );
     return data;
@@ -44,8 +44,8 @@ const levelFolderTemplateService = {
     folderId: string,
     subfolderId: string,
     payload: CreateLevelFolderTemplateRequest,
-  ): Promise<LevelFolderTemplate> => {
-    const { data } = await api.post<LevelFolderTemplate>(
+  ): Promise<LevelFolderExercise> => {
+    const { data } = await api.post<LevelFolderExercise>(
       `/level-profiles/${profileId}/folders/${folderId}/subfolders/${subfolderId}/templates`,
       payload,
     );
@@ -56,8 +56,8 @@ const levelFolderTemplateService = {
     profileId: string,
     folderId: string,
     subfolderId: string,
-  ): Promise<LevelFolderTemplate[]> => {
-    const { data } = await api.get<LevelFolderTemplate[]>(
+  ): Promise<LevelFolderExercise[]> => {
+    const { data } = await api.get<LevelFolderExercise[]>(
       `/level-profiles/${profileId}/folders/${folderId}/subfolders/${subfolderId}/templates`,
     );
     return data;

@@ -32,8 +32,10 @@ export const PreviewModal: React.FC<PreviewModalProps> = ({
             ? 'Upload de Material'
             : `Preview — ${preview.fileName}`;
 
+  const closeModal = () => setPreview({ ...EMPTY_PREVIEW });
+
   return (
-    <Modal isOpen={preview.isOpen} onClose={() => {}} size="lg" title={modalTitle}>
+    <Modal isOpen={preview.isOpen} onClose={closeModal} size="lg" title={modalTitle}>
       <div className={styles.previewModalContent}>
         {/* ── Link Material ──────────────────────────────────────── */}
         {preview.mode === 'link_material' && (
@@ -67,8 +69,8 @@ export const PreviewModal: React.FC<PreviewModalProps> = ({
                     }))
                   }
                 >
-                  <option value="VIDEO">Vídeo</option>
                   <option value="LINK">Link Externo</option>
+                  <option value="VIDEO">Vídeo</option>
                 </select>
               </div>
             </div>
@@ -103,7 +105,7 @@ export const PreviewModal: React.FC<PreviewModalProps> = ({
               <button
                 type="button"
                 className={styles.cancelBtn}
-                onClick={() => setPreview((prev) => ({ ...prev, isOpen: false }))}
+                onClick={closeModal}
               >
                 Cancelar
               </button>
@@ -139,6 +141,20 @@ export const PreviewModal: React.FC<PreviewModalProps> = ({
           <>
             <div className={styles.previewFormRow}>
               <div className={styles.previewField}>
+
+                <div className={styles.previewActions}>
+                  <button type="button" className={styles.cancelBtn} onClick={closeModal}>
+                    Cancelar
+                  </button>
+                  <button
+                      type="button"
+                      className={styles.submitBtn}
+                      onClick={() => void handleSaveTemplate()}
+                      disabled={!preview.title.trim() || savingTemplate}
+                  >
+                    {savingTemplate ? 'Salvando...' : 'Salvar template'}
+                  </button>
+                </div>
                 <label className={styles.previewLabel}>Título da atividade</label>
                 <input
                   type="text"
@@ -148,47 +164,17 @@ export const PreviewModal: React.FC<PreviewModalProps> = ({
                   placeholder="Nome da atividade"
                 />
               </div>
-
-              <div className={styles.previewFieldSmall}>
-                <label className={styles.previewLabel}>Tipo</label>
-                <select
-                  className={styles.previewInput}
-                  value={preview.type}
-                  onChange={(e) =>
-                    setPreview((prev) => ({ ...prev, type: e.target.value as TemplateType }))
-                  }
-                >
-                  <option value="EXERCISE">Exercício</option>
-                  <option value="WORKSPACE">Workspace</option>
-                </select>
-              </div>
             </div>
-
+            <div className={styles.previewNote}>
+              ⚠️ Este é o visual exato que o aluno verá no workspace. O conteúdo será salvo ao
+              clicar em "Salvar tudo".
+            </div>
             <div className={styles.previewEditorWrapper}>
               <DocxPreviewEditor
                 html={preview.html}
                 editable={false}
                 onChange={(html) => setPreview((prev) => ({ ...prev, html }))}
               />
-            </div>
-
-            <div className={styles.previewNote}>
-              ⚠️ Este é o visual exato que o aluno verá no workspace. O conteúdo será salvo ao
-              clicar em "Salvar tudo".
-            </div>
-
-            <div className={styles.previewActions}>
-              <button type="button" className={styles.cancelBtn}>
-                Cancelar
-              </button>
-              <button
-                type="button"
-                className={styles.submitBtn}
-                onClick={() => void handleSaveTemplate()}
-                disabled={!preview.title.trim() || savingTemplate}
-              >
-                {savingTemplate ? 'Salvando...' : 'Salvar template'}
-              </button>
             </div>
           </>
         )}
@@ -198,6 +184,31 @@ export const PreviewModal: React.FC<PreviewModalProps> = ({
           <>
             <div className={styles.previewFormRow}>
               <div className={styles.previewField}>
+                <div className={styles.previewActions}>
+                  <button
+                      type="button"
+                      className={styles.submitBtn}
+                      onClick={() => {
+                        const sfKey = preview.subfolderId;
+                        const newMaterial: PendingMaterial = {
+                          tempId: createTempId(),
+                          subfolderId: sfKey,
+                          title: preview.title.trim(),
+                          type: 'DOCUMENT',
+                          convertedHtml: preview.html,
+                          originalFilename: preview.fileName,
+                          description: preview.description,
+                        };
+                        setPendingMaterials((prev) => ({
+                          ...prev,
+                          [sfKey]: [...(prev[sfKey] ?? []), newMaterial],
+                        }));
+                      }}
+                      disabled={!preview.title.trim()}
+                  >
+                    Salvar Material
+                  </button>
+                </div>
                 <label className={styles.previewLabel}>Título do material</label>
                 <input
                   type="text"
@@ -209,7 +220,7 @@ export const PreviewModal: React.FC<PreviewModalProps> = ({
               </div>
             </div>
 
-            <div className={styles.previewField} style={{ marginBottom: '12px' }}>
+            <div className={styles.previewField}>
               <label className={styles.previewLabel}>Descrição (opcional)</label>
               <textarea
                 className={styles.previewInput}
@@ -219,6 +230,10 @@ export const PreviewModal: React.FC<PreviewModalProps> = ({
                 placeholder="Descrição breve sobre este material de estudo"
               />
             </div>
+            <div className={styles.previewNote}>
+              ⚠️ Este é o visual exato que o aluno verá. O conteúdo será salvo ao clicar em "Salvar
+              tudo".
+            </div>
 
             <div className={styles.previewEditorWrapper}>
               <DocxPreviewEditor
@@ -226,40 +241,6 @@ export const PreviewModal: React.FC<PreviewModalProps> = ({
                 editable
                 onChange={(html) => setPreview((prev) => ({ ...prev, html }))}
               />
-            </div>
-
-            <div className={styles.previewNote}>
-              ⚠️ Este é o visual exato que o aluno verá. O conteúdo será salvo ao clicar em "Salvar
-              tudo".
-            </div>
-
-            <div className={styles.previewActions}>
-              <button type="button" className={styles.cancelBtn}>
-                Cancelar
-              </button>
-              <button
-                type="button"
-                className={styles.submitBtn}
-                onClick={() => {
-                  const sfKey = preview.subfolderId;
-                  const newMaterial: PendingMaterial = {
-                    tempId: createTempId(),
-                    subfolderId: sfKey,
-                    title: preview.title.trim(),
-                    type: 'DOCUMENT',
-                    convertedHtml: preview.html,
-                    originalFilename: preview.fileName,
-                    description: preview.description,
-                  };
-                  setPendingMaterials((prev) => ({
-                    ...prev,
-                    [sfKey]: [...(prev[sfKey] ?? []), newMaterial],
-                  }));
-                }}
-                disabled={!preview.title.trim()}
-              >
-                Salvar Material
-              </button>
             </div>
           </>
         )}
@@ -303,7 +284,7 @@ export const PreviewModal: React.FC<PreviewModalProps> = ({
             </div>
 
             <div className={styles.previewActions}>
-              <button type="button" className={styles.cancelBtn}>
+              <button type="button" className={styles.cancelBtn} onClick={closeModal}>
                 Cancelar
               </button>
               <button
@@ -330,7 +311,7 @@ export const PreviewModal: React.FC<PreviewModalProps> = ({
             )}
 
             <div className={styles.previewActions}>
-              <button type="button" className={styles.cancelBtn}>
+              <button type="button" className={styles.cancelBtn} onClick={closeModal}>
                 Fechar
               </button>
             </div>

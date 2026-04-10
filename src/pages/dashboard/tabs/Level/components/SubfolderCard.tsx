@@ -1,8 +1,8 @@
 import React, {useState, useEffect} from 'react';
-import type {LevelFolderTemplate, LevelSubfolder} from '@/types/levelProfile.types.ts';
+import type {LevelFolderExercise, LevelSubfolder} from '@/types/levelProfile.types.ts';
 import type {PendingMaterial, PendingTemplateExtended, PreviewState} from '@/types/levelTab.types.ts';
 import {convertMaterialType, getMaterialTypeLabel} from '@/utils/levelTab.utils.ts';
-import {ChevronDown} from 'lucide-react';
+import {ChevronDown, Link, Video, Eye, Check, X, Folder, Edit2, Trash2} from 'lucide-react';
 import Swal from 'sweetalert2';
 import styles from '../LevelTab.module.css';
 
@@ -38,12 +38,12 @@ interface SubfolderCardProps {
     onRenamePending?: (newName: string) => void;
     onTogglePropagate?: () => void;
 
-  // Handlers
-  handleFileConvert: (file: File, folderId: string, subfolderId: string, contentMode: 'exercise' | 'material') => Promise<void>;
-  handleViewSavedTemplate: (template: LevelFolderTemplate, folderId: string, subfolderId: string) => void;
-  removePendingTemplate: (subfolderId: string, tempId: string) => void;
-  handleDeleteTemplate: (folderId: string, subfolderId: string, templateId: string, templateTitle: string) => Promise<void>;
-  handleDeleteMaterial: (folderId: string, subfolderId: string, materialId: string, materialTitle: string) => Promise<void>;
+    // Handlers
+    handleFileConvert: (file: File, folderId: string, subfolderId: string, contentMode: 'exercise' | 'material') => Promise<void>;
+    handleViewSavedTemplate: (exercise: LevelFolderExercise, folderId: string, subfolderId: string) => void;
+    removePendingTemplate: (subfolderId: string, tempId: string) => void;
+    handleDeleteTemplate: (folderId: string, subfolderId: string, templateId: string, templateTitle: string) => Promise<void>;
+    handleDeleteMaterial: (folderId: string, subfolderId: string, materialId: string, materialTitle: string) => Promise<void>;
 
     // Preview
     setPreview: React.Dispatch<React.SetStateAction<PreviewState>>;
@@ -75,15 +75,15 @@ export const SubfolderCard: React.FC<SubfolderCardProps> = ({
                                                                 onDeletePending,
                                                                 onRenamePending,
                                                                 onTogglePropagate,
-  handleFileConvert,
-  handleViewSavedTemplate,
-  removePendingTemplate,
-  setPreview,
-  setPendingMaterials,
-  handleSaveSubfolderEdits,
-  clearPendingForSubfolder,
+                                                                handleFileConvert,
+                                                                handleViewSavedTemplate,
+                                                                removePendingTemplate,
+                                                                setPreview,
+                                                                setPendingMaterials,
+                                                                handleSaveSubfolderEdits,
+                                                                clearPendingForSubfolder,
                                                             }) => {
-    const savedTemplates = subfolder.templates ?? [];
+    const savedExercises = subfolder.exercises ?? [];
     const savedMaterials = subfolder.studyMaterials ?? [];
     const [isOpen, setIsOpen] = useState(false);
     const [displayName, setDisplayName] = useState(subfolder.name);
@@ -192,11 +192,10 @@ export const SubfolderCard: React.FC<SubfolderCardProps> = ({
                         />
                         <input
                             type="text"
-                            className={styles.folderNameInput}
+                            className={`${styles.folderNameInput} inputEdit`}
                             value={editName}
                             onChange={(e) => setEditName(e.target.value)}
                             autoFocus
-                            style={{flex: 1, fontSize: '13px', padding: '4px 8px'}}
                         />
                     </div>
                     <div className={styles.subfolderHeaderActions}>
@@ -218,7 +217,7 @@ export const SubfolderCard: React.FC<SubfolderCardProps> = ({
                             disabled={isSavingEdit || !editName.trim()}
                             onClick={() => void handleConfirmEdit()}
                         >
-                            {isSavingEdit ? '…' : '✓'}
+                            {isSavingEdit ? '…' : <Check size={16} />}
                         </button>
                         <button
                             type="button"
@@ -227,7 +226,7 @@ export const SubfolderCard: React.FC<SubfolderCardProps> = ({
                             disabled={isSavingEdit}
                             onClick={handleCancelEdit}
                         >
-                            ✕
+                            <X size={16} />
                         </button>
                     </div>
                 </div>
@@ -244,7 +243,8 @@ export const SubfolderCard: React.FC<SubfolderCardProps> = ({
                             className={`${styles.chevronIcon} ${isOpen ? styles.chevronIconOpen : ''}`}
                         />
                         <div className={styles.subfolderName}>
-                            📂 {displayName}
+                            <Folder size={18} className="folderIcon" fill="var(--color-folder)" />
+                            {displayName}
                             {isPending && <span className={styles.pendingBadge}>Pendente</span>}
                         </div>
                     </div>
@@ -282,7 +282,7 @@ export const SubfolderCard: React.FC<SubfolderCardProps> = ({
                                 }
                             }}
                         >
-                            ✏️
+                            <Edit2 size={16} />
                         </button>
                         <button
                             type="button"
@@ -297,7 +297,7 @@ export const SubfolderCard: React.FC<SubfolderCardProps> = ({
                                 }
                             }}
                         >
-                            ✕
+                            <Trash2 size={16} />
                         </button>
                     </div>
                 </button>
@@ -311,26 +311,23 @@ export const SubfolderCard: React.FC<SubfolderCardProps> = ({
                 <div className={styles.managementTabs} style={{padding: '0 8px', marginBottom: '4px'}}>
                     <button
                         type="button"
-                        className={`${styles.managementTab} ${activeTab === 'exercises' ? styles.managementTabActive : ''}`}
+                        className={`${styles.managementTab} ${activeTab === 'exercises' ? styles.managementTabActive : ''} tabButton`}
                         onClick={() => setSubfolderInnerTab((prev) => ({...prev, [subfolder.id]: 'exercises'}))}
-                        style={{fontSize: '12px', padding: '4px 10px'}}
                     >
-                        📝 Exercícios ({savedTemplates.length + sfPendingTemplates.length})
+                        📝 Exercícios ({savedExercises.length + sfPendingTemplates.length})
                     </button>
                     <button
                         type="button"
-                        className={`${styles.managementTab} ${activeTab === 'materials' ? styles.managementTabActive : ''}`}
+                        className={`${styles.managementTab} ${activeTab === 'materials' ? styles.managementTabActive : ''} tabButton`}
                         onClick={() => setSubfolderInnerTab((prev) => ({...prev, [subfolder.id]: 'materials'}))}
-                        style={{fontSize: '12px', padding: '4px 10px'}}
                     >
                         📚 Materiais ({savedMaterials.length + sfPendingMaterials.length})
                     </button>
                     {(isPending || isEditing) && (
                         <button
                             type="button"
-                            className={styles.addSubfolderBtn}
+                            className={`${styles.addSubfolderBtn} addButton`}
                             onClick={() => setActiveUploadSubfolder(isSubfolderUploadOpen ? null : subfolder.id)}
-                            style={{marginLeft: 'auto', fontSize: '11px'}}
                         >
                             {isSubfolderUploadOpen ? 'Fechar' : '+ Adicionar'}
                         </button>
@@ -340,43 +337,40 @@ export const SubfolderCard: React.FC<SubfolderCardProps> = ({
                 {/* Exercises tab content */}
                 {activeTab === 'exercises' && (
                     <>
-                        {savedTemplates.length === 0 && sfPendingTemplates.length === 0 && !isSubfolderUploadOpen && (
+                        {savedExercises.length === 0 && sfPendingTemplates.length === 0 && !isSubfolderUploadOpen && (
                             <div className={styles.emptyTemplates}>Nenhum exercício ainda.</div>
                         )}
-                        {savedTemplates
-                            .filter((t) => !deletedExerciseIds.has(t.id))
-                            .map((template) => (
-                            <div key={template.id} className={styles.templateItem}>
-                                <div className={styles.templateInfo}>
-                                    <span className={styles.templateTitle}>{template.title}</span>
-                                    {template.originalFilename && (
-                                        <span className={styles.templateFile}>{template.originalFilename}</span>
-                                    )}
-                                </div>
-                                <div className={styles.templateActions}>
-                                    <button
-                                        type="button"
-                                        className={styles.viewTemplateBtn}
-                                        title="Visualizar"
-                                        onClick={() => handleViewSavedTemplate(template, folderId, subfolder.id)}
-                                    >
-                                        👁
-                                    </button>
-                                    {isEditing && !isPending && (
+                        {savedExercises
+                            .filter((ex) => !deletedExerciseIds.has(ex.id))
+                            .map((exercise) => (
+                                <div key={exercise.id} className={styles.templateItem}>
+                                    <div className={styles.templateInfo}>
+                                        <span className={styles.templateTitle}>{exercise.title}</span>
+                                    </div>
+                                    <div className={styles.templateActions}>
                                         <button
                                             type="button"
-                                            className={styles.removeTemplateBtn}
-                                            title="Remover exercício"
-                                            onClick={() =>
-                                                setDeletedExerciseIds((prev) => new Set([...prev, template.id]))
-                                            }
+                                            className={styles.viewTemplateBtn}
+                                            title="Visualizar"
+                                            onClick={() => handleViewSavedTemplate(exercise, folderId, subfolder.id)}
                                         >
-                                            ✕
+                                            <Eye size={16} />
                                         </button>
-                                    )}
+                                        {isEditing && !isPending && (
+                                            <button
+                                                type="button"
+                                                className={styles.removeTemplateBtn}
+                                                title="Remover exercício"
+                                                onClick={() =>
+                                                    setDeletedExerciseIds((prev) => new Set([...prev, exercise.id]))
+                                                }
+                                            >
+                                                <X size={16} />
+                                            </button>
+                                        )}
+                                    </div>
                                 </div>
-                            </div>
-                        ))}
+                            ))}
                         {sfPendingTemplates.map((template) => (
                             <div key={template.tempId} className={`${styles.templateItem} ${styles.templatePending}`}>
                                 <div className={styles.templateInfo}>
@@ -400,14 +394,14 @@ export const SubfolderCard: React.FC<SubfolderCardProps> = ({
                                             });
                                         }}
                                     >
-                                        👁
+                                        <Eye size={16} />
                                     </button>
                                     <button
                                         type="button"
                                         className={styles.removeTemplateBtn}
                                         onClick={() => removePendingTemplate(subfolder.id, template.tempId)}
                                     >
-                                        ✕
+                                        <X size={16} />
                                     </button>
                                 </div>
                             </div>
@@ -472,7 +466,8 @@ export const SubfolderCard: React.FC<SubfolderCardProps> = ({
                                         });
                                     }}
                                 >
-                                    ✏️ Criar atividade manualmente (texto livre)
+                                    <Edit2 size={16} className="iconInline" />
+                                    Criar atividade manualmente (texto livre)
                                 </button>
                             </div>
                         )}
@@ -488,66 +483,66 @@ export const SubfolderCard: React.FC<SubfolderCardProps> = ({
                         {savedMaterials
                             .filter((m) => !deletedMaterialIds.has(m.id))
                             .map((material) => (
-                            <div key={material.id} className={styles.materialItem}>
-                                <div className={styles.materialInfo}>
-                                    <span className={styles.materialTitle}>{material.title}</span>
-                                    <span className={styles.materialType}>
+                                <div key={material.id} className={styles.materialItem}>
+                                    <div className={styles.materialInfo}>
+                                        <span className={styles.materialTitle}>{material.title}</span>
+                                        <span className={styles.materialType}>
                                         {getMaterialTypeLabel(convertMaterialType(material.type))}
                                     </span>
-                                    {material.originalFilename && (
-                                        <span className={styles.templateFile}>{material.originalFilename}</span>
-                                    )}
-                                    {material.description && (
-                                        <span className={styles.materialDescription}>{material.description}</span>
-                                    )}
+                                        {material.originalFilename && (
+                                            <span className={styles.templateFile}>{material.originalFilename}</span>
+                                        )}
+                                        {material.description && (
+                                            <span className={styles.materialDescription}>{material.description}</span>
+                                        )}
+                                    </div>
+                                    <div className={styles.materialActions}>
+                                        {material.convertedHtml && (
+                                            <button
+                                                type="button"
+                                                className={styles.viewTemplateBtn}
+                                                title="Visualizar"
+                                                onClick={() => {
+                                                    setPreview({
+                                                        isOpen: true,
+                                                        html: material.convertedHtml ?? '',
+                                                        fileName: material.originalFilename ?? material.title,
+                                                        folderId,
+                                                        subfolderId: subfolder.id,
+                                                        title: material.title,
+                                                        type: 'EXERCISE',
+                                                        mode: 'view',
+                                                    });
+                                                }}
+                                            >
+                                                <Eye size={16} />
+                                            </button>
+                                        )}
+                                        {material.url && (
+                                            <a
+                                                href={material.url}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className={styles.viewMaterialBtn}
+                                            >
+                                                {convertMaterialType(material.type) === 'VIDEO' ? <Video size={16} /> : <Link size={16} />}
+                                            </a>
+                                        )}
+                                        {isEditing && !isPending && (
+                                            <button
+                                                type="button"
+                                                className={styles.removeMaterialBtn}
+                                                title="Remover material"
+                                                onClick={() =>
+                                                    setDeletedMaterialIds((prev) => new Set([...prev, material.id]))
+                                                }
+                                            >
+                                                <X size={16} />
+                                            </button>
+                                        )}
+                                    </div>
                                 </div>
-                                <div className={styles.materialActions}>
-                                    {material.convertedHtml && (
-                                        <button
-                                            type="button"
-                                            className={styles.viewTemplateBtn}
-                                            title="Visualizar"
-                                            onClick={() => {
-                                                setPreview({
-                                                    isOpen: true,
-                                                    html: material.convertedHtml ?? '',
-                                                    fileName: material.originalFilename ?? material.title,
-                                                    folderId,
-                                                    subfolderId: subfolder.id,
-                                                    title: material.title,
-                                                    type: 'EXERCISE',
-                                                    mode: 'view',
-                                                });
-                                            }}
-                                        >
-                                            👁
-                                        </button>
-                                    )}
-                                    {material.url && (
-                                        <a
-                                            href={material.url}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className={styles.viewMaterialBtn}
-                                        >
-                                            {convertMaterialType(material.type) === 'VIDEO' ? '🎥' : '🔗'}
-                                        </a>
-                                    )}
-                                    {isEditing && !isPending && (
-                                        <button
-                                            type="button"
-                                            className={styles.removeMaterialBtn}
-                                            title="Remover material"
-                                            onClick={() =>
-                                                setDeletedMaterialIds((prev) => new Set([...prev, material.id]))
-                                            }
-                                        >
-                                            ✕
-                                        </button>
-                                    )}
-                                </div>
-                            </div>
-                        ))}
+                            ))}
                         {sfPendingMaterials.map((material) => (
                             <div key={material.tempId} className={`${styles.materialItem} ${styles.materialPending}`}>
                                 <div className={styles.materialInfo}>
@@ -582,7 +577,7 @@ export const SubfolderCard: React.FC<SubfolderCardProps> = ({
                                                 });
                                             }}
                                         >
-                                            👁
+                                            <Eye size={16} />
                                         </button>
                                     )}
                                     {material.url && (
@@ -592,7 +587,7 @@ export const SubfolderCard: React.FC<SubfolderCardProps> = ({
                                             rel="noopener noreferrer"
                                             className={styles.viewMaterialBtn}
                                         >
-                                            {material.type === 'VIDEO' ? '🎥' : '🔗'}
+                                            {material.type === 'VIDEO' ? <Video size={16} /> : <Link size={16} />}
                                         </a>
                                     )}
                                     <button
@@ -605,7 +600,7 @@ export const SubfolderCard: React.FC<SubfolderCardProps> = ({
                                             }));
                                         }}
                                     >
-                                        ✕
+                                        <X size={16} />
                                     </button>
                                 </div>
                             </div>
@@ -633,7 +628,8 @@ export const SubfolderCard: React.FC<SubfolderCardProps> = ({
                                             });
                                         }}
                                     >
-                                        🔗 Adicionar Link
+                                        <Link size={16} className="iconInline" />
+                                        Adicionar Link
                                     </button>
                                     <div className={styles.freeTextDivider}>
                                         <span className={styles.freeTextDividerLine}/>

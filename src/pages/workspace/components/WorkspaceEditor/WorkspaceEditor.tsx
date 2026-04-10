@@ -81,6 +81,8 @@ export const WorkspaceEditor: React.FC<WorkspaceEditorProps> = ({
   const scrollRef = useRef<HTMLDivElement>(null);
   const onCursorChangeRef = useRef(onCursorChange);
   onCursorChangeRef.current = onCursorChange;
+  // Flag para suprimir onUpdate durante trocas programáticas de conteúdo
+  const isSettingContentRef = useRef(false);
 
   const emitCursor = (e: { view: { dom: HTMLElement; domAtPos: (pos: number) => { node: Node; offset: number } } | null; state: { selection: { from: number; to: number } } }) => {
     if (!onCursorChangeRef.current) return;
@@ -101,7 +103,7 @@ export const WorkspaceEditor: React.FC<WorkspaceEditorProps> = ({
     content: activity?.convertedHtml ?? '',
     editable,
     onUpdate: ({ editor: e }) => {
-      if (activity?.id) onContentChange?.(e.getHTML());
+      if (activity?.id && !isSettingContentRef.current) onContentChange?.(e.getHTML());
     },
     onSelectionUpdate: ({ editor: e }) => {
       emitCursor(e);
@@ -122,6 +124,16 @@ export const WorkspaceEditor: React.FC<WorkspaceEditorProps> = ({
     el.addEventListener('scroll', handleScroll, { passive: true });
     return () => el.removeEventListener('scroll', handleScroll);
   }, [onScrollChange]);
+
+  useEffect(() => {
+    if (editor && activity) {
+      isSettingContentRef.current = true;
+      editor.commands.setContent(activity.convertedHtml ?? '');
+      // Reseta após o TipTap terminar de processar o conteúdo
+      setTimeout(() => { isSettingContentRef.current = false; }, 0);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activity?.id]);
 
   useEffect(() => {
     if (editor) editor.setEditable(editable);

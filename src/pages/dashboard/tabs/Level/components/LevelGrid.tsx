@@ -50,8 +50,7 @@ export const LevelGrid: React.FC<LevelGridProps> = ({levelProfiles, openManageme
                             .sort((a, b) => a.position - b.position)
                             .map((folder, index) => {
                                 const totalTemplates =
-                                    (folder.subfolders ?? []).reduce((acc, sf) => acc + (sf.templates?.length ?? 0), 0) +
-                                    (folder.templates?.length ?? 0);
+                                    (folder.subfolders ?? []).reduce((acc, sf) => acc + (sf.exercises?.length ?? 0), 0);
                                 const totalMaterials = (folder.subfolders ?? []).reduce(
                                     (acc, sf) => acc + (sf.studyMaterials?.length ?? 0),
                                     0,

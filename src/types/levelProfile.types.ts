@@ -16,7 +16,7 @@ export interface StudyMaterial {
     updatedAt: string;
 }
 
-export interface LevelFolderTemplate {
+export interface LevelFolderExercise {
     id: string;
     levelFolderId: string;
     subfolderId?: string;
@@ -37,10 +37,10 @@ export interface CreateLevelFolderTemplateRequest {
 // Subpasta real persistida no banco
 export interface LevelSubfolder {
     id: string;
-    levelFolderId: string;
+    levelFolderId?: string;
     name: string;
     position: number;
-    templates: LevelFolderTemplate[];
+    exercises: LevelFolderExercise[];
     studyMaterials: StudyMaterial[];
     createdBy?: string;
     createdAt?: string;
@@ -122,7 +122,7 @@ export interface LevelFolder {
     initialFiles: number;
     subfolders: LevelSubfolder[];
     // Legado — templates sem subfolder
-    templates: LevelFolderTemplate[];
+    templates: LevelFolderExercise[];
 }
 
 export interface LevelProfile {

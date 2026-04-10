@@ -6,7 +6,7 @@ import levelSubfolderService from '@/services/api/levelSubfolder.service.ts';
 import type {
     CreateLevelProfileRequest,
     CreateSubfoldersBatchRequest,
-    LevelFolderTemplate,
+    LevelFolderExercise,
     LevelProfile,
     UpdateLevelProfileRequest,
     UpdateSubfolderWithContentsRequest,
@@ -265,7 +265,7 @@ export function useLevelTabState() {
         setSavingTemplate(false);
     };
 
-    const handleViewSavedTemplate = (template: LevelFolderTemplate, folderId: string, subfolderId: string): void => {
+    const handleViewSavedTemplate = (template: LevelFolderExercise, folderId: string, subfolderId: string): void => {
         setPreview({
             isOpen: true,
             html: template.convertedHtml ?? '',
@@ -579,7 +579,7 @@ export function useLevelTabState() {
             .find((f) => f.id === folderId)
             ?.subfolders?.find((sf) => sf.id === subfolderId);
 
-        const exercises: UpdateSubfolderExercisePayload[] = (currentSubfolder?.templates ?? [])
+        const exercises: UpdateSubfolderExercisePayload[] = (currentSubfolder?.exercises ?? [])
             .filter((t) => t.id !== templateId)
             .map((t) => ({ id: t.id, title: t.title, type: t.type }));
 
@@ -606,7 +606,7 @@ export function useLevelTabState() {
                         ...folder,
                         subfolders: (folder.subfolders ?? []).map((sf) => {
                             if (sf.id !== subfolderId) return sf;
-                            return {...sf, templates: (sf.templates ?? []).filter((t) => t.id !== templateId)};
+                            return {...sf, exercises: (sf.exercises ?? []).filter((t) => t.id !== templateId)};
                         }),
                     };
                 }),
@@ -658,7 +658,7 @@ export function useLevelTabState() {
             .find((f) => f.id === folderId)
             ?.subfolders?.find((sf) => sf.id === subfolderId);
 
-        const exercises: UpdateSubfolderExercisePayload[] = (currentSubfolder?.templates ?? [])
+        const exercises: UpdateSubfolderExercisePayload[] = (currentSubfolder?.exercises ?? [])
             .map((t) => ({ id: t.id, title: t.title, type: t.type }));
 
         const materials: UpdateSubfolderMaterialPayload[] = (currentSubfolder?.studyMaterials ?? [])
@@ -740,7 +740,7 @@ export function useLevelTabState() {
 
         const currentFolder = selectedLevel.folders.find((f) => f.id === folderId);
         const currentSubfolder = currentFolder?.subfolders?.find((sf) => sf.id === subfolderId);
-        const existingTemplates = currentSubfolder?.templates ?? [];
+        const existingTemplates = currentSubfolder?.exercises ?? [];
         const existingMaterials = currentSubfolder?.studyMaterials ?? [];
 
         const exercises: UpdateSubfolderExercisePayload[] = [

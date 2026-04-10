@@ -1,6 +1,6 @@
 import React from 'react';
 import {Modal} from '@/components/ui/Modal/Modal.tsx';
-import type {LevelFolderTemplate, LevelProfile} from '@/types/levelProfile.types.ts';
+import type {LevelFolderExercise, LevelProfile} from '@/types/levelProfile.types.ts';
 import type {
     ModalTab,
     NewLevelForm,
@@ -54,7 +54,7 @@ interface ManagementModalProps {
     handleRenameSubfolder: (folderId: string, subfolderId: string, newName: string) => Promise<void>;
     handleDeleteSubfolder: (folderId: string, subfolderId: string, name: string) => Promise<void>;
     handleFileConvert: (file: File, folderId: string, subfolderId: string, contentMode: 'exercise' | 'material') => Promise<void>;
-    handleViewSavedTemplate: (template: LevelFolderTemplate, folderId: string, subfolderId: string) => void;
+    handleViewSavedTemplate: (template: LevelFolderExercise, folderId: string, subfolderId: string) => void;
     removePendingTemplate: (subfolderId: string, tempId: string) => void;
     handleDeleteTemplate: (folderId: string, subfolderId: string, templateId: string, templateTitle: string) => Promise<void>;
     handleDeleteMaterial: (folderId: string, subfolderId: string, materialId: string, materialTitle: string) => Promise<void>;

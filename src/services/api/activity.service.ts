@@ -19,28 +19,12 @@ const activityService = {
     return data;
   },
 
-  getById: async (id: string): Promise<Activity> => {
-    const { data } = await api.get<Activity>(`/activities/${id}`);
-    return data;
-  },
-
   create: async (
     folderId: string,
     payload: CreateActivityRequest,
   ): Promise<Activity> => {
     const { data } = await api.post<Activity>(
       `/folders/${folderId}/activities`,
-      payload,
-    );
-    return data;
-  },
-
-  update: async (
-    id: string,
-    payload: UpdateActivityRequest,
-  ): Promise<Activity> => {
-    const { data } = await api.patch<Activity>(
-      `/activities/${id}`,
       payload,
     );
     return data;

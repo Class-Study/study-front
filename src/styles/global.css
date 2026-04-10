@@ -29,7 +29,7 @@ textarea:focus::placeholder {
 :root {
   --radius-sm: 6px;
   --radius-md: 10px;
-  --radius-lg: 16px;
+  --radius-lg: 10px;
   --radius-xl: 24px;
   --font-serif: 'Playfair Display', serif;
   --font-sans: 'Outfit', -apple-system, sans-serif;
@@ -58,6 +58,7 @@ textarea:focus::placeholder {
   --color-accent-2: #c4823a;
   --color-blue: #3a5fc4;
   --color-gold: #b8960c;
+  --color-folder: #f6b923;
   --color-success: #2d8a5d;
   --color-danger: #c43a3a;
   --color-error: #c43a3a;
@@ -117,6 +118,7 @@ textarea:focus::placeholder {
   --color-accent-2: #e8a87c;
   --color-blue: #7c9ee8;
   --color-gold: #f0c040;
+  --color-folder: #f0c040;
   --color-success: #7ce8b8;
   --color-danger: #e87c7c;
   --color-error: #e87c7c;
@@ -294,4 +296,38 @@ img {
 
 .exerciseContent input[data-answer-input]:not(:placeholder-shown) {
   border-bottom-color: var(--color-success) !important;
+}
+
+/* ─── Icon Utility Classes ─── */
+.iconInline {
+  display: inline;
+  margin-right: 6px;
+}
+
+.iconInlineColored {
+  display: inline;
+  margin-right: 6px;
+  color: var(--color-folder);
+}
+
+.folderIcon {
+  display: inline;
+  margin-right: 6px;
+  color: var(--color-folder);
+}
+
+.inputEdit {
+  flex: 1;
+  font-size: 13px;
+  padding: 4px 8px;
+}
+
+.tabButton {
+  font-size: 12px;
+  padding: 4px 10px;
+}
+
+.addButton {
+  margin-left: auto;
+  font-size: 11px;
 }

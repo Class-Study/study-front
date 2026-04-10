@@ -916,7 +916,6 @@
 
 .previewFormRow {
     display: grid;
-    grid-template-columns: 1fr auto;
     gap: 12px;
     align-items: end;
 }
@@ -950,6 +949,9 @@
     color: var(--color-text-primary);
     font-size: 13px;
     outline: none;
+    max-height: 150px;
+    max-width: 100%;
+    min-width: 100%;
 }
 
 .previewInput:focus {
@@ -1114,12 +1116,11 @@
 
 /* Estilos para subpastas */
 .subfolderCard {
-    margin-left: 16px;
     margin-top: 12px;
     padding: 12px;
+    padding-left: 1.5rem;
     background: var(--color-bg-tertiary);
     border-radius: var(--radius-md);
-    border: 1px solid var(--color-border);
 }
 
 .subfolderCardPending {

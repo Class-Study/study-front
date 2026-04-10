@@ -1,5 +1,5 @@
 import React, {useState} from 'react';
-import type {LevelFolderTemplate, LevelProfile, LevelSubfolder} from '@/types/levelProfile.types.ts';
+import type {LevelFolderExercise, LevelProfile, LevelSubfolder} from '@/types/levelProfile.types.ts';
 import type {PendingMaterial, PendingSubfolder, PendingTemplateExtended, PreviewState} from '@/types/levelTab.types.ts';
 import {ChevronDown} from 'lucide-react';
 import {getFolderName} from '@/utils/levelTab.utils.ts';
@@ -45,7 +45,7 @@ interface ActivitiesTabProps {
 
     // Handlers
     handleFileConvert: (file: File, folderId: string, subfolderId: string, contentMode: 'exercise' | 'material') => Promise<void>;
-    handleViewSavedTemplate: (template: LevelFolderTemplate, folderId: string, subfolderId: string) => void;
+    handleViewSavedTemplate: (exercise: LevelFolderExercise, folderId: string, subfolderId: string) => void;
     removePendingTemplate: (subfolderId: string, tempId: string) => void;
     handleDeleteTemplate: (folderId: string, subfolderId: string, templateId: string, templateTitle: string) => Promise<void>;
     handleDeleteMaterial: (folderId: string, subfolderId: string, materialId: string, materialTitle: string) => Promise<void>;
@@ -138,7 +138,7 @@ export const ActivitiesTab: React.FC<ActivitiesTabProps> = ({
                             className={`${styles.folderAccordionContent} ${isFolderOpen ? styles.folderAccordionContentOpen : ''}`}>
 
                             {/* Criar subpasta */}
-                            <div style={{display: 'flex', gap: '6px', padding: '0 12px 8px', alignItems: 'center'}}>
+                            <div style={{display: 'flex', gap: '6px', alignItems: 'center'}}>
                                 <input
                                     className={styles.folderNameInput}
                                     type="text"
@@ -198,10 +198,9 @@ export const ActivitiesTab: React.FC<ActivitiesTabProps> = ({
                             {(pendingSubfolders[folder.id] ?? []).map((ps) => {
                                 const fakeSubfolder: LevelSubfolder = {
                                     id: ps.tempId,
-                                    levelFolderId: folder.id,
                                     name: ps.name,
                                     position: 0,
-                                    templates: [],
+                                    exercises: [],
                                     studyMaterials: [],
                                 };
                                 return (
