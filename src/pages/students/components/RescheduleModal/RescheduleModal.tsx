@@ -1,5 +1,5 @@
 import React, {useEffect, useState} from 'react';
-import {X, Calendar, Clock, AlertTriangle} from 'lucide-react';
+import {X, Calendar, Clock, AlertTriangle, Check} from 'lucide-react';
 import {useRescheduleOptions} from '@/hooks/useRescheduleOptions';
 import {Option} from '@/types/schedule.types';
 import styles from './RescheduleModal.module.css';
@@ -127,7 +127,7 @@ export const RescheduleModal: React.FC<RescheduleModalProps> = ({
                                             {opt.time.substring(0, 5)} · {data.durationMin} min
                                         </div>
                                         {selected && `${selected.date}-${selected.time}` === id && (
-                                            <div className={styles.optionCheck}>✓</div>
+                                            <Check size={20} className={styles.optionCheck} />
                                         )}
                                     </button>
                                 );

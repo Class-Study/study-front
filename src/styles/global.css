@@ -28,7 +28,7 @@ textarea:focus::placeholder {
 /* Design System — Tokens */
 :root {
   --radius-sm: 6px;
-  --radius-md: 10px;
+  --radius-md: 5px;
   --radius-lg: 10px;
   --radius-xl: 24px;
   --font-serif: 'Playfair Display', serif;
@@ -48,7 +48,7 @@ textarea:focus::placeholder {
   /* Texto */
   --color-text-primary: #1a1814;
   --color-text-secondary: #171717;
-  --color-text-tertiary: #9e9890;
+  --color-text-tertiary: #4e4c49;
   --color-text-inverse: #ffffff;
   --color-label: #1a1814;
 
@@ -108,7 +108,7 @@ textarea:focus::placeholder {
   /* Texto */
   --color-text-primary: #eae8f0;
   --color-text-secondary: #9b98b0;
-  --color-text-tertiary: #5e5b77;
+  --color-text-tertiary: #a9a3c1;
   --color-text-inverse: #0f0e17;
   --color-label: #eae8f0;
 
@@ -178,7 +178,6 @@ body,
 }
 
 body {
-  font-family: var(--font-sans);
   font-weight: 400;
   background: var(--color-bg-page);
   color: var(--color-text-primary);
@@ -194,7 +193,6 @@ body {
 
 /* Typography */
 h1, h2, h3, h4, h5, h6, .playfair {
-  font-family: var(--font-serif);
 }
 
 h1 {
@@ -239,7 +237,6 @@ img {
 }
 
 .exerciseContent {
-  font-family: var(--font-sans);
   font-size: 15px;
   line-height: 1.8;
   color: var(--color-text-primary);
@@ -267,7 +264,6 @@ img {
 .exerciseContent h1,
 .exerciseContent h2,
 .exerciseContent h3 {
-  font-family: var(--font-serif);
   font-weight: 600;
   margin-bottom: 0.5rem;
   margin-top: 1.25rem;
@@ -314,17 +310,26 @@ img {
   display: inline;
   margin-right: 6px;
   color: var(--color-folder);
+  fill: var(--color-folder);
+}
+
+.folderIconAnimated {
+  display: inline;
+  margin-right: 6px;
+  color: var(--color-folder);
+  fill: var(--color-folder);
+  transition: transform 0.3s ease, color 0.3s ease, fill 0.3s ease;
+}
+
+.folderIconOpen {
+  color: var(--color-accent-2);
+  fill: var(--color-accent-2);
 }
 
 .inputEdit {
   flex: 1;
   font-size: 13px;
   padding: 4px 8px;
-}
-
-.tabButton {
-  font-size: 12px;
-  padding: 4px 10px;
 }
 
 .addButton {

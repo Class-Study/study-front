@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Pencil } from 'lucide-react';
+import { Pencil, Eye, Video, Check } from 'lucide-react';
 import { Header } from '@/components/layout/Header/Header';
 import { useStudents } from '@/hooks/useStudents';
 import studentService from '@/services/api/student.service';
@@ -413,7 +413,8 @@ export const StudentProfilePage: React.FC = () => {
                       onClick={handleUnblockClick}
                       disabled={blocking}
                     >
-                      ✓ Desbloquear
+                      <Check size={16} className="iconInline" />
+                      Desbloquear
                     </button>
                   ) : (
                     <button
@@ -444,7 +445,8 @@ export const StudentProfilePage: React.FC = () => {
                     }}
                     disabled={!meetingUrl}
                   >
-                    🎥 Entrar na aula
+                    <Video size={16} className="iconInline" />
+                    Entrar na aula
                   </button>
                 </div>
               </section>
@@ -566,7 +568,8 @@ export const StudentProfilePage: React.FC = () => {
               className={`${styles.notesTab} ${notesTab === 'public' ? styles.notesTabActive : ''}`}
               onClick={() => setNotesTab('public')}
             >
-              👁 Publica
+              <Eye size={14} className="iconInline" />
+              Publica
             </button>
           </div>
 

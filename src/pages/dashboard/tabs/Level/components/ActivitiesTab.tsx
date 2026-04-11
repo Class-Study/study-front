@@ -1,7 +1,7 @@
 import React, {useState} from 'react';
 import type {LevelFolderExercise, LevelProfile, LevelSubfolder} from '@/types/levelProfile.types.ts';
 import type {PendingMaterial, PendingSubfolder, PendingTemplateExtended, PreviewState} from '@/types/levelTab.types.ts';
-import {ChevronDown} from 'lucide-react';
+import {ChevronDown, Folder} from 'lucide-react';
 import {getFolderName} from '@/utils/levelTab.utils.ts';
 import {SubfolderCard} from './SubfolderCard.tsx';
 import styles from '../LevelTab.module.css';
@@ -129,7 +129,7 @@ export const ActivitiesTab: React.FC<ActivitiesTabProps> = ({
                                     size={20}
                                     className={`${styles.chevronIcon} ${isFolderOpen ? styles.chevronIconOpen : ''}`}
                                 />
-                                <div className={styles.modalFolderName}>📁 {getFolderName(folder, index)}</div>
+                                <div className={styles.modalFolderName}>{<Folder size={20} className="folderIcon"/>} {getFolderName(folder, index)}</div>
                             </div>
                         </button>
 

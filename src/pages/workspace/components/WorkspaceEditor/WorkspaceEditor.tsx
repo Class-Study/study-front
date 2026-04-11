@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Typography from '@tiptap/extension-typography';
+import { Folder } from 'lucide-react';
 import { WorkspaceActivity } from '@/types/workspace.types';
 import styles from './WorkspaceEditor.module.css';
 
@@ -142,7 +143,7 @@ export const WorkspaceEditor: React.FC<WorkspaceEditorProps> = ({
   if (!activity) {
     return (
       <div className={styles.emptyState}>
-        <span className={styles.emptyIcon}>📂</span>
+        <Folder size={48} className={styles.emptyIcon} />
         <p className={styles.emptyText}>Selecione uma atividade na sidebar</p>
       </div>
     );

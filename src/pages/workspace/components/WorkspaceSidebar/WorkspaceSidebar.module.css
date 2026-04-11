@@ -118,11 +118,6 @@
   color: var(--color-text-primary);
 }
 
-.folderIcon {
-  flex-shrink: 0;
-  font-size: 12px;
-}
-
 .folderName {
   flex: 1;
   overflow: hidden;

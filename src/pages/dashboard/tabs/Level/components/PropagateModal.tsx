@@ -6,6 +6,7 @@ interface PropagateModalProps {
   savingTemplate: boolean;
   setIsPropagateModalOpen: React.Dispatch<React.SetStateAction<boolean>>;
   handleSaveTemplate: (propagate: boolean) => Promise<void>;
+  mode?: 'save' | 'edit';
 }
 
 export const PropagateModal: React.FC<PropagateModalProps> = ({
@@ -13,8 +14,22 @@ export const PropagateModal: React.FC<PropagateModalProps> = ({
   savingTemplate,
   setIsPropagateModalOpen,
   handleSaveTemplate,
+  mode = 'save',
 }) => {
   if (!isPropagateModalOpen) return null;
+
+  const isEdit = mode === 'edit';
+
+  const title = isEdit
+    ? 'Deseja propagar as alterações?'
+    : 'Atenção';
+
+  const description = isEdit
+    ? 'As alterações serão refletidas para os alunos já matriculados neste nível. Obs: a exclusão de conteúdos não será propagada.'
+    : 'Os conteúdos adicionados serão propagados para os alunos já matriculados neste nível.';
+
+  const secondaryLabel = isEdit ? 'Apenas Salvar' : 'Apenas no Nível';
+  const primaryLabel = isEdit ? 'Salvar e Propagar' : 'Salvar e Atribuir a Todos';
 
   return (
     <div
@@ -32,12 +47,11 @@ export const PropagateModal: React.FC<PropagateModalProps> = ({
         onClick={(event) => event.stopPropagation()}
       >
         <h3 id="propagateModalTitle" className={styles.propagateModalTitle}>
-          Deseja atribuir esta nova atividade a todos os alunos atuais deste nível?
+          {title}
         </h3>
 
         <p className={styles.propagateModalText}>
-          Você pode salvar apenas no nível (válido para novos alunos) ou propagar também para os
-          workspaces dos alunos já matriculados.
+          {description}
         </p>
 
         <div className={styles.propagateModalActions}>
@@ -56,7 +70,7 @@ export const PropagateModal: React.FC<PropagateModalProps> = ({
             onClick={() => void handleSaveTemplate(false)}
             disabled={savingTemplate}
           >
-            Apenas no Nível
+            {secondaryLabel}
           </button>
 
           <button
@@ -65,11 +79,10 @@ export const PropagateModal: React.FC<PropagateModalProps> = ({
             onClick={() => void handleSaveTemplate(true)}
             disabled={savingTemplate}
           >
-            {savingTemplate ? 'Salvando...' : 'Atribuir a Todos'}
+            {savingTemplate ? 'Salvando...' : primaryLabel}
           </button>
         </div>
       </div>
     </div>
   );
 };
-

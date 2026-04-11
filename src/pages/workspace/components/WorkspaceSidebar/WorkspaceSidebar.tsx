@@ -1,24 +1,31 @@
-import React, { useEffect, useState } from 'react';
-import { ArrowRight, ChevronRight, ExternalLink, FolderClosed, PanelLeftClose } from 'lucide-react';
+import React, {useEffect, useState} from 'react';
 import {
-  DragDropContext,
-  Draggable,
-  Droppable,
-  DropResult,
-} from '@hello-pangea/dnd';
-import { Modal } from '@/components/ui/Modal/Modal';
-import { MaterialType, WorkspaceActivity, WorkspaceFolder, WorkspaceSubfolder } from '@/types/workspace.types';
+  ArrowRight,
+  BookOpen,
+  ChevronRight,
+  ClipboardList,
+  ExternalLink,
+  FileText,
+  FolderOpen,
+  FolderClosed,
+  Link,
+  PanelLeftClose,
+  Video
+} from 'lucide-react';
+import {DragDropContext, Draggable, Droppable, DropResult,} from '@hello-pangea/dnd';
+import {Modal} from '@/components/ui/Modal/Modal';
+import {MaterialType, WorkspaceActivity, WorkspaceFolder, WorkspaceSubfolder} from '@/types/workspace.types';
 import styles from './WorkspaceSidebar.module.css';
 
 // ─── Helpers de material ──────────────────────────────────────────────────────
 
-const MATERIAL_ICONS: Record<MaterialType, string> = {
-  DOC: '📄',
-  VIDEO: '🎬',
-  LINK: '🔗',
+const MATERIAL_ICONS: Record<MaterialType, React.ReactNode> = {
+  DOC: <FileText size={16} />,
+  VIDEO: <Video size={16} />,
+  LINK: <Link size={16} />,
 };
 
-const getMaterialIcon = (materialType?: MaterialType): string =>
+const getMaterialIcon = (materialType?: MaterialType): React.ReactNode =>
   materialType ? (MATERIAL_ICONS[materialType] ?? '📚') : '📚';
 
 /** Retorna true para materiais que abrem em nova aba (VIDEO e LINK) */
@@ -83,7 +90,6 @@ export const WorkspaceSidebar: React.FC<WorkspaceSidebarProps> = ({
   onChangeNewItemForm,
   onCreateFolder,
   onCreateWorkspace,
-  onOpenUploadForFolder,
   onMoveActivity,
   readOnly = false,
   allowCreate,
@@ -324,7 +330,13 @@ export const WorkspaceSidebar: React.FC<WorkspaceSidebarProps> = ({
                 onClick={() => toggleFolder(folder.id)}
                 onKeyDown={(e) => e.key === 'Enter' && toggleFolder(folder.id)}
               >
-                <span className={styles.folderIcon}>📁</span>
+                <span className={styles.folderIcon}>
+                  {isOpen ? (
+                    <FolderOpen size={20} className={`folderIconAnimated ${isOpen ? 'folderIconOpen' : ''}`} />
+                  ) : (
+                    <FolderClosed size={20} className="folderIconAnimated" />
+                  )}
+                </span>
                 <span className={styles.folderName}>{folder.name}</span>
                 <span className={styles.folderCount}>{activitiesCount}</span>
                 <ChevronRight
@@ -354,7 +366,11 @@ export const WorkspaceSidebar: React.FC<WorkspaceSidebarProps> = ({
                             onClick={() => toggleSubfolder(subfolder.id)}
                             onKeyDown={(e) => e.key === 'Enter' && toggleSubfolder(subfolder.id)}
                           >
-                            <span className={styles.folderIcon}>📂</span>
+                            {isSubfolderOpen ? (
+                              <FolderOpen size={16} className={`folderIconAnimated ${isSubfolderOpen ? 'folderIconOpen' : ''}`} />
+                            ) : (
+                              <FolderClosed size={16} className="folderIconAnimated" />
+                            )}
                             <span className={styles.folderName}>{subfolder.name}</span>
                             <ChevronRight
                               size={12}
@@ -375,7 +391,7 @@ export const WorkspaceSidebar: React.FC<WorkspaceSidebarProps> = ({
                                     onClick={() => toggleGroup(`${subfolder.id}-exercises`)}
                                     onKeyDown={(e) => e.key === 'Enter' && toggleGroup(`${subfolder.id}-exercises`)}
                                   >
-                                    <span className={styles.folderIcon}>📋</span>
+                                    <ClipboardList size={16} className="iconInline" />
                                     <span className={styles.folderName}>Exercícios</span>
                                     <span className={styles.folderCount}>{exercisesCount}</span>
                                     <ChevronRight
@@ -390,7 +406,7 @@ export const WorkspaceSidebar: React.FC<WorkspaceSidebarProps> = ({
                                       {(subfolder.activities ?? [])
                                         .filter((a: WorkspaceActivity) => a.type === 'EXERCISE')
                                         .map((activity: WorkspaceActivity) => (
-                                          <div
+                                            <div
                                             key={activity.id}
                                             role="button"
                                             tabIndex={0}
@@ -401,7 +417,7 @@ export const WorkspaceSidebar: React.FC<WorkspaceSidebarProps> = ({
                                             onKeyDown={(e) => e.key === 'Enter' && onSelectActivity(activity)}
                                             style={{ marginLeft: '12px' }}
                                           >
-                                            <span className={styles.activityIcon}>📄</span>
+                                            <FileText size={14} className="iconInline" />
                                             <span className={styles.activityLabel}>{activity.title}</span>
                                           </div>
                                         ))}
@@ -420,7 +436,7 @@ export const WorkspaceSidebar: React.FC<WorkspaceSidebarProps> = ({
                                     onClick={() => toggleGroup(`${subfolder.id}-materials`)}
                                     onKeyDown={(e) => e.key === 'Enter' && toggleGroup(`${subfolder.id}-materials`)}
                                   >
-                                    <span className={styles.folderIcon}>📚</span>
+                                    <BookOpen size={16} className="iconInline" />
                                     <span className={styles.folderName}>Materiais</span>
                                     <span className={styles.folderCount}>{materialsCount}</span>
                                     <ChevronRight

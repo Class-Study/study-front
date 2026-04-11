@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import {Folder, Video} from 'lucide-react';
 import { Header } from '@/components/layout/Header/Header';
 import { Modal } from '@/components/ui/Modal/Modal';
 import { useMyProfile } from '@/hooks/useMyProfile';
@@ -277,7 +278,8 @@ export const MyProfilePage: React.FC = () => {
                       }}
                       disabled={!meetingUrl}
                     >
-                      🎥 Iniciar aula
+                      <Video size={16} className="iconInline" />
+                      Iniciar aula
                     </button>
                   </div>
                 </section>
@@ -326,7 +328,7 @@ export const MyProfilePage: React.FC = () => {
                     exerciseSections.map((folder) => (
                       <div key={folder.id} className={styles.folderSection}>
                         <div className={styles.folderHeaderRow}>
-                          <div className={styles.folderHeading}>📁 {folder.label}</div>
+                          <div className={styles.folderHeading}><Folder size={16} className="folderIcon" />{folder.label}</div>
                           <span className={styles.folderCount}>{folder.activities.length} exercício(s)</span>
                         </div>
 

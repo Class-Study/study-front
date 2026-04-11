@@ -102,11 +102,6 @@
     flex-shrink: 0;
 }
 
-.folderIcon {
-    color: var(--color-gold);
-    flex-shrink: 0;
-}
-
 .folderName {
     flex: 1;
     overflow: hidden;

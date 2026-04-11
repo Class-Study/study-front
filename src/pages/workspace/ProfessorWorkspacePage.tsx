@@ -1,5 +1,6 @@
 import React, {useEffect, useState} from 'react';
 import {useNavigate, useParams} from 'react-router-dom';
+import {Folder} from 'lucide-react';
 import {useAuth} from '@/hooks/useAuth';
 import {useStudents} from '@/hooks/useStudents';
 import {useWorkspace} from '@/hooks/useWorkspace';
@@ -281,7 +282,9 @@ const ProfessorWorkspacePage: React.FC = () => {
                             type="button"
                             className={styles.activityPickerBtn}
                             onClick={() => setActivityPickerOpen(true)}
-                        >📂 Visualizar Atividades
+                        >
+                            <Folder size={16} className="iconInline" />
+                            Visualizar Atividades
                         </button>
                     </div>
                 </>

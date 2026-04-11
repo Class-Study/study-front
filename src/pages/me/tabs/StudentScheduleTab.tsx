@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronDown, ChevronUp, Calendar, Clock, User } from 'lucide-react';
+import { ChevronDown, ChevronUp, Calendar, Clock, User, Check } from 'lucide-react';
 import { useStudentSchedule } from '@/hooks/useStudentSchedule';
 import { formatClassDays } from '@/utils/classDay.utils';
 import styles from './StudentScheduleTab.module.css';
@@ -216,7 +216,7 @@ export const StudentScheduleTab: React.FC = () => {
                   
                   <div className={styles.classStatus}>
                     {classDate.isLive && <span className={styles.statusLive}><span className={styles.pulseDotSmall} />Ao Vivo</span>}
-                    {!classDate.isLive && classDate.isPast && <span className={styles.statusCompleted}>✓ Realizada</span>}
+                    {!classDate.isLive && classDate.isPast && <span className={styles.statusCompleted}><Check size={14} className="iconInline" />Realizada</span>}
                     {!classDate.isLive && !classDate.isPast && classDate.isToday && <span className={styles.statusToday}><span className={styles.pulseDotSmall} />Hoje</span>}
                     {!classDate.isLive && !classDate.isPast && !classDate.isToday && classDate.isNextClass && <span className={styles.statusNext}>→ Próxima</span>}
                     {!classDate.isLive && !classDate.isPast && !classDate.isToday && !classDate.isNextClass && (

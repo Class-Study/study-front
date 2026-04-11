@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Check } from 'lucide-react';
 import { Modal } from '@/components/ui/Modal/Modal';
 import { useStudentBilling, type MonthlyBilling, type PaymentStatus } from '@/hooks/useStudentBilling';
 import QRCode from 'qrcode';
@@ -316,7 +317,7 @@ export const StudentBillingTab: React.FC = () => {
                       ) : billing.status === 'AWAITING_CONFIRMATION' ? (
                         <span className={styles.waitingText}>Aguardando...</span>
                       ) : (
-                        <span className={styles.paidText}>✓ Pago</span>
+                        <span className={styles.paidText}><Check size={14} className="iconInline" />Pago</span>
                       )}
                     </td>
                   </tr>

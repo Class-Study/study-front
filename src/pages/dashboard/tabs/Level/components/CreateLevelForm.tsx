@@ -3,6 +3,7 @@ import type {NewLevelForm} from '@/types/levelTab.types.ts';
 import {toSlug} from '@/utils/levelTab.utils.ts';
 import {IconPicker} from './IconPicker.tsx';
 import styles from '../LevelTab.module.css';
+import {Folder} from "lucide-react";
 
 interface CreateLevelFormProps {
     form: NewLevelForm;
@@ -80,7 +81,7 @@ export const CreateLevelForm: React.FC<CreateLevelFormProps> = ({
         </div>
 
         <div className={styles.foldersSection}>
-            <div className={styles.foldersSectionTitle}>📁 Pastas</div>
+            <div className={styles.foldersSectionTitle}><Folder size={16} className="folderIcon" /> Pastas</div>
 
             {form.folders.map((folder) => (
                 <div key={folder.tempId} className={styles.folderRow}>

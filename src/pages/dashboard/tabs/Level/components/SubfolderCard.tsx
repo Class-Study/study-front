@@ -2,8 +2,9 @@ import React, {useState, useEffect} from 'react';
 import type {LevelFolderExercise, LevelSubfolder} from '@/types/levelProfile.types.ts';
 import type {PendingMaterial, PendingTemplateExtended, PreviewState} from '@/types/levelTab.types.ts';
 import {convertMaterialType, getMaterialTypeLabel} from '@/utils/levelTab.utils.ts';
-import {ChevronDown, Link, Video, Eye, Check, X, Folder, Edit2, Trash2} from 'lucide-react';
+import {ChevronDown, Link, Video, Eye, Check, X, FolderOpen, FolderClosed, Edit2, Trash2, ClipboardList, BookOpen} from 'lucide-react';
 import Swal from 'sweetalert2';
+import {PropagateModal} from './PropagateModal.tsx';
 import styles from '../LevelTab.module.css';
 
 interface SubfolderCardProps {
@@ -33,10 +34,8 @@ interface SubfolderCardProps {
 
     // Pending subfolder support
     isPending?: boolean;
-    propagateToStudents?: boolean;
     onDeletePending?: () => void;
     onRenamePending?: (newName: string) => void;
-    onTogglePropagate?: () => void;
 
     // Handlers
     handleFileConvert: (file: File, folderId: string, subfolderId: string, contentMode: 'exercise' | 'material') => Promise<void>;
@@ -71,10 +70,8 @@ export const SubfolderCard: React.FC<SubfolderCardProps> = ({
                                                                 handleRenameSubfolder,
                                                                 handleDeleteSubfolder,
                                                                 isPending = false,
-                                                                propagateToStudents = false,
                                                                 onDeletePending,
                                                                 onRenamePending,
-                                                                onTogglePropagate,
                                                                 handleFileConvert,
                                                                 handleViewSavedTemplate,
                                                                 removePendingTemplate,
@@ -89,8 +86,8 @@ export const SubfolderCard: React.FC<SubfolderCardProps> = ({
     const [displayName, setDisplayName] = useState(subfolder.name);
     const [isEditing, setIsEditing] = useState(false);
     const [editName, setEditName] = useState('');
-    const [editPropagate, setEditPropagate] = useState(false);
     const [isSavingEdit, setIsSavingEdit] = useState(false);
+    const [isPropagateModalOpen, setIsPropagateModalOpen] = useState(false);
     const [deletedExerciseIds, setDeletedExerciseIds] = useState<Set<string>>(new Set());
     const [deletedMaterialIds, setDeletedMaterialIds] = useState<Set<string>>(new Set());
 
@@ -146,7 +143,12 @@ export const SubfolderCard: React.FC<SubfolderCardProps> = ({
         }
     };
 
-    const handleConfirmEdit = async () => {
+    const handleConfirmEdit = () => {
+        if (!editName.trim()) return;
+        setIsPropagateModalOpen(true);
+    };
+
+    const handleSaveEditWithPropagation = async (propagate: boolean): Promise<void> => {
         if (!editName.trim()) return;
         setIsSavingEdit(true);
         try {
@@ -155,7 +157,7 @@ export const SubfolderCard: React.FC<SubfolderCardProps> = ({
                 subfolder.id,
                 editName.trim(),
                 subfolder.name,
-                editPropagate,
+                propagate,
                 Array.from(deletedExerciseIds),
                 Array.from(deletedMaterialIds),
             );
@@ -166,13 +168,13 @@ export const SubfolderCard: React.FC<SubfolderCardProps> = ({
             setActiveUploadSubfolder(null);
         } finally {
             setIsSavingEdit(false);
+            setIsPropagateModalOpen(false);
         }
     };
 
     const handleCancelEdit = () => {
         setIsEditing(false);
         setEditName(displayName);
-        setEditPropagate(false);
         setDeletedExerciseIds(new Set());
         setDeletedMaterialIds(new Set());
         clearPendingForSubfolder(subfolder.id);
@@ -199,17 +201,7 @@ export const SubfolderCard: React.FC<SubfolderCardProps> = ({
                         />
                     </div>
                     <div className={styles.subfolderHeaderActions}>
-                        <label
-                            className={styles.propagateToggle}
-                            title="Propagar novos itens para os alunos do nível"
-                        >
-                            <input
-                                type="checkbox"
-                                checked={editPropagate}
-                                onChange={(e) => setEditPropagate(e.target.checked)}
-                            />
-                            Propagar
-                        </label>
+
                         <button
                             type="button"
                             className={styles.viewTemplateBtn}
@@ -243,26 +235,17 @@ export const SubfolderCard: React.FC<SubfolderCardProps> = ({
                             className={`${styles.chevronIcon} ${isOpen ? styles.chevronIconOpen : ''}`}
                         />
                         <div className={styles.subfolderName}>
-                            <Folder size={18} className="folderIcon" fill="var(--color-folder)" />
+                            {isOpen ? (
+                                <FolderOpen size={20} className={`folderIconAnimated ${isOpen ? 'folderIconOpen' : ''}`} />
+                            ) : (
+                                <FolderClosed size={20} className="folderIconAnimated" />
+                            )}
                             {displayName}
                             {isPending && <span className={styles.pendingBadge}>Pendente</span>}
                         </div>
                     </div>
                     <div className={styles.subfolderHeaderActions}>
-                        {isPending && (
-                            <label
-                                className={styles.propagateToggle}
-                                title="Propagar para todos os alunos do nível"
-                                onClick={(e) => e.stopPropagation()}
-                            >
-                                <input
-                                    type="checkbox"
-                                    checked={propagateToStudents}
-                                    onChange={() => onTogglePropagate?.()}
-                                />
-                                Propagar
-                            </label>
-                        )}
+
                         <button
                             type="button"
                             className={styles.viewTemplateBtn}
@@ -273,7 +256,6 @@ export const SubfolderCard: React.FC<SubfolderCardProps> = ({
                                     void handleOpenRenameModal();
                                 } else {
                                     setEditName(displayName);
-                                    setEditPropagate(false);
                                     setIsEditing(true);
                                     setIsOpen(true);
                                     setDeletedExerciseIds(new Set());
@@ -314,14 +296,16 @@ export const SubfolderCard: React.FC<SubfolderCardProps> = ({
                         className={`${styles.managementTab} ${activeTab === 'exercises' ? styles.managementTabActive : ''} tabButton`}
                         onClick={() => setSubfolderInnerTab((prev) => ({...prev, [subfolder.id]: 'exercises'}))}
                     >
-                        📝 Exercícios ({savedExercises.length + sfPendingTemplates.length})
+                        <ClipboardList size={18} className="iconInline" />
+                        Exercícios ({savedExercises.length + sfPendingTemplates.length})
                     </button>
                     <button
                         type="button"
                         className={`${styles.managementTab} ${activeTab === 'materials' ? styles.managementTabActive : ''} tabButton`}
                         onClick={() => setSubfolderInnerTab((prev) => ({...prev, [subfolder.id]: 'materials'}))}
                     >
-                        📚 Materiais ({savedMaterials.length + sfPendingMaterials.length})
+                        <BookOpen size={18} className="iconInline" />
+                        Materiais ({savedMaterials.length + sfPendingMaterials.length})
                     </button>
                     {(isPending || isEditing) && (
                         <button
@@ -680,14 +664,17 @@ export const SubfolderCard: React.FC<SubfolderCardProps> = ({
                     </>
                 )}
             </div>
+
+            <PropagateModal
+                isPropagateModalOpen={isPropagateModalOpen}
+                savingTemplate={isSavingEdit}
+                setIsPropagateModalOpen={setIsPropagateModalOpen}
+                handleSaveTemplate={handleSaveEditWithPropagation}
+                mode="edit"
+            />
         </div>
     );
 };
-
-
-
-
-
 
 
 

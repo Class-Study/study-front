@@ -452,7 +452,7 @@ export function useLevelTabState() {
         if (!name) return;
 
         const tempId = createTempId();
-        const newPending: PendingSubfolder = {tempId, folderId, name, propagateToStudents: false};
+        const newPending: PendingSubfolder = {tempId, folderId, name, propagateToStudents: true};
 
         setPendingSubfolders((prev) => ({
             ...prev,

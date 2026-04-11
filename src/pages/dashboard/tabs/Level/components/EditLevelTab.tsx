@@ -2,6 +2,7 @@ import React from 'react';
 import type {LevelProfile} from '@/types/levelProfile.types.ts';
 import type {NewLevelForm} from '@/types/levelTab.types.ts';
 import styles from '../LevelTab.module.css';
+import {Folder} from "lucide-react";
 
 interface EditLevelTabProps {
     selectedLevel: LevelProfile;
@@ -74,7 +75,7 @@ export const EditLevelTab: React.FC<EditLevelTabProps> = ({
                 </div>
 
                 <div className={styles.foldersSection}>
-                    <div className={styles.foldersSectionTitle}>📁 Pastas</div>
+                    <div className={styles.foldersSectionTitle}><Folder size={16} className="folderIcon" /> Pastas</div>
 
                     {editForm.folders.map((folder) => (
                         <div key={folder.tempId} className={styles.folderRow}>
