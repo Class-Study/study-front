@@ -1,7 +1,7 @@
 export type ActivityType = 'EXERCISE' | 'MATERIAL' | 'WORKSPACE';
 
 /** Subtipo de material (só relevante quando type === 'MATERIAL') */
-export type MaterialType = 'DOC' | 'LINK' | 'VIDEO';
+export type MaterialType = 'DOCUMENT' | 'LINK' | 'VIDEO';
 
 export interface WorkspaceActivity {
   id: string;
@@ -75,7 +75,7 @@ export interface WorkspaceStudyMaterial {
   subfolderId: string | null;
   subfolderType: string | null;
   title: string;
-  type: 'VIDEO' | 'LINK' | 'DOC';
+  type: 'VIDEO' | 'LINK' | 'DOCUMENT';
   url: string | null;
   convertedHtml: string | null;
   originalFilename: string | null;

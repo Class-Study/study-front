@@ -69,8 +69,8 @@ export const PreviewModal: React.FC<PreviewModalProps> = ({
                     }))
                   }
                 >
-                  <option value="LINK">Link Externo</option>
                   <option value="VIDEO">Vídeo</option>
+                  <option value="LINK">Link Externo</option>
                 </select>
               </div>
             </div>
@@ -203,6 +203,7 @@ export const PreviewModal: React.FC<PreviewModalProps> = ({
                           ...prev,
                           [sfKey]: [...(prev[sfKey] ?? []), newMaterial],
                         }));
+                        setPreview((prev) => ({ ...prev, isOpen: false }));
                       }}
                       disabled={!preview.title.trim()}
                   >

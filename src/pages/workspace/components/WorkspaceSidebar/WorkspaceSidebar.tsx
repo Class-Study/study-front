@@ -20,7 +20,7 @@ import styles from './WorkspaceSidebar.module.css';
 // ─── Helpers de material ──────────────────────────────────────────────────────
 
 const MATERIAL_ICONS: Record<MaterialType, React.ReactNode> = {
-  DOC: <FileText size={16} />,
+  DOCUMENT: <FileText size={16} />,
   VIDEO: <Video size={16} />,
   LINK: <Link size={16} />,
 };
@@ -103,7 +103,6 @@ export const WorkspaceSidebar: React.FC<WorkspaceSidebarProps> = ({
   const canMove = allowMove ?? !readOnly;
   const canCreateWorkspace = allowCreateWorkspace ?? canCreate;
   const canCreateFolder = allowCreateFolder ?? canCreate;
-  const canUploadToFolder = allowUploadToFolder ?? canCreate;
 
   const activeFolderId = folders.find((f) => {
     const subfolders = (f.subfolders as WorkspaceSubfolder[]) ?? [];

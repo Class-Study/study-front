@@ -2,7 +2,20 @@ import React, {useState, useEffect} from 'react';
 import type {LevelFolderExercise, LevelSubfolder} from '@/types/levelProfile.types.ts';
 import type {PendingMaterial, PendingTemplateExtended, PreviewState} from '@/types/levelTab.types.ts';
 import {convertMaterialType, getMaterialTypeLabel} from '@/utils/levelTab.utils.ts';
-import {ChevronDown, Link, Video, Eye, Check, X, FolderOpen, FolderClosed, Edit2, Trash2, ClipboardList, BookOpen} from 'lucide-react';
+import {
+    ChevronDown,
+    Link,
+    Video,
+    Eye,
+    Check,
+    X,
+    FolderOpen,
+    FolderClosed,
+    Edit2,
+    Trash2,
+    ClipboardList,
+    BookOpen
+} from 'lucide-react';
 import Swal from 'sweetalert2';
 import {PropagateModal} from './PropagateModal.tsx';
 import styles from '../LevelTab.module.css';
@@ -36,6 +49,8 @@ interface SubfolderCardProps {
     isPending?: boolean;
     onDeletePending?: () => void;
     onRenamePending?: (newName: string) => void;
+    propagateToStudents?: boolean;
+    onTogglePropagate?: () => void;
 
     // Handlers
     handleFileConvert: (file: File, folderId: string, subfolderId: string, contentMode: 'exercise' | 'material') => Promise<void>;
@@ -209,7 +224,7 @@ export const SubfolderCard: React.FC<SubfolderCardProps> = ({
                             disabled={isSavingEdit || !editName.trim()}
                             onClick={() => void handleConfirmEdit()}
                         >
-                            {isSavingEdit ? '…' : <Check size={16} />}
+                            {isSavingEdit ? '…' : <Check size={16}/>}
                         </button>
                         <button
                             type="button"
@@ -218,7 +233,7 @@ export const SubfolderCard: React.FC<SubfolderCardProps> = ({
                             disabled={isSavingEdit}
                             onClick={handleCancelEdit}
                         >
-                            <X size={16} />
+                            <X size={16}/>
                         </button>
                     </div>
                 </div>
@@ -236,9 +251,10 @@ export const SubfolderCard: React.FC<SubfolderCardProps> = ({
                         />
                         <div className={styles.subfolderName}>
                             {isOpen ? (
-                                <FolderOpen size={20} className={`folderIconAnimated ${isOpen ? 'folderIconOpen' : ''}`} />
+                                <FolderOpen size={20}
+                                            className={`folderIconAnimated ${isOpen ? 'folderIconOpen' : ''}`}/>
                             ) : (
-                                <FolderClosed size={20} className="folderIconAnimated" />
+                                <FolderClosed size={20} className="folderIconAnimated"/>
                             )}
                             {displayName}
                             {isPending && <span className={styles.pendingBadge}>Pendente</span>}
@@ -264,7 +280,7 @@ export const SubfolderCard: React.FC<SubfolderCardProps> = ({
                                 }
                             }}
                         >
-                            <Edit2 size={16} />
+                            <Edit2 size={16}/>
                         </button>
                         <button
                             type="button"
@@ -279,7 +295,7 @@ export const SubfolderCard: React.FC<SubfolderCardProps> = ({
                                 }
                             }}
                         >
-                            <Trash2 size={16} />
+                            <Trash2 size={16}/>
                         </button>
                     </div>
                 </button>
@@ -296,7 +312,7 @@ export const SubfolderCard: React.FC<SubfolderCardProps> = ({
                         className={`${styles.managementTab} ${activeTab === 'exercises' ? styles.managementTabActive : ''} tabButton`}
                         onClick={() => setSubfolderInnerTab((prev) => ({...prev, [subfolder.id]: 'exercises'}))}
                     >
-                        <ClipboardList size={18} className="iconInline" />
+                        <ClipboardList size={18} className="iconInline"/>
                         Exercícios ({savedExercises.length + sfPendingTemplates.length})
                     </button>
                     <button
@@ -304,7 +320,7 @@ export const SubfolderCard: React.FC<SubfolderCardProps> = ({
                         className={`${styles.managementTab} ${activeTab === 'materials' ? styles.managementTabActive : ''} tabButton`}
                         onClick={() => setSubfolderInnerTab((prev) => ({...prev, [subfolder.id]: 'materials'}))}
                     >
-                        <BookOpen size={18} className="iconInline" />
+                        <BookOpen size={18} className="iconInline"/>
                         Materiais ({savedMaterials.length + sfPendingMaterials.length})
                     </button>
                     {(isPending || isEditing) && (
@@ -338,7 +354,7 @@ export const SubfolderCard: React.FC<SubfolderCardProps> = ({
                                             title="Visualizar"
                                             onClick={() => handleViewSavedTemplate(exercise, folderId, subfolder.id)}
                                         >
-                                            <Eye size={16} />
+                                            <Eye size={16}/>
                                         </button>
                                         {isEditing && !isPending && (
                                             <button
@@ -349,7 +365,7 @@ export const SubfolderCard: React.FC<SubfolderCardProps> = ({
                                                     setDeletedExerciseIds((prev) => new Set([...prev, exercise.id]))
                                                 }
                                             >
-                                                <X size={16} />
+                                                <X size={16}/>
                                             </button>
                                         )}
                                     </div>
@@ -378,14 +394,14 @@ export const SubfolderCard: React.FC<SubfolderCardProps> = ({
                                             });
                                         }}
                                     >
-                                        <Eye size={16} />
+                                        <Eye size={16}/>
                                     </button>
                                     <button
                                         type="button"
                                         className={styles.removeTemplateBtn}
                                         onClick={() => removePendingTemplate(subfolder.id, template.tempId)}
                                     >
-                                        <X size={16} />
+                                        <X size={16}/>
                                     </button>
                                 </div>
                             </div>
@@ -450,7 +466,7 @@ export const SubfolderCard: React.FC<SubfolderCardProps> = ({
                                         });
                                     }}
                                 >
-                                    <Edit2 size={16} className="iconInline" />
+                                    <Edit2 size={16} className="iconInline"/>
                                     Criar atividade manualmente (texto livre)
                                 </button>
                             </div>
@@ -499,7 +515,7 @@ export const SubfolderCard: React.FC<SubfolderCardProps> = ({
                                                     });
                                                 }}
                                             >
-                                                <Eye size={16} />
+                                                <Eye size={16}/>
                                             </button>
                                         )}
                                         {material.url && (
@@ -509,7 +525,8 @@ export const SubfolderCard: React.FC<SubfolderCardProps> = ({
                                                 rel="noopener noreferrer"
                                                 className={styles.viewMaterialBtn}
                                             >
-                                                {convertMaterialType(material.type) === 'VIDEO' ? <Video size={16} /> : <Link size={16} />}
+                                                {convertMaterialType(material.type) === 'VIDEO' ? <Video size={16}/> :
+                                                    <Link size={16}/>}
                                             </a>
                                         )}
                                         {isEditing && !isPending && (
@@ -521,7 +538,7 @@ export const SubfolderCard: React.FC<SubfolderCardProps> = ({
                                                     setDeletedMaterialIds((prev) => new Set([...prev, material.id]))
                                                 }
                                             >
-                                                <X size={16} />
+                                                <X size={16}/>
                                             </button>
                                         )}
                                     </div>
@@ -561,7 +578,7 @@ export const SubfolderCard: React.FC<SubfolderCardProps> = ({
                                                 });
                                             }}
                                         >
-                                            <Eye size={16} />
+                                            <Eye size={16}/>
                                         </button>
                                     )}
                                     {material.url && (
@@ -571,7 +588,7 @@ export const SubfolderCard: React.FC<SubfolderCardProps> = ({
                                             rel="noopener noreferrer"
                                             className={styles.viewMaterialBtn}
                                         >
-                                            {material.type === 'VIDEO' ? <Video size={16} /> : <Link size={16} />}
+                                            {material.type === 'VIDEO' ? <Video size={16}/> : <Link size={16}/>}
                                         </a>
                                     )}
                                     <button
@@ -584,7 +601,7 @@ export const SubfolderCard: React.FC<SubfolderCardProps> = ({
                                             }));
                                         }}
                                     >
-                                        <X size={16} />
+                                        <X size={16}/>
                                     </button>
                                 </div>
                             </div>
@@ -612,7 +629,7 @@ export const SubfolderCard: React.FC<SubfolderCardProps> = ({
                                             });
                                         }}
                                     >
-                                        <Link size={16} className="iconInline" />
+                                        <Link size={16} className="iconInline"/>
                                         Adicionar Link
                                     </button>
                                     <div className={styles.freeTextDivider}>
@@ -675,6 +692,8 @@ export const SubfolderCard: React.FC<SubfolderCardProps> = ({
         </div>
     );
 };
+
+
 
 
 
