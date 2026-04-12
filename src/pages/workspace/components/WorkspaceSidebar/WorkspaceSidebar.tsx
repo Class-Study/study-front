@@ -65,6 +65,7 @@ interface WorkspaceSidebarProps {
   allowWorkspaceMove?: boolean;
   allowCreateWorkspace?: boolean;
   allowCreateFolder?: boolean;
+  allowUploadToFolder?: boolean;
 }
 
 interface PendingMove {
