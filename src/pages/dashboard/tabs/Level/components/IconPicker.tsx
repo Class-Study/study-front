@@ -59,7 +59,7 @@ export const IconPicker: React.FC<IconPickerProps> = ({value, onChange}) => {
     };
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        let newValue = e.target.value;
+        const newValue = e.target.value;
 
         if (newValue) {
             // Filtra para aceitar apenas emojis/símbolos válidos

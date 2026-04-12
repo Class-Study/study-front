@@ -3,7 +3,6 @@ import {
   Activity,
   CreateActivityRequest,
   MoveActivityRequest,
-  UpdateActivityRequest,
 } from '@/types/activity.types';
 
 const activityService = {

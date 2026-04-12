@@ -4,7 +4,6 @@ import type {
   UpdateLevelSubfolderRequest,
   CreateSubfoldersBatchRequest,
   UpdateSubfolderWithContentsRequest,
-  LevelSubfolder,
 } from '@/types/levelProfile.types';
 
 export interface LevelSubfolderResponse {
@@ -41,8 +40,8 @@ const levelSubfolderService = {
     profileId: string,
     folderId: string,
     payload: CreateSubfoldersBatchRequest,
-  ): Promise<any> => {
-    const { data } = await api.post<any>(
+  ): Promise<unknown> => {
+    const { data } = await api.post<unknown>(
       `/level-profiles/${profileId}/folders/${folderId}/subfolders/batch`,
       payload,
     );
@@ -83,7 +82,14 @@ const levelSubfolderService = {
       `/level-profiles/${profileId}/folders/${folderId}/subfolders/${subfolderId}`,
     );
   },
+
+  // Replaced 'any' with 'unknown' for better type safety.
+  fetchSubfolderDetails: async (subfolderId: string): Promise<unknown> => {
+    const { data } = await api.get<unknown>(
+      `/level-profiles/subfolders/${subfolderId}`,
+    );
+    return data;
+  },
 };
 
 export default levelSubfolderService;
-

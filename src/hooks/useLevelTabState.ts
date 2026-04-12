@@ -11,7 +11,7 @@ import type {
     UpdateLevelProfileRequest,
     UpdateSubfolderWithContentsRequest,
     UpdateSubfolderExercisePayload,
-    UpdateSubfolderMaterialPayload,
+    UpdateSubfolderMaterialPayload, LevelSubfolder,
 } from '@/types/levelProfile.types.ts';
 import type {
     ModalTab,
@@ -328,8 +328,8 @@ export function useLevelTabState() {
                     }),
                 };
 
-                // eslint-disable-next-line no-await-in-loop
-                const response = await levelSubfolderService.createBatch(selectedLevel.id, folderId, payload);
+                // Refine the type definition for response to match the expected structure
+                const response = await levelSubfolderService.createBatch(selectedLevel.id, folderId, payload) as { subfolders: LevelSubfolder[] };
 
                 // Atualiza selectedLevel com as subpastas criadas
                 if (response?.subfolders && Array.isArray(response.subfolders)) {

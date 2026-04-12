@@ -65,7 +65,6 @@ interface WorkspaceSidebarProps {
   allowWorkspaceMove?: boolean;
   allowCreateWorkspace?: boolean;
   allowCreateFolder?: boolean;
-  allowUploadToFolder?: boolean;
 }
 
 interface PendingMove {
@@ -97,7 +96,6 @@ export const WorkspaceSidebar: React.FC<WorkspaceSidebarProps> = ({
   allowWorkspaceMove = true,
   allowCreateWorkspace,
   allowCreateFolder,
-  allowUploadToFolder,
 }) => {
   const canCreate = allowCreate ?? !readOnly;
   const canMove = allowMove ?? !readOnly;
@@ -188,15 +186,11 @@ export const WorkspaceSidebar: React.FC<WorkspaceSidebarProps> = ({
     }
 
     // Busca a pasta source procurando a atividade em subfolders
-    let sourceFolder: WorkspaceFolder | undefined;
-    let activity: WorkspaceActivity | undefined;
+    const sourceFolder = folders.find((folder) => folder.id === result.source.droppableId);
 
-    sourceFolder = folders.find((folder) => {
-      const subfolders = (folder.subfolders as WorkspaceSubfolder[]) ?? [];
-      return subfolders.some((sf) =>
-        sf.activities?.some((act) => act.id === result.draggableId),
-      );
-    });
+    const targetFolder = folders.find((folder) => folder.id === destinationFolderId);
+
+    let activity: WorkspaceActivity | undefined;
 
     if (sourceFolder) {
       const subfolders = (sourceFolder.subfolders as WorkspaceSubfolder[]) ?? [];
@@ -210,8 +204,6 @@ export const WorkspaceSidebar: React.FC<WorkspaceSidebarProps> = ({
     if (!activity && sourceFolder?.activities) {
       activity = sourceFolder.activities.find((item) => item.id === result.draggableId);
     }
-
-    const targetFolder = folders.find((folder) => folder.id === destinationFolderId);
 
     if (!sourceFolder || !targetFolder || !activity) {
       return;
